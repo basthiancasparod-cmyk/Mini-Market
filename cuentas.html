@@ -1354,9 +1354,15 @@
         function loadAccounts() {
             const savedAccounts = localStorage.getItem('ciervo_accounts');
             if (savedAccounts) {
-                accounts = JSON.parse(savedAccounts);
-                nextAccountId = accounts.length > 0 ? Math.max(...accounts.map(a => a.id)) + 1 : 1;
-                updateAccountStatuses(); // AÑADIR LLAMADA AQUÍ
+                try {
+                    accounts = JSON.parse(savedAccounts);
+                    nextAccountId = accounts.length > 0 ? Math.max(...accounts.map(a => a.id)) + 1 : 1;
+                    updateAccountStatuses(); // Update statuses after loading
+                } catch (e) {
+                    console.error("Error parsing accounts from localStorage:", e);
+                    accounts = []; // Fallback to empty array if data is corrupt
+                    nextAccountId = 1;
+                }
             } else {
                 // No hay datos guardados, inicializar como un array vacío.
                 accounts = [];
@@ -1371,8 +1377,11 @@
 
         function updateAccountStatuses() {
             const today = new Date().toISOString().split('T')[0];
+            let statusChanged = false; // Flag to track if any status was updated
+
             accounts.forEach(a => {
-                if (a.status !== 'paid') {
+                const oldStatus = a.status; // Store old status to check for changes
+                if (oldStatus !== 'paid') { // Only re-evaluate if not already fully paid
                     const totalPaid = a.payments.reduce((sum, p) => sum + p.amount, 0);
                     if (totalPaid >= a.amount) {
                         a.status = 'paid';
@@ -1382,8 +1391,14 @@
                         a.status = 'pending';
                     }
                 }
+                if (oldStatus !== a.status) {
+                    statusChanged = true;
+                }
             });
-            saveAccounts(); // Guardar los estados actualizados
+
+            if (statusChanged) { // Only save if there was an actual change in status
+                saveAccounts();
+            }
         }
 
         function renderAccounts() {

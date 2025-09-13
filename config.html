@@ -8,6 +8,10 @@
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.1/dist/umd/lucide.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+    <!-- Firebase App (the core Firebase SDK) -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <!-- Firebase Realtime Database -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
         /* CSS Variables for Theming */
         :root {
@@ -1213,21 +1217,21 @@
                         </svg>
                     </div>
                     <div>
-                        <h3 class="modal-title">Paso 2: Verificación de Administrador</h3>
-                        <p class="modal-subtitle">Ingrese sus credenciales de administrador.</p>
+                        <h3 class="modal-title">Paso 2: Verificación de Propietario</h3>
+                        <p class="modal-subtitle">Ingrese las credenciales del propietario.</p>
                     </div>
                 </div>
 
                 <div style="padding: 1rem 0;">
                     <p style="color: var(--warning-text-color); margin-bottom: 1.5rem; line-height: 1.6;">
                         Para proceder con el restablecimiento del sistema, debe verificar su identidad
-                        ingresando las credenciales de un usuario con permisos de administrador.
+                        ingresando las credenciales del propietario del sistema.
                     </p>
                     
                     <div class="form-group">
-                        <label class="form-label" for="admin-username">Usuario Administrador</label>
-                        <input type="text" id="admin-username" class="form-input" placeholder="Ingrese el usuario administrador" autocomplete="username">
-                        <div class="validation-message" id="admin-username-message" aria-live="polite"></div>
+                        <label class="form-label" for="owner-email">Email del Propietario</label>
+                        <input type="email" id="owner-email" class="form-input" placeholder="Ingrese el email del propietario" autocomplete="email">
+                        <div class="validation-message" id="owner-email-message" aria-live="polite"></div>
                     </div>
 
                     <div class="form-group">
@@ -1392,6 +1396,20 @@
     </div>
 
     <script>
+        // PEGA AQUÍ TU OBJETO firebaseConfig DE FIREBASE
+        const firebaseConfig = {
+            apiKey: "AIzaSyCyaIC2-pCCQf_mJWGtG6v-0kA1l2Or2CQ",
+            authDomain: "mini-market-ciervo-index.firebaseapp.com",
+            databaseURL: "https://mini-market-ciervo-index-default-rtdb.firebaseio.com",
+            projectId: "mini-market-ciervo-index",
+            storageBucket: "mini-market-ciervo-index.firebasestorage.app",
+            messagingSenderId: "828978506509",
+            appId: "1:828978506509:web:52b6220033072038115e44"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
         // Global variables
         let currentStep = 1;
         let isProcessing = false;
@@ -1478,8 +1496,11 @@
          */
         function checkAdminAccess() {
             const currentUser = JSON.parse(sessionStorage.getItem('currentUser') || '{}');
+            // For system reset, we specifically need the 'owner' role or a designated admin from Firebase.
+            // The current check is for 'Administrador' from localStorage, which will be replaced by Firebase owner check.
+            // For now, keep it as a placeholder or remove if Firebase is the sole source of truth.
             if (currentUser.role !== 'Administrador') {
-                alert('⚠️ Acceso Denegado\n\nEsta función requiere permisos de administrador.\nInicie sesión con una cuenta de administrador para acceder a las configuraciones del sistema.');
+                alert('⚠️ Acceso Denegado\n\nEsta función requiere permisos de administrador. Inicie sesión con una cuenta de administrador para acceder a las configuraciones del sistema.');
                 window.location.href = 'index.html';
                 return false;
             }
@@ -1539,7 +1560,7 @@
             updateStepIndicator();
 
             // Clear form inputs
-            document.getElementById('admin-username').value = '';
+            document.getElementById('owner-email').value = ''; // Updated ID
             document.getElementById('admin-password').value = '';
 
             // Clear validation messages
@@ -1716,21 +1737,21 @@
         }
 
         /**
-         * Verifies the entered administrator credentials against stored user data.
+         * Verifica las credenciales del propietario contra la base de datos de Firebase.
          */
-        function verifyAdminCredentials() {
+        async function verifyAdminCredentials() {
             addLoadingState(verifyAdminBtn);
-            const usernameInput = document.getElementById('admin-username');
+            const emailInput = document.getElementById('owner-email');
             const passwordInput = document.getElementById('admin-password');
-            const username = usernameInput.value.trim();
+            const email = emailInput.value.trim();
             const password = passwordInput.value;
 
-            clearValidationMessages();
+            clearValidationMessages(); // Usa una función que limpie ambos campos
 
             let isValid = true;
 
-            if (!username) {
-                showValidationError('admin-username', 'El usuario es requerido.');
+            if (!email || !/\S+@\S+\.\S+/.test(email)) {
+                showValidationError('owner-email', 'Ingrese un email válido.');
                 isValid = false;
             }
 
@@ -1744,31 +1765,56 @@
                 return;
             }
 
-            const users = JSON.parse(localStorage.getItem('users') || '[]');
-            const user = users.find(u => u.username === username);
+            try {
+                const snapshot = await db.ref('users').orderByChild('email').equalTo(email).once('value');
 
-            if (!user) {
-                showValidationError('admin-username', 'Usuario no encontrado.');
-                isValid = false;
-            } else if (user.password !== password) {
-                showValidationError('admin-password', 'Contraseña incorrecta.');
-                isValid = false;
-            } else if (user.role !== 'Administrador') {
-                showValidationError('admin-username', 'Este usuario no tiene permisos de administrador.');
-                isValid = false;
-            } else if (user.status !== 'active') {
-                showValidationError('admin-username', 'Usuario inactivo. Contacte al soporte.');
-                isValid = false;
-            }
-
-            setTimeout(() => {
-                removeLoadingState(verifyAdminBtn);
-                if (isValid) {
-                    showValidationSuccess('admin-username', 'Usuario verificado.');
-                    showValidationSuccess('admin-password', 'Contraseña correcta.');
-                    goToStep(3);
+                if (!snapshot.exists()) {
+                    showValidationError('owner-email', 'El email del propietario no fue encontrado.');
+                    removeLoadingState(verifyAdminBtn);
+                    return;
                 }
-            }, 1500); // Simulate network delay
+
+                let ownerFound = false;
+                let correctPassword = false;
+                let isApproved = false;
+
+                snapshot.forEach(childSnapshot => {
+                    const owner = childSnapshot.val();
+                    if (owner.password === password) {
+                        ownerFound = true;
+                        correctPassword = true;
+                        if (owner.ingreso === true) {
+                            isApproved = true;
+                        }
+                    }
+                });
+
+                if (!ownerFound || !correctPassword) {
+                    showValidationError('admin-password', 'Contraseña incorrecta.');
+                    removeLoadingState(verifyAdminBtn);
+                    return;
+                }
+
+                if (!isApproved) {
+                    showValidationError('owner-email', 'La cuenta del propietario no está aprobada.');
+                    removeLoadingState(verifyAdminBtn);
+                    return;
+                }
+
+                // Si todo es correcto
+                showValidationSuccess('owner-email', 'Propietario verificado.');
+                showValidationSuccess('admin-password', 'Contraseña correcta.');
+
+                setTimeout(() => {
+                    removeLoadingState(verifyAdminBtn);
+                    goToStep(3);
+                }, 1000);
+
+            } catch (error) {
+                console.error("Error al verificar con Firebase:", error);
+                showValidationError('owner-email', 'Error de conexión. Intente de nuevo.');
+                removeLoadingState(verifyAdminBtn);
+            }
         }
 
         /**
@@ -1953,9 +1999,11 @@
          * Clears all validation messages and styles from input fields.
          */
         function clearValidationMessages() {
-            const inputs = ['admin-username', 'admin-password'];
+            const inputs = ['owner-email', 'admin-password']; // Actualizado
             inputs.forEach(fieldId => {
                 const field = document.getElementById(fieldId);
+                if (!field) return; // Chequeo de seguridad
+
                 const messageElement = document.getElementById(fieldId + '-message');
 
                 field.classList.remove('error', 'success');

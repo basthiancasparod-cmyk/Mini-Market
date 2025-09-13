@@ -1349,7 +1349,7 @@
             // Inicializar interfaz
             updateCurrencySymbol();
             updateRateOptions();
-            updateModeDisplay();
+            updateModeDisplay(); // Asegurarse de que se llama al cargar el DOM
             
             // Calcular precio inicial si los campos requeridos tienen valores
             const productNameInput = document.getElementById('productName');
@@ -1402,6 +1402,12 @@
             const body = document.body;
             const toggle = document.getElementById('modeToggle');
             
+            // Cargar la preferencia de modo al inicio
+            const savedMode = localStorage.getItem('ciervo_advanced_mode');
+            if (savedMode !== null) {
+                isAdvancedMode = savedMode === 'true';
+            }
+
             if (isAdvancedMode) {
                 body.classList.remove('simple-mode');
                 body.classList.add('advanced-mode');
@@ -1469,6 +1475,8 @@
                 rateSelect.value = 'parallel'; // Valor por defecto para USD
             } else if (currency === 'EUR') {
                 rateSelect.appendChild(new Option('Euro', 'euro'));
+                rateSelect.appendChild(new Option('Dólar Oficial', 'official')); // Opcional: si se quiere convertir EUR a USD oficial
+                rateSelect.appendChild(new Option('Dólar Paralelo', 'parallel')); // Opcional: si se quiere convertir EUR a USD paralelo
                 rateSelect.disabled = false;
                 rateSelect.value = 'euro'; // Valor por defecto para EUR
             }
@@ -1775,6 +1783,10 @@
             document.getElementById('productCategory').value = 'alimentos';
             document.getElementById('costCurrency').value = 'USD';
             document.getElementById('costAmount').value = '10'; // Restaurar valor inicial
+            
+            // Restaurar valores de las tasas a los por defecto si no hay guardados
+            updateRateInputs();
+
             document.getElementById('profitMargin').value = '50'; // Restaurar valor inicial
             
             // Resetear campos avanzados si están presentes
@@ -1891,7 +1903,7 @@
                 // Aquí se podría mostrar una comparación visual o un tooltip
                 // showNotification(`Se encontraron ${similarCalculations.length} cálculos similares para "${currentProduct}".`, 'info');
             }
-        });
+        }
 
         // Detectar cambios en el nombre del producto para comparaciones
         document.getElementById('productName').addEventListener('input', function() {
