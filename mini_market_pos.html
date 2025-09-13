@@ -1,0 +1,2814 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>POS - Mini Market</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Estilos CSS existentes */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(to bottom right, #f8fafc, #dbeafe, #e0e7ff);
+            min-height: 100vh;
+            color: #334155;
+            overflow: hidden;
+            transition: background-color 0.3s, color 0.3s; /* Added for smooth dark mode transition */
+        }
+
+        /* Dark Mode Styles */
+        body.dark-mode {
+            background: linear-gradient(to bottom right, #1a202c, #2d3748, #4a5568);
+            color: #e2e8f0;
+        }
+
+        /* ====== HEADER ====== */
+        .header {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(20px);
+            border-radius: 16px;
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            margin: 12px 16px 0;
+            transition: background-color 0.3s, border-color 0.3s; /* Added for smooth dark mode transition */
+        }
+        .dark-mode .header {
+            background: rgba(26, 32, 44, 0.7);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .brand { display: flex; align-items: center; gap: 12px; }
+        .brand-icon {
+            width: 42px; height: 42px;
+            background: linear-gradient(to bottom right, #3b82f6, #9333ea);
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.25);
+        }
+        .brand-text h1 { 
+            font-size: 1.3rem; 
+            font-weight: 700; 
+            background: linear-gradient(to right, #1e293b, #64748b);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+        }
+        .dark-mode .brand-text h1 {
+            background: linear-gradient(to right, #e2e8f0, #cbd5e1);
+            background-clip: text;
+            -webkit-background-clip: text;
+        }
+        .brand-text p { font-size: 0.85rem; color: #64748b; }
+        .dark-mode .brand-text p {
+            color: #a0aec0;
+        }
+
+        .header-controls { display: flex; gap: 12px; align-items: center; }
+        .sale-id {
+            background: linear-gradient(to bottom right, #3b82f6, #9333ea);
+            color: white; padding: 8px 14px; border-radius: 8px;
+            font-family: monospace; font-weight: 600; font-size: 0.95rem;
+            box-shadow: 0 4px 14px 0 rgba(59, 130, 246, 0.25);
+        }
+        .exchange-rate {
+            background: white; border: 1px solid #e2e8f0; padding: 8px 14px; border-radius: 8px;
+            font-size: 0.9rem; color: #64748b; font-weight: 600; display: flex; align-items: center; gap: 8px;
+            transition: background-color 0.3s, border-color 0.3s, color 0.3s; /* Added for smooth dark mode transition */
+        }
+        .dark-mode .exchange-rate {
+            background: #4a5568;
+            border: 1px solid #64748b;
+            color: #e2e8f0;
+        }
+        .exchange-rate-btn { background: none; border: none; color: #3b82f6; cursor: pointer; font-size: 0.9rem; }
+        .discount-btn {
+            background: #f59e0b; color: white; border: none; padding: 8px 14px; border-radius: 8px;
+            cursor: pointer; font-weight: 600; transition: all 0.3s ease; display: flex; align-items: center; gap: 8px;
+        }
+        .discount-btn:hover { background: #d97706; transform: translateY(-2px); }
+        .back-btn {
+            background: #ef4444; color: white; border: none; padding: 8px 14px; border-radius: 8px;
+            cursor: pointer; font-weight: 600; transition: all 0.3s ease; display: flex; align-items: center; gap: 8px;
+        }
+        .back-btn:hover { background: #dc2626; transform: translateY(-2px); }
+
+        /* Dark Mode Toggle Button */
+        .dark-mode-toggle {
+            background: none;
+            border: none;
+            color: inherit; /* Inherit color from parent for better integration */
+            cursor: pointer;
+            font-size: 1.25rem;
+            margin-right: 0.5rem; /* Adjusted margin to fit next to back button */
+            padding: 0.5rem; /* Add padding for easier clicking */
+            border-radius: 8px; /* Slightly rounded corners */
+            transition: background-color 0.2s, color 0.2s;
+        }
+
+        .dark-mode-toggle:hover {
+            background: rgba(255, 255, 255, 0.2); /* Subtle hover effect */
+        }
+
+        .dark-mode .dark-mode-toggle {
+            color: inherit; /* Inherit color from parent */
+        }
+
+        .dark-mode .dark-mode-toggle:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        .hidden {
+            display: none;
+        }
+
+        /* IVA Toggle Switch */
+        .iva-toggle-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: white;
+            border: 1px solid #e2e8f0;
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            color: #64748b;
+            font-weight: 600;
+            transition: background-color 0.3s, border-color 0.3s, color 0.3s;
+        }
+        .dark-mode .iva-toggle-container {
+            background: #4a5568;
+            border: 1px solid #64748b;
+            color: #e2e8f0;
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 40px;
+            height: 24px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            -webkit-transition: .4s;
+            transition: .4s;
+            border-radius: 24px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            -webkit-transition: .4s;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: #3b82f6;
+        }
+
+        input:focus + .slider {
+            box-shadow: 0 0 1px #3b82f6;
+        }
+
+        input:checked + .slider:before {
+            -webkit-transform: translateX(16px);
+            -ms-transform: translateX(16px);
+            transform: translateX(16px);
+        }
+
+        /* ====== LAYOUT PRINCIPAL CON RESIZE ====== */
+        .container {
+            display: flex;
+            padding: 16px;
+            max-width: 1800px;
+            margin: 0 auto;
+            height: calc(100vh - 90px);
+            gap: 10px;
+        }
+
+        .left-panel {
+            min-width: 250px;
+            width: 30%;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .resize-handle {
+            width: 6px;
+            background: rgba(255,255,255,0.3);
+            cursor: col-resize;
+            border-radius: 3px;
+            transition: background 0.2s ease;
+        }
+        .resize-handle:hover { background: rgba(255,255,255,0.6); }
+
+        .right-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            min-width: 400px;
+        }
+
+        /* ====== PANEL PRODUCTOS ====== */
+        .products-section {
+            background: white;
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            flex: 1; /* Permite que crezca y se encoja */
+            display: flex;
+            flex-direction: column;
+            min-height: 0; /* Necesario para que flex-grow funcione correctamente con overflow */
+            transition: flex-grow 0.3s ease-out, background-color 0.3s, border-color 0.3s, box-shadow 0.3s; /* Added for smooth dark mode transition */
+        }
+        .dark-mode .products-section {
+            background: #2d3748;
+            border: 1px solid #4a5568;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        .search-container { display: flex; gap: 8px; margin-bottom: 12px; }
+        .search-box { flex: 1; position: relative; }
+        .search-input {
+            width: 100%; padding: 12px 14px 12px 40px; border: 1px solid #cbd5e1; border-radius: 10px;
+            font-size: 0.92rem; background: #f8fafc; transition: all 0.3s ease;
+        }
+        .dark-mode .search-input {
+            background: #4a5568;
+            border: 1px solid #64748b;
+            color: #e2e8f0;
+        }
+        .search-input:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
+        .dark-mode .search-input:focus {
+            border-color: #6366f1;
+            background: #2d3748;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+        }
+        .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 1rem; }
+        .dark-mode .search-icon {
+            color: #a0aec0;
+        }
+        .scanner-btn {
+            background: linear-gradient(to bottom right, #3b82f6, #9333ea); color: white; border: none; padding: 12px; border-radius: 10px;
+            cursor: pointer; transition: all 0.3s ease; display: flex; align-items: center; justify-content: center;
+        }
+        .scanner-btn:hover { transform: scale(1.05); }
+
+        .filters { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+        .filter-btn {
+            background: white; border: 1px solid #e2e8f0; padding: 8px 14px; border-radius: 20px;
+            font-size: 0.85rem; cursor: pointer; transition: all 0.3s ease; font-weight: 500;
+        }
+        .dark-mode .filter-btn {
+            background: #2d3748;
+            border: 1px solid #4a5568;
+            color: #e2e8f0;
+        }
+        .filter-btn.active { background: linear-gradient(to bottom right, #3b82f6, #9333ea); color: white; border-color: transparent; }
+        .filter-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1); }
+        .dark-mode .filter-btn:hover {
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Lista de productos mejorada */
+        .products-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            overflow-y: auto;
+            flex: 1;
+        }
+        .product-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .dark-mode .product-item {
+            background: #2d3748;
+            border: 1px solid #4a5568;
+        }
+        .product-item:hover { border-color: #3b82f6; background: #fff; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1); }
+        .dark-mode .product-item:hover {
+            border-color: #6366f1;
+            background: #2d3748;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+        }
+        
+        .product-emoji {
+            font-size: 1.5rem;
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+            background: linear-gradient(to bottom right, #3b82f6, #9333ea);
+            color: white;
+            flex-shrink: 0;
+        }
+        
+        .product-info {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .product-name {
+            font-weight: 700;
+            font-size: 0.95rem;
+            color: #1e293b;
+            margin-bottom: 4px;
+        }
+        .dark-mode .product-name {
+            color: #e2e8f0;
+        }
+        
+        .product-code {
+            font-size: 0.8rem;
+            color: #64748b;
+            font-family: monospace;
+            margin-bottom: 6px;
+        }
+        .dark-mode .product-code {
+            color: #a0aec0;
+        }
+        
+        .product-prices {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 4px;
+        }
+        
+        .price-usd {
+            font-weight: 700;
+            color: #059669;
+            font-size: 0.9rem;
+        }
+        .dark-mode .price-usd {
+            color: #81e6d9;
+        }
+        
+        .price-ves {
+            font-weight: 600;
+            color: #64748b;
+            font-size: 0.85rem;
+        }
+        .dark-mode .price-ves {
+            color: #a0aec0;
+        }
+        
+        .product-stock {
+            font-size: 0.8rem;
+            color: #64748b;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .dark-mode .product-stock {
+            color: #a0aec0;
+        }
+        
+        .stock-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #10b981;
+        }
+        .stock-indicator.low { background: #ef4444; }
+        .stock-indicator.medium { background: #f59e0b; }
+
+        /* ====== CARRITO ====== */
+        .cart-section {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            transition: background-color 0.3s, border-color 0.3s, box-shadow 0.3s; /* Added for smooth dark mode transition */
+        }
+        .dark-mode .cart-section {
+            background: #2d3748;
+            border: 1px solid #4a5568;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+        
+        .cart-header {
+            background: linear-gradient(to bottom right, #3b82f6, #9333ea);
+            color: white;
+            padding: 16px 20px;
+            border-radius: 12px 12px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .cart-title {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 1.1rem;
+            font-weight: 700;
+        }
+        
+        .cart-count {
+            background: rgba(255,255,255,0.2);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+        
+        .cart-items {
+            flex: 1;
+            padding: 16px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .cart-item {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: all 0.2s ease;
+        }
+        .dark-mode .cart-item {
+            background: #2d3748;
+            border: 1px solid #4a5568;
+        }
+        .cart-item:hover { border-color: #3b82f6; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1); }
+        .dark-mode .cart-item:hover {
+            border-color: #6366f1;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+        }
+        
+        .cart-item-icon {
+            font-size: 1.3rem;
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(to bottom right, #3b82f6, #9333ea);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            flex-shrink: 0;
+        }
+        
+        .cart-item-details {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .cart-item-name {
+            font-weight: 700;
+            font-size: 1rem;
+            color: #1e293b;
+            margin-bottom: 4px;
+        }
+        .dark-mode .cart-item-name {
+            color: #e2e8f0;
+        }
+        
+        .cart-item-info {
+            font-size: 0.85rem;
+            color: #64748b;
+            margin-bottom: 8px;
+        }
+        .dark-mode .cart-item-info {
+            color: #a0aec0;
+        }
+        
+        .cart-item-pricing {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.9rem;
+        }
+        
+        .unit-price {
+            color: #64748b;
+        }
+        .dark-mode .unit-price {
+            color: #a0aec0;
+        }
+        
+        .subtotal-price {
+            font-weight: 700;
+            color: #059669;
+            font-size: 1rem;
+        }
+        .dark-mode .subtotal-price {
+            color: #81e6d9;
+        }
+
+        .price-with-iva {
+            font-weight: 600;
+            color: #3b82f6; /* A distinct color for price with IVA */
+            font-size: 0.85rem;
+            margin-left: 10px; /* Space it out from the base price */
+        }
+        .dark-mode .price-with-iva {
+            color: #93c5fd;
+        }
+        
+        .quantity-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-shrink: 0;
+        }
+        
+        .qty-btn {
+            width: 32px;
+            height: 32px;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+        .qty-btn:hover { background: #6366f1; transform: scale(1.08); }
+        
+        .qty-display {
+            min-width: 32px;
+            text-align: center;
+            font-weight: 700;
+            font-size: 1rem;
+            color: #1e293b;
+        }
+        .dark-mode .qty-display {
+            color: #e2e8f0;
+        }
+        
+        .remove-btn {
+            background: rgba(239, 68, 68, 0.1);
+            color: #dc2626;
+            border: none;
+            padding: 8px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-left: 8px;
+        }
+        .dark-mode .remove-btn {
+            background: rgba(239, 68, 68, 0.2);
+            color: #feb2b2;
+        }
+        .remove-btn:hover { background: rgba(239, 68, 68, 0.2); color: #dc2626; }
+        .dark-mode .remove-btn:hover {
+            background: rgba(239, 68, 68, 0.3);
+        }
+        
+        .empty-cart {
+            text-align: center;
+            padding: 40px 20px;
+            color: #64748b;
+        }
+        .dark-mode .empty-cart {
+            color: #a0aec0;
+        }
+        .empty-icon {
+            font-size: 4rem;
+            margin-bottom: 16px;
+            opacity: 0.3;
+        }
+
+        /* ====== TOTALES ====== */
+        .totals-section {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            padding: 16px;
+            transition: all 0.3s ease-out, background-color 0.3s, border-color 0.3s, box-shadow 0.3s; /* Added for smooth dark mode transition */
+            overflow: hidden; /* Oculta el contenido cuando está colapsado */
+        }
+        .dark-mode .totals-section {
+            background: #2d3748;
+            border: 1px solid #4a5568;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+        
+        .controls-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            align-items: center;
+        }
+        
+        .discount-input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            min-width: 80px;
+            transition: background-color 0.3s, border-color 0.3s, color 0.3s; /* Added for smooth dark mode transition */
+        }
+        .dark-mode .discount-input {
+            background: #4a5568;
+            border: 1px solid #64748b;
+            color: #e2e8f0;
+        }
+        
+        .apply-btn {
+            background: #f59e0b;
+            color: white;
+            border: none;
+            padding: 10px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+        .apply-btn:hover { background: #d97706; }
+        
+        .currency-toggle {
+            display: flex;
+            gap: 6px;
+        }
+        
+        .currency-btn {
+            padding: 10px 14px;
+            border: 1px solid #e2e8f0;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            font-size: 0.85rem;
+        }
+        .dark-mode .currency-btn {
+            background: #2d3748;
+            border: 1px solid #4a5568;
+            color: #e2e8f0;
+        }
+        .currency-btn.active {
+            background: linear-gradient(to bottom right, #3b82f6, #9333ea);
+            color: white;
+            border-color: transparent;
+        }
+        
+        .totals-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 16px;
+            opacity: 1;
+            max-height: 200px; /* Altura máxima para la transición */
+            transition: opacity 0.3s ease-out, max-height 0.3s ease-out;
+        }
+        .totals-grid.collapsed {
+            opacity: 0;
+            max-height: 0;
+            margin-bottom: 0;
+        }
+        
+        .total-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            background: white;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            transition: background-color 0.3s, border-color 0.3s, color 0.3s; /* Added for smooth dark mode transition */
+        }
+        .dark-mode .total-item {
+            background: #4a5568;
+            color: #e2e8f0;
+        }
+        
+        .total-item.main {
+            grid-column: 1 / -1;
+            background: linear-gradient(to bottom right, #3b82f6, #9333ea);
+            color: white;
+            font-size: 1.1rem;
+            font-weight: 700;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer; /* Añadido cursor pointer para indicar que es clickeable */
+            border-radius: 8px; /* Asegurar que el borde sea redondeado */
+        }
+        .total-item.main .toggle-icon {
+            margin-left: 10px;
+            transition: transform 0.3s ease;
+            padding: 5px; /* Aumentar el área clickeable */
+        }
+        .total-item.main .toggle-icon.rotated {
+            transform: rotate(180deg);
+        }
+
+        /* ====== BOTÓN PROCESAR ====== */
+        .process-section {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            padding: 16px;
+            transition: background-color 0.3s, border-color 0.3s, box-shadow 0.3s; /* Added for smooth dark mode transition */
+        }
+        .dark-mode .process-section {
+            background: #2d3748;
+            border: 1px solid #4a5568;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+        
+        .process-btn {
+            width: 100%;
+            background: linear-gradient(to bottom right, #3b82f6, #6366f1);
+            color: white;
+            border: none;
+            padding: 16px;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 14px 0 rgba(59, 130, 246, 0.25);
+        }
+        .process-btn:hover:not(:disabled) {
+            background: linear-gradient(to bottom right, #3b82f6, #6366f1);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px 0 rgba(59, 130, 246, 0.35);
+        }
+        .process-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* ====== MODALES ====== */
+        .modal {
+            position: fixed;
+            inset: 0;
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(10px);
+        }
+        .modal.active { display: flex; }
+        
+        .modal-content {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            transform: scale(0.9);
+            animation: modalEnter 0.3s ease forwards;
+            transition: background-color 0.3s, border-color 0.3s, box-shadow 0.3s; /* Added for smooth dark mode transition */
+        }
+        .dark-mode .modal-content {
+            background: #2d3748;
+            border: 1px solid #4a5568;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+        @keyframes modalEnter { to { transform: scale(1); } }
+        
+        .modal-header {
+            text-align: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #e2e8f0;
+            transition: border-color 0.3s; /* Added for smooth dark mode transition */
+        }
+        .dark-mode .modal-header {
+            border-bottom: 1px solid #4a5568;
+        }
+        
+        .modal-title {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 8px;
+        }
+        .dark-mode .modal-title {
+            color: #e2e8f0;
+        }
+        
+        .modal-subtitle {
+            color: #64748b;
+            font-size: 1rem;
+        }
+        .dark-mode .modal-subtitle {
+            color: #a0aec0;
+        }
+
+        /* Modal Cantidad */
+        .modal-quantity {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            margin: 24px 0;
+        }
+        
+        .modal-qty-btn {
+            width: 50px;
+            height: 50px;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 1.2rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+        .modal-qty-btn:hover { background: #6366f1; transform: scale(1.08); }
+        
+        .modal-qty-input {
+            width: 80px;
+            text-align: center;
+            padding: 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #1e293b;
+            transition: background-color 0.3s, border-color 0.3s, color 0.3s; /* Added for smooth dark mode transition */
+        }
+        .dark-mode .modal-qty-input {
+            background: #4a5568;
+            border: 1px solid #64748b;
+            color: #e2e8f0;
+        }
+
+        /* Modal Procesamiento */
+        .modal-section {
+            margin-bottom: 24px;
+        }
+        
+        .section-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer; /* Added for collapsible section */
+        }
+        .dark-mode .section-title {
+            color: #e2e8f0;
+        }
+        .section-title .toggle-icon {
+            margin-left: auto; /* Pushes icon to the right */
+            transition: transform 0.3s ease;
+        }
+        .section-title .toggle-icon.rotated {
+            transform: rotate(180deg);
+        }
+        .section-content {
+            max-height: 500px; /* Arbitrary max-height for transition */
+            overflow: hidden;
+            transition: max-height 0.3s ease-out, opacity 0.3s ease-out;
+        }
+        .section-content.collapsed {
+            max-height: 0;
+            opacity: 0;
+        }
+        
+        .form-group {
+            margin-bottom: 16px;
+        }
+        
+        .form-label {
+            display: block;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 6px;
+            font-size: 0.9rem;
+        }
+        .dark-mode .form-label {
+            color: #cbd5e1;
+        }
+        
+        .form-input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            transition: background-color 0.3s, border-color 0.3s, color 0.3s; /* Added for smooth dark mode transition */
+        }
+        .dark-mode .form-input {
+            background: #4a5568;
+            border: 1px solid #64748b;
+            color: #e2e8f0;
+        }
+        .form-input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        .dark-mode .form-input:focus {
+            border-color: #6366f1;
+            background: #2d3748;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+        }
+        
+        .form-row {
+            display: flex;
+            gap: 12px;
+        }
+        
+        .form-row .form-group {
+            flex: 1;
+        }
+
+        /* Payment methods en modal */
+        .payment-methods-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        
+        .payment-method {
+            background: white;
+            border: 1px solid #e2e8f0;
+            padding: 16px;
+            border-radius: 12px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.2s ease;
+        }
+        .dark-mode .payment-method {
+            background: #2d3748;
+            border: 1px solid #4a5568;
+            color: #e2e8f0;
+        }
+        .payment-method:hover { border-color: #3b82f6; transform: translateY(-2px); }
+        .dark-mode .payment-method:hover {
+            border-color: #6366f1;
+        }
+        .payment-method.selected {
+            background: linear-gradient(to bottom right, #3b82f6, #9333ea);
+            color: white;
+            border-color: transparent;
+        }
+        
+        .payment-icon {
+            font-size: 1.6rem;
+            margin-bottom: 8px;
+        }
+        
+        .payment-name {
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        /* Pagos combinados */
+        .combined-payments {
+            background: rgba(239, 246, 255, 0.8);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 20px;
+            transition: background-color 0.3s, border-color 0.3s; /* Added for smooth dark mode transition */
+        }
+        .dark-mode .combined-payments {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+        
+        .payment-breakdown {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        
+        .payment-amount {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .amount-label {
+            font-weight: 600;
+            color: #374151;
+            font-size: 0.9rem;
+        }
+        .dark-mode .amount-label {
+            color: #cbd5e1;
+        }
+        
+        .amount-input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            text-align: center;
+            transition: background-color 0.3s, border-color 0.3s, color 0.3s; /* Added for smooth dark mode transition */
+        }
+        .dark-mode .amount-input {
+            background: #4a5568;
+            border: 1px solid #64748b;
+            color: #e2e8f0;
+        }
+        
+        .change-section {
+            background: rgba(239, 246, 255, 0.8);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 12px;
+            transition: background-color 0.3s, border-color 0.3s; /* Added for smooth dark mode transition */
+        }
+        .dark-mode .change-section {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+        
+        .change-title {
+            font-weight: 700;
+            color: #1e40af;
+            margin-bottom: 8px;
+        }
+        .dark-mode .change-title {
+            color: #93c5fd;
+        }
+        
+        .change-amounts {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        /* Botones del modal */
+        .modal-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+        }
+        
+        .modal-btn {
+            flex: 1;
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 1rem;
+        }
+        
+        .modal-cancel {
+            background: #f1f5f9;
+            color: #64748b;
+            border: 1px solid #e2e8f0;
+            transition: background-color 0.3s, border-color 0.3s, color 0.3s; /* Added for smooth dark mode transition */
+        }
+        .dark-mode .modal-cancel {
+            background: #4a5568;
+            border: 1px solid #64748b;
+            color: #e2e8f0;
+        }
+        .modal-cancel:hover { background: #e2e8f0; }
+        .dark-mode .modal-cancel:hover {
+            background: #64748b;
+            color: #f8fafc;
+        }
+        
+        .modal-confirm {
+            background: linear-gradient(to bottom right, #3b82f6, #6366f1);
+            color: white;
+        }
+        .modal-confirm:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px 0 rgba(59, 130, 246, 0.35);
+        }
+
+        /* ====== TOAST ====== */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #1e293b;
+            color: white;
+            padding: 16px 20px;
+            border-radius: 12px;
+            z-index: 2000;
+            transform: translateX(400px);
+            transition: all 0.4s cubic-bezier(0.68,-0.55,0.265,1.55);
+            font-weight: 600;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+            max-width: 350px;
+        }
+        .toast.show { transform: translateX(0); }
+
+        /* Payment Details Message Styles */
+        .payment-message {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+        .payment-message.error {
+            background-color: #fee2e2;
+            color: #ef4444;
+            border: 1px solid #fca5a5;
+        }
+        .dark-mode .payment-message.error {
+            background-color: #451a1a;
+            color: #f87171;
+            border: 1px solid #b91c1c;
+        }
+        .payment-message.info {
+            background-color: #e0f2fe;
+            color: #0284c7;
+            border: 1px solid #7dd3fc;
+        }
+        .dark-mode .payment-message.info {
+            background-color: #075985;
+            color: #a7f3d0;
+            border: 1px solid #22d3ee;
+        }
+        .payment-message.warning {
+            background-color: #fffbeb;
+            color: #d97706;
+            border: 1px solid #fcd34d;
+        }
+        .dark-mode .payment-message.warning {
+            background-color: #78350f;
+            color: #fcd34d;
+            border: 1px solid #fbbf24;
+        }
+
+
+        /* ====== RESPONSIVE ====== */
+        @media (max-width: 1200px) {
+            .container { flex-direction: column; height: auto; overflow: auto; }
+            .left-panel, .right-panel { width: 100%; }
+            .resize-handle { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <!-- HEADER -->
+    <header class="header">
+        <div class="brand">
+            <div class="brand-icon">
+                <i class="fas fa-cash-register" style="color:#fff;font-size:1.2rem;"></i>
+            </div>
+            <div class="brand-text">
+                <h1>Mini Market POS</h1>
+                <p>Sistema de Ventas</p>
+            </div>
+        </div>
+        <div class="header-controls">
+            <button id="darkModeToggle" class="dark-mode-toggle">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sun-icon"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="M4.93 4.93l1.41 1.41"/><path d="M17.66 17.66l1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="M4.93 19.07l1.41-1.41"/><path d="M17.66 6.34l1.41-1.41"/></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="moon-icon hidden"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+            </button>
+            <div class="exchange-rate">
+                <i class="fas fa-exchange-alt"></i>
+                <span id="currentRate">36.50 Bs/$</span>
+                <button class="exchange-rate-btn" onclick="openExchangeModal()">
+                    <i class="fas fa-edit"></i>
+                </button>
+            </div>
+            <button class="discount-btn" onclick="applyQuickDiscount(10)">
+                <i class="fas fa-percent"></i>10% Desc.
+            </button>
+            <div class="iva-toggle-container">
+                <span>IVA</span>
+                <label class="switch">
+                    <input type="checkbox" id="ivaToggle" checked>
+                    <span class="slider round"></span>
+                </label>
+            </div>
+            <div class="sale-id" id="saleId">V-0001</div>
+            <button class="back-btn" onclick="goBack()">
+                <i class="fas fa-arrow-left"></i>Menú
+            </button>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- PANEL IZQUIERDO (30%) -->
+        <div class="left-panel" id="leftPanel">
+            <!-- Búsqueda y productos -->
+            <div class="products-section" id="productsSection">
+                <div class="search-container">
+                    <div class="search-box">
+                        <i class="fas fa-search search-icon"></i>
+                        <input type="text" class="search-input" id="searchInput" 
+                               placeholder="Buscar producto o escanear código..." 
+                               onkeypress="handleSearchEnter(event)">
+                    </div>
+                    <button class="scanner-btn" onclick="toggleScanner()" title="Escáner">
+                        <i class="fas fa-barcode"></i>
+                    </button>
+                </div>
+                
+                <div class="filters">
+                    <button class="filter-btn active" onclick="setFilter('all')">Todos</button>
+                    <button class="filter-btn" onclick="setFilter('Frutas y Hortalizas')">Frutas y Hortalizas</button>
+                    <button class="filter-btn" onclick="setFilter('Charcutería')">Charcutería</button>
+                    <button class="filter-btn" onclick="setFilter('Electrónicos')">Electrónicos</button>
+                </div>
+                
+                <div class="products-list" id="productsList">
+                    <!-- Productos se cargan dinámicamente -->
+                </div>
+            </div>
+
+            <!-- Totales -->
+            <div class="totals-section" id="totalsSection">
+                <div class="controls-row">
+                    <input type="text" class="discount-input" id="discountInput" 
+                           placeholder="Descuento % o monto">
+                    <button class="apply-btn" onclick="applyDiscount()">Aplicar</button>
+                    <div class="currency-toggle">
+                        <button class="currency-btn active" id="vesToggle" onclick="setCurrency('VES')">VES</button>
+                        <button class="currency-btn" id="usdToggle" onclick="setCurrency('USD')">USD</button>
+                    </div>
+                </div>
+                
+                <!-- El onclick se ha movido al div padre para que toda la tarjeta sea clickeable -->
+                <div class="total-item main" onclick="toggleTotalsDetails()">
+                    <span>TOTAL:</span>
+                    <span id="total">Bs. 0,00</span>
+                    <!-- El icono ya no necesita su propio onclick, el padre lo maneja -->
+                    <i class="fas fa-chevron-up toggle-icon" id="toggleTotalsIcon"></i>
+                </div>
+
+                <div class="totals-grid" id="totalsGrid">
+                    <div class="total-item">
+                        <span>Subtotal:</span>
+                        <span id="subtotal">Bs. 0,00</span>
+                    </div>
+                    <div class="total-item">
+                        <span>Descuento:</span>
+                        <span id="discount">Bs. 0,00</span>
+                    </div>
+                    <div class="total-item">
+                        <span>IVA (16%):</span>
+                        <span id="iva">Bs. 0,00</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- BARRA DE REDIMENSIONAMIENTO -->
+        <div class="resize-handle" id="resizeHandle"></div>
+
+        <!-- PANEL DERECHO (70%) -->
+        <div class="right-panel" id="rightPanel">
+            <!-- Carrito -->
+            <div class="cart-section">
+                <div class="cart-header">
+                    <div class="cart-title">
+                        <i class="fas fa-shopping-cart"></i>
+                        <span>Carrito de Compras</span>
+                        <span class="cart-count" id="cartCount">0</span>
+                    </div>
+                </div>
+                <div class="cart-items" id="cartItems">
+                    <div class="empty-cart">
+                        <div class="empty-icon">
+                            <i class="fas fa-shopping-cart"></i>
+                        </div>
+                        <p>Sin productos agregados</p>
+                        <small>Busca y selecciona productos para comenzar</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Botón procesar -->
+            <div class="process-section">
+                <button class="process-btn" id="processBtn" onclick="openProcessModal()" disabled>
+                    <i class="fas fa-credit-card" style="margin-right: 8px;"></i>
+                    PROCESAR VENTA (F1)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Cantidad -->
+    <div class="modal" id="quantityModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Seleccionar Cantidad</h3>
+                <p class="modal-subtitle" id="modalProductName">Producto</p>
+                <p class="modal-subtitle" id="modalProductStockInfo"></p>
+            </div>
+            <div class="modal-quantity">
+                <button class="modal-qty-btn" onclick="adjustModalQuantity(-1)">-</button>
+                <input type="text" class="modal-qty-input" id="modalQuantity" 
+                       value="" min="0.001" step="any" onchange="validateModalQuantity()" oninput="validateModalQuantity()">
+                <button class="modal-qty-btn" onclick="adjustModalQuantity(1)">+</button>
+            </div>
+            <div class="modal-actions">
+                <button class="modal-btn modal-cancel" onclick="closeQuantityModal()">Cancelar (Esc)</button>
+                <button class="modal-btn modal-confirm" onclick="confirmQuantity()">Agregar (Enter)</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Tasa de cambio -->
+    <div class="modal" id="exchangeModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Configurar Tasa de Cambio</h3>
+                <p class="modal-subtitle">Establecer valor del dólar en bolívares</p>
+            </div>
+            <div class="form-group">
+                <input type="number" class="form-input" id="exchangeInput" 
+                       placeholder="Tasa de cambio (Bs por $)" step="0.01" min="1" value="36.50">
+            </div>
+            <div class="modal-actions">
+                <button class="modal-btn modal-cancel" onclick="closeExchangeModal()">Cancelar (Esc)</button>
+                <button class="modal-btn modal-confirm" onclick="saveExchangeRate()">Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Procesamiento de Venta -->
+    <div class="modal" id="processModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Procesar Venta</h3>
+                <p class="modal-subtitle">Complete los datos para finalizar la transacción</p>
+            </div>
+
+            <!-- Registro de Cliente (Collapsible) -->
+            <div class="modal-section">
+                <div class="section-title" onclick="toggleSection('customerDataSection')">
+                    <i class="fas fa-user"></i>
+                    Datos del Cliente (Opcional)
+                    <i class="fas fa-chevron-down toggle-icon" id="customerDataSectionToggleIcon"></i>
+                </div>
+                <div class="section-content" id="customerDataSection">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Nombre y Apellido</label>
+                            <input type="text" class="form-input" id="customerName" placeholder="Nombre completo" pattern="[A-Za-zñÑáéíóúÁÉÍÓÚ\s]+" title="Solo letras y espacios">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Documento de Identidad</label>
+                            <input type="text" class="form-input" id="customerDocument" placeholder="V-12345678" pattern="[VEJGPvejpg]{1}[0-9]+" title="Ej: V12345678 o 12345678">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Número de Teléfono</label>
+                            <input type="tel" class="form-input" id="customerPhone" placeholder="04141234567" pattern="[0-9]+" title="Solo números">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Email</label>
+                            <input type="email" class="form-input" id="customerEmail" placeholder="cliente@email.com">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Métodos de Pago -->
+            <div class="modal-section">
+                <div class="section-title">
+                    <i class="fas fa-credit-card"></i>
+                    Método de Pago
+                </div>
+                <div class="payment-methods-grid" id="modalPaymentMethods">
+                    <!-- Se cargan dinámicamente -->
+                </div>
+            </div>
+
+            <!-- Sección para Efectivo USD -->
+            <div class="modal-section" id="usdCashSection" style="display: none;">
+                <div class="section-title"><i class="fas fa-dollar-sign"></i>Detalles del Pago en Efectivo USD</div>
+                <div class="payment-details-container">
+                    <div class="form-group">
+                        <label class="form-label">Monto Recibido del Cliente ($)</label>
+                        <input type="text" class="amount-input" id="paidUsdCash" 
+                               placeholder="0" oninput="handleUsdCashPayment()" pattern="[0-9]*" title="Solo números enteros">
+                    </div>
+                    <div id="usdCashMessageContainer"></div> 
+                </div>
+            </div>
+
+            <!-- Sección para Pago Móvil -->
+            <div class="modal-section" id="pagoMovilSection" style="display: none;">
+                <div class="section-title"><i class="fas fa-mobile-alt"></i>Detalles del Pago Móvil</div>
+                <div class="payment-details-container">
+                    <div class="form-group">
+                        <label class="form-label">Número de Referencia (Opcional)</label>
+                        <input type="text" class="form-input" id="pagoMovilReference" placeholder="Ingrese los últimos dígitos" pattern="[0-9]*">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pagos Combinados -->
+            <div class="modal-section" id="combinedPaymentSection" style="display: none;">
+                <div class="section-title"><i class="fas fa-calculator"></i>Detalles del Pago Combinado</div>
+                <div class="payment-details-container">
+                    <div class="form-group">
+                        <label class="form-label">Monto pagado en USD ($)</label>
+                        <input type="text" class="amount-input" id="paidUsdCombined" 
+                               placeholder="0.00" oninput="handleCombinedPayment()">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Monto RESTANTE a pagar en VES (Bs)</label>
+                        <input type="text" class="amount-input" id="remainingVesCombined" 
+                               placeholder="0,00" readonly style="background:#e9ecef; cursor: not-allowed;">
+                    </div>
+                    <div id="combinedPaymentMessageContainer"></div>
+                </div>
+            </div>
+
+            <!-- Resumen de Totales -->
+            <div class="modal-section">
+                <div class="section-title">
+                    <i class="fas fa-receipt"></i>
+                    Resumen de la Venta
+                </div>
+                <div class="totals-grid">
+                    <div class="total-item">
+                        <span>Subtotal:</span>
+                        <span id="modalSubtotal">$0.00</span>
+                    </div>
+                    <div class="total-item">
+                        <span>Descuento:</span>
+                        <span id="modalDiscount">$0.00</span>
+                    </div>
+                    <div class="total-item">
+                        <span>IVA (16%):</span>
+                        <span id="modalIva">$0.00</span>
+                    </div>
+                    <div class="total-item main">
+                        <span>TOTAL A PAGAR:</span>
+                        <span id="modalTotal">$0.00</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button class="modal-btn modal-cancel" onclick="closeProcessModal()">Cancelar (Esc)</button>
+                <button class="modal-btn modal-confirm" onclick="confirmSale()" id="confirmSaleBtn" disabled>
+                    Confirmar Venta
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Confirmación -->
+    <div class="modal" id="confirmModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="confirmTitle">Confirmar Acción</h3>
+                <p class="modal-subtitle" id="confirmMessage">¿Está seguro de realizar esta acción?</p>
+            </div>
+            <div class="modal-actions">
+                <button class="modal-btn modal-cancel" onclick="closeConfirmModal()">Cancelar(Esc)</button>
+                <button class="modal-btn modal-confirm" onclick="executeConfirmAction()" id="confirmActionBtn">
+                    Confirmar (F2)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // ===== VARIABLES GLOBALES =====
+        let currentCurrency = 'VES';
+        let exchangeRate = 36.50;
+        let cart = [];
+        let currentProductToAdd = null;
+        let selectedPaymentMethod = null;
+        let currentFilter = 'all';
+        let scannerActive = false;
+        let currentDiscount = 0;
+        let applyIVA = true; // Variable para controlar si se aplica el IVA
+        let saleId = generateSaleId();
+        let inventoryProducts = []; // This will now be loaded from localStorage
+        let confirmCallback = null;
+        let totalsDetailsCollapsed = true; // Estado inicial: colapsado
+
+        // Datos del cliente y pago
+        let customerData = null;
+        let paymentDetails = {}; // Objeto para almacenar detalles de pago específicos
+
+        const paymentMethods = {
+            VES: [
+                { id: 'ves-pos', name: 'Punto de Venta', icon: '💳' },
+                { id: 'ves-cash', name: 'Efectivo', icon: '💵' },
+                { id: 'ves-mobile', name: 'Pago Móvil', icon: '📱' },
+                { id: 'combined', name: 'Combinado USD/VES', icon: '🔄' }
+            ],
+            USD: [
+                { id: 'usd-cash', name: 'Efectivo USD', icon: '💸' },
+                { id: 'usd-zelle', name: 'Zelle', icon: '🏛️' },
+                { id: 'combined', name: 'Combinado USD/VES', icon: '🔄' }
+            ]
+        };
+
+        // Helper function to parse numbers (handles comma and dot as decimal separators)
+        function parseNumber(value) {
+            if (typeof value !== 'string') {
+                return parseFloat(value);
+            }
+            const cleanedValue = value.replace(',', '.');
+            return parseFloat(cleanedValue);
+        }
+
+        // ===== INICIALIZACIÓN =====
+        document.addEventListener('DOMContentLoaded', function() {
+            loadSavedSettings();
+            document.getElementById('saleId').textContent = saleId;
+            loadInventoryProducts(); // Load from localStorage
+            loadProducts();
+            updateCartUI();
+            setupEventListeners();
+            setupResizeHandle();
+            document.getElementById('searchInput').focus();
+            // Inicializar el estado de los detalles de totales
+            toggleTotalsDetails(true); // Colapsar al inicio
+            // Inicializar la sección de datos del cliente como colapsada
+            toggleSection('customerDataSection', true);
+            // Inicializar modo oscuro
+            initDarkMode();
+
+            // Inicializar el estado del switch de IVA
+            const savedIvaState = localStorage.getItem('pos_apply_iva');
+            if (savedIvaState !== null) {
+                applyIVA = JSON.parse(savedIvaState);
+            }
+            document.getElementById('ivaToggle').checked = applyIVA;
+            document.getElementById('ivaToggle').addEventListener('change', function() {
+                applyIVA = this.checked;
+                localStorage.setItem('pos_apply_iva', applyIVA);
+                updateTotals(); // Recalcular totales al cambiar el estado del IVA
+                updateCartUI(); // Actualizar precios en el carrito
+            });
+        });
+
+        function setupEventListeners() {
+            document.getElementById('searchInput').addEventListener('input', searchProducts);
+            
+            document.addEventListener('keydown', function(e) {
+                if (e.ctrlKey && e.key === 'f') {
+                    e.preventDefault();
+                    document.getElementById('searchInput').focus();
+                }
+                if (e.key === 'Escape') {
+                    closeAllModals();
+                }
+                // Atajo F1 para procesar venta
+                if (e.key === 'F1') {
+                    e.preventDefault(); // Prevenir comportamiento por defecto del navegador
+                    if (cart.length > 0) {
+                        openProcessModal();
+                    } else {
+                        showToast('El carrito está vacío para procesar la venta.');
+                    }
+                }
+                // Atajo Ctrl+Enter para procesar venta (existente)
+                if (e.ctrlKey && e.key === 'Enter' && cart.length > 0) {
+                    openProcessModal();
+                }
+            });
+
+            // Atajo Enter en el input de cantidad del modal
+            document.getElementById('modalQuantity').addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    confirmQuantity();
+                }
+            });
+
+            // Atajo F2 para confirmar venta en el modal de procesamiento
+            document.getElementById('processModal').addEventListener('keydown', function(e) {
+                if (e.key === 'F2') {
+                    e.preventDefault();
+                    const confirmBtn = document.getElementById('confirmSaleBtn');
+                    if (!confirmBtn.disabled) {
+                        confirmSale();
+                    }
+                }
+            });
+
+            // Atajo F2 para confirmar en el modal de confirmación
+            document.getElementById('confirmModal').addEventListener('keydown', function(e) {
+                if (e.key === 'F2') {
+                    e.preventDefault();
+                    executeConfirmAction();
+                }
+            });
+
+            // Validaciones de input en tiempo real
+            document.getElementById('customerName').addEventListener('input', function(e) {
+                this.value = this.value.replace(/[^A-Za-zñÑáéíóúÁÉÍÓÚ\s]/g, '');
+            });
+            document.getElementById('customerDocument').addEventListener('input', function(e) {
+                this.value = this.value.replace(/[^VEJGPvejpg0-9]/g, '');
+                if (this.value.length > 0 && !/^[VEJGPvejpg]/.test(this.value)) {
+                    this.value = ''; // Clear if first char is not a letter
+                }
+                if (this.value.length > 1) {
+                    this.value = this.value.charAt(0) + this.value.substring(1).replace(/[^0-9]/g, '');
+                }
+            });
+            document.getElementById('customerPhone').addEventListener('input', function(e) {
+                this.value = this.value.replace(/[^0-9]/g, '');
+            });
+
+            // Handle comma/dot for quantity input
+            document.getElementById('modalQuantity').addEventListener('input', (e) => {
+                e.target.value = e.target.value.replace(',', '.');
+            });
+            
+            // Corrected: Only allow integers for paidUsdCombined
+            document.getElementById('paidUsdCombined').addEventListener('input', (e) => {
+                e.target.value = e.target.value.replace(/[^0-9]/g, ''); // Solo permite números enteros
+                handleCombinedPayment(); // Llama al manejador para actualizar en tiempo real
+            });
+            
+            // No longer needed for paidVesCombined as it's now readonly
+            // document.getElementById('paidVesCombined').addEventListener('input', (e) => {
+            //     e.target.value = e.target.value.replace(',', '.');
+            //     calculateChangeCombined();
+            // });
+
+            // New event listener for paidUsdCash
+            document.getElementById('paidUsdCash').addEventListener('input', (e) => {
+                e.target.value = e.target.value.replace(/[^0-9]/g, ''); // Only allow integers
+                handleUsdCashPayment();
+            });
+        }
+
+        function setupResizeHandle() {
+            const resizeHandle = document.getElementById('resizeHandle');
+            const leftPanel = document.getElementById('leftPanel');
+            const rightPanel = document.getElementById('rightPanel');
+            const container = document.querySelector('.container');
+            
+            let isResizing = false;
+            
+            resizeHandle.addEventListener('mousedown', function(e) {
+                isResizing = true;
+                document.addEventListener('mousemove', handleResize);
+                document.addEventListener('mouseup', stopResize);
+                e.preventDefault();
+            });
+            
+            function handleResize(e) {
+                if (!isResizing) return;
+                
+                const containerRect = container.getBoundingClientRect();
+                const mouseX = e.clientX - containerRect.left;
+                const containerWidth = containerRect.width;
+                const percentage = (mouseX / containerWidth) * 100;
+                
+                if (percentage > 20 && percentage < 50) {
+                    leftPanel.style.width = percentage + '%';
+                    rightPanel.style.width = (100 - percentage - 1) + '%';
+                }
+            }
+            
+            function stopResize() {
+                isResizing = false;
+                document.removeEventListener('mousemove', handleResize);
+                document.removeEventListener('mouseup', stopResize);
+            }
+        }
+
+        // Dark Mode Functionality
+        function initDarkMode() {
+            const darkModeToggle = document.getElementById('darkModeToggle');
+            const sunIcon = darkModeToggle.querySelector('.sun-icon');
+            const moonIcon = darkModeToggle.querySelector('.moon-icon');
+            const isDarkMode = localStorage.getItem('darkMode') === 'enabled';
+
+            if (isDarkMode) {
+                document.body.classList.add('dark-mode');
+                sunIcon.classList.add('hidden');
+                moonIcon.classList.remove('hidden');
+            } else {
+                document.body.classList.remove('dark-mode');
+                sunIcon.classList.remove('hidden');
+                moonIcon.classList.add('hidden');
+            }
+
+            darkModeToggle.addEventListener('click', () => {
+                document.body.classList.toggle('dark-mode');
+                const currentMode = document.body.classList.contains('dark-mode');
+                localStorage.setItem('darkMode', currentMode ? 'enabled' : 'disabled');
+
+                if (currentMode) {
+                    sunIcon.classList.add('hidden');
+                    moonIcon.classList.remove('hidden');
+                } else {
+                    sunIcon.classList.remove('hidden');
+                    moonIcon.classList.add('hidden');
+                }
+            });
+        }
+
+        // ===== FUNCIONES PRINCIPALES =====
+        function generateSaleId() {
+            const savedSales = JSON.parse(localStorage.getItem('pos_sales') || '[]');
+            const nextId = savedSales.length + 1;
+            return `V-${nextId.toString().padStart(4, '0')}`;
+        }
+
+        function loadSavedSettings() {
+            const savedRate = localStorage.getItem('pos_exchange_rate');
+            if (savedRate) {
+                exchangeRate = parseFloat(savedRate);
+                updateExchangeRateDisplay();
+            }
+        }
+
+        function loadInventoryProducts() {
+            const savedProducts = localStorage.getItem('ciervo_inventory');
+            if (savedProducts) {
+                try {
+                    inventoryProducts = JSON.parse(savedProducts);
+                    // Ensure all products have necessary properties for POS
+                    inventoryProducts = inventoryProducts.map(product => {
+                        // Default values for new bulk properties if not present
+                        product.isBulk = product.isBulk || false;
+                        product.unit = product.unit || 'unidades'; // Default unit for non-bulk
+                        product.pricePerUnit = product.pricePerUnit || product.price; // Use 'price' as pricePerUnit for non-bulk
+                        product.costPerUnit = product.costPerUnit || product.cost; // Use 'cost' as costPerUnit for non-bulk
+                        product.profitPerUnit = product.profitPerUnit || product.profit; // Use 'profit' as profitPerUnit for non-bulk
+
+                        // Assign emoji based on category
+                        let emoji = '📦';
+                        if (product.category) {
+                            const cat = product.category.toLowerCase();
+                            if (cat.includes('frutas') || cat.includes('hortalizas')) emoji = '🍎';
+                            else if (cat.includes('charcutería')) emoji = '🍖';
+                            else if (cat.includes('electrónicos')) emoji = '💻';
+                            else if (cat.includes('ropa')) emoji = '👕';
+                            else if (cat.includes('hogar')) emoji = '🏠';
+                            else if (cat.includes('deportes')) emoji = '⚽';
+                            else if (cat.includes('libros')) emoji = '📚';
+                            else if (cat.includes('belleza')) emoji = '💄';
+                            else if (cat.includes('automotriz')) emoji = '🚗';
+                        }
+                        product.emoji = emoji;
+                        return product;
+                    });
+                } catch (e) {
+                    console.error('Error loading inventory products:', e);
+                    inventoryProducts = [];
+                    showToast('Error al cargar el inventario');
+                }
+            } else {
+                inventoryProducts = []; // No inventory found
+                showToast('No se encontró inventario. Agregue productos desde el módulo de inventario.');
+            }
+        }
+
+        // ===== BÚSQUEDA Y FILTROS =====
+        function handleSearchEnter(event) {
+            if (event.key === 'Enter') {
+                const searchTerm = event.target.value.trim();
+                if (searchTerm) {
+                    const product = findProductByCode(searchTerm);
+                    if (product) {
+                        openQuantityModal(product.id);
+                        event.target.value = '';
+                    } else {
+                        showToast('Producto no encontrado.');
+                    }
+                }
+            }
+        }
+
+        function findProductByCode(code) {
+            return inventoryProducts.find(p => p.code && p.code.toLowerCase() === code.toLowerCase());
+        }
+
+        function searchProducts() {
+            const term = document.getElementById('searchInput').value.toLowerCase();
+            loadProducts(term);
+        }
+
+        function toggleScanner() {
+            scannerActive = !scannerActive;
+            const searchInput = document.getElementById('searchInput');
+            searchInput.placeholder = scannerActive ? 
+                "Modo escáner activo..." : 
+                "Buscar producto o escanear código...";
+            if (scannerActive) showToast("Modo escáner activado");
+            searchInput.focus();
+        }
+
+        function setFilter(category) {
+            currentFilter = category;
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+            // Find the button that matches the category and add 'active' class
+            const targetButton = Array.from(document.querySelectorAll('.filter-btn')).find(btn => btn.textContent.includes(category));
+            if (targetButton) {
+                targetButton.classList.add('active');
+            } else if (category === 'all') {
+                document.querySelector('.filter-btn').classList.add('active'); // 'Todos' button
+            }
+            loadProducts(document.getElementById('searchInput').value.toLowerCase());
+        }
+
+        function loadProducts(searchTerm = '') {
+            const list = document.getElementById('productsList');
+            let filtered = inventoryProducts.filter(product => {
+                const matchesSearch = searchTerm === '' ||
+                    product.name.toLowerCase().includes(searchTerm) ||
+                    (product.code && product.code.toLowerCase().includes(searchTerm)) ||
+                    (product.brand && product.brand.toLowerCase().includes(searchTerm));
+                const matchesFilter = currentFilter === 'all' || product.category === currentFilter;
+                return matchesSearch && matchesFilter && product.stock > 0;
+            });
+
+            if (filtered.length === 0) {
+                list.innerHTML = `
+                    <div style="text-align:center;padding:2rem;color:#a0aec0;">
+                        <i class="fas fa-search" style="font-size:3rem;margin-bottom:1rem;opacity:.3;"></i>
+                        <div style="font-size:1.1rem;margin-bottom:0.5rem;">Sin productos</div>
+                        <div style="font-size:0.9rem;">No se encontraron resultados</div>
+                    </div>`;
+                return;
+            }
+
+            list.innerHTML = filtered.map(product => {
+                const stockLevel = getStockLevel(product);
+                
+                // Use pricePerUnit for display, and adjust for currency
+                const priceUsd = product.isBulk ? product.pricePerUnit : product.price;
+                const priceVes = priceUsd * exchangeRate;
+
+                const unitDisplay = product.isBulk ? `/${product.unit}` : '';
+                const stockDisplay = product.isBulk ? `${product.stock.toFixed(3)} ${product.unit}` : `${product.stock} unidades`;
+                
+                return `
+                    <div class="product-item" onclick="openQuantityModal(${product.id})">
+                        <div class="product-emoji">${product.emoji}</div>
+                        <div class="product-info">
+                            <div class="product-name">${product.name}</div>
+                            <div class="product-code">${product.code}</div>
+                            <div class="product-prices">
+                                <span class="price-usd">$ ${formatCurrency(priceUsd)}${unitDisplay}</span>
+                                <span class="price-ves">Bs. ${formatCurrency(priceVes)}${unitDisplay}</span>
+                            </div>
+                            <div class="product-stock">
+                                <span class="stock-indicator ${stockLevel}"></span>
+                                <span>Stock: ${stockDisplay}</span>
+                            </div>
+                        </div>
+                    </div>`;
+            }).join('');
+        }
+
+        function getStockLevel(product) {
+            const minStock = product.minStock || 10; // Use product's minStock or default
+            if (product.stock <= minStock) return 'low';
+            if (product.stock <= minStock * 2) return 'medium';
+            return 'high';
+        }
+
+        // ===== MODAL DE CANTIDAD =====
+        function openQuantityModal(productId) {
+            const product = inventoryProducts.find(p => p.id === productId);
+            if (!product || product.stock <= 0) {
+                showToast('Producto sin stock disponible');
+                return;
+            }
+            
+            currentProductToAdd = product;
+            document.getElementById('modalProductName').textContent = product.name;
+            
+            const modalQuantityInput = document.getElementById('modalQuantity');
+            const modalProductStockInfo = document.getElementById('modalProductStockInfo');
+
+            if (product.isBulk) {
+                modalQuantityInput.value = ''; // Initialize with empty string for bulk products
+                modalQuantityInput.step = 'any'; // Allow any decimal step
+                modalQuantityInput.min = '0'; // Allow 0 for initial input, validation will handle positive
+                modalProductStockInfo.textContent = `Ingresar Peso (${product.unit}). Stock disponible: ${product.stock.toFixed(3)} ${product.unit}`;
+            } else {
+                modalQuantityInput.value = '1';
+                modalQuantityInput.step = '1';
+                modalQuantityInput.min = '1';
+                modalProductStockInfo.textContent = `Ingresar Cantidad (unidades). Stock disponible: ${product.stock} unidades`;
+            }
+            
+            document.getElementById('quantityModal').classList.add('active');
+            modalQuantityInput.focus();
+            // No need to call validateModalQuantity() here, as the input is empty or '1'
+        }
+
+        function closeQuantityModal() {
+            document.getElementById('quantityModal').classList.remove('active');
+            currentProductToAdd = null;
+        }
+
+        function adjustModalQuantity(change) {
+            const input = document.getElementById('modalQuantity');
+            let value = parseNumber(input.value);
+            if (isNaN(value)) value = 0;
+
+            if (currentProductToAdd.isBulk) {
+                const step = 0.001; // Smallest increment for bulk
+                value = value + (change * step);
+                if (value < 0) value = 0; // Allow 0 temporarily, validation will handle
+                if (value > currentProductToAdd.stock) {
+                    value = currentProductToAdd.stock;
+                    showToast(`Stock máximo: ${currentProductToAdd.stock.toFixed(3)} ${currentProductToAdd.unit}`);
+                }
+                input.value = value.toFixed(3); // Keep formatted for display after adjustment
+            } else {
+                value = value + change;
+                if (value < 1) value = 1;
+                if (value > currentProductToAdd.stock) {
+                    value = currentProductToAdd.stock;
+                    showToast(`Stock máximo: ${currentProductToAdd.stock} unidades`);
+                }
+                input.value = Math.round(value);
+            }
+        }
+
+        function validateModalQuantity() {
+            const input = document.getElementById('modalQuantity');
+            let value = parseNumber(input.value);
+            
+            if (currentProductToAdd.isBulk) {
+                // Allow empty or partial input for flexible typing
+                if (input.value === '' || input.value === '.') {
+                    return; 
+                }
+                if (isNaN(value)) {
+                    input.value = ''; // Clear if not a valid number
+                    return;
+                }
+                if (value < 0) {
+                    input.value = '0'; // Don't allow negative
+                    value = 0;
+                }
+                if (value > currentProductToAdd.stock) {
+                    input.value = currentProductToAdd.stock; // Set to max stock if exceeded
+                    showToast(`Stock disponible: ${currentProductToAdd.stock.toFixed(3)} ${currentProductToAdd.unit}`);
+                }
+                // Do NOT format to fixed decimals here, let user type freely
+            } else {
+                if (isNaN(value) || value < 1) {
+                    input.value = 1;
+                    value = 1;
+                }
+                if (value > currentProductToAdd.stock) {
+                    input.value = currentProductToAdd.stock;
+                    showToast(`Stock disponible: ${currentProductToAdd.stock} unidades`);
+                }
+            }
+        }
+
+        function confirmQuantity() {
+            if (!currentProductToAdd) return;
+            let quantity = parseNumber(document.getElementById('modalQuantity').value);
+
+            if (currentProductToAdd.isBulk) {
+                if (isNaN(quantity) || quantity <= 0) {
+                    showToast('El peso debe ser un número positivo.');
+                    return;
+                }
+                if (quantity > currentProductToAdd.stock) {
+                    showToast(`Stock insuficiente. Máximo disponible: ${currentProductToAdd.stock.toFixed(3)} ${currentProductToAdd.unit}`);
+                    return;
+                }
+                // Format to 3 decimal places only when confirming for bulk products
+                quantity = parseFloat(quantity.toFixed(3)); 
+                addToCart(currentProductToAdd, quantity, currentProductToAdd.unit);
+                showToast(`${quantity.toFixed(3)} ${currentProductToAdd.unit} de ${currentProductToAdd.name} agregado`);
+            } else {
+                if (isNaN(quantity) || quantity <= 0 || !Number.isInteger(quantity)) {
+                    showToast('La cantidad debe ser un número entero positivo.');
+                    return;
+                }
+                if (quantity > currentProductToAdd.stock) {
+                    showToast(`Stock insuficiente. Máximo disponible: ${currentProductToAdd.stock} unidades`);
+                    return;
+                }
+                addToCart(currentProductToAdd, quantity, 'unidades');
+                showToast(`${quantity} x ${currentProductToAdd.name} agregado`);
+            }
+            
+            closeQuantityModal();
+            document.getElementById('searchInput').focus();
+        }
+
+        // ===== CARRITO =====
+        function addToCart(product, quantity, unit) {
+            const existing = cart.find(item => item.product.id === product.id);
+            if (existing) {
+                const newQuantity = existing.quantity + quantity;
+                if (newQuantity <= product.stock) {
+                    existing.quantity = newQuantity;
+                } else {
+                    showToast(`Stock insuficiente. Máximo disponible: ${product.stock} ${unit}`);
+                    return;
+                }
+            } else {
+                cart.push({ product, quantity, unit });
+            }
+            updateCartUI();
+        }
+
+        function removeFromCart(productId) {
+            cart = cart.filter(item => item.product.id !== productId);
+            updateCartUI();
+            showToast("Producto eliminado");
+        }
+
+        function updateQuantity(productId, newQuantity) {
+            const item = cart.find(item => item.product.id === productId);
+            if (!item) return;
+            
+            const product = item.product;
+            if (product.isBulk) {
+                newQuantity = parseNumber(newQuantity);
+                if (newQuantity > product.stock) {
+                    showToast(`Stock disponible: ${product.stock.toFixed(3)} ${product.unit}`);
+                    newQuantity = product.stock;
+                }
+                if (newQuantity <= 0.001) { // Minimum for bulk
+                    removeFromCart(productId);
+                    return;
+                }
+                item.quantity = parseFloat(newQuantity.toFixed(3)); // Format to 3 decimals for bulk
+            } else {
+                newQuantity = Math.round(newQuantity); // Ensure integer for units
+                if (newQuantity > product.stock) {
+                    showToast(`Stock disponible: ${product.stock} unidades`);
+                    newQuantity = product.stock;
+                }
+                if (newQuantity <= 0) {
+                    removeFromCart(productId);
+                    return;
+                }
+                item.quantity = newQuantity;
+            }
+            
+            updateCartUI();
+        }
+
+        function updateCartUI() {
+            const cartItems = document.getElementById('cartItems');
+            const cartCount = document.getElementById('cartCount');
+            const processBtn = document.getElementById('processBtn');
+            
+            const totalItems = cart.reduce((sum, item) => sum + (item.product.isBulk ? 1 : item.quantity), 0); // Count bulk as 1 item
+            cartCount.textContent = totalItems;
+            
+            if (cart.length === 0) {
+                cartItems.innerHTML = `
+                    <div class="empty-cart">
+                        <div class="empty-icon">
+                            <i class="fas fa-shopping-cart"></i>
+                        </div>
+                        <p>Sin productos agregados</p>
+                        <small>Busca y selecciona productos para comenzar</small>
+                    </div>`;
+                processBtn.disabled = true;
+            } else {
+                cartItems.innerHTML = cart.map(item => {
+                    // Determine the correct price per unit based on product type
+                    const basePrice = item.product.isBulk ? item.product.pricePerUnit : item.product.price;
+                    
+                    const price = currentCurrency === 'VES' ? basePrice * exchangeRate : basePrice;
+                    const subtotal = price * item.quantity;
+                    const symbol = currentCurrency === 'VES' ? 'Bs. ' : '$ ';
+                    
+                    const quantityDisplay = item.product.isBulk ? item.quantity.toFixed(3) : item.quantity;
+                    const unitLabel = item.product.isBulk ? item.unit : 'unidades';
+                    const unitPriceLabel = item.product.isBulk ? `/${item.unit}` : ' c/u';
+
+                    // Calculate price with IVA if applyIVA is true
+                    const priceWithIVA = applyIVA ? price * 1.16 : price;
+                    const subtotalWithIVA = applyIVA ? subtotal * 1.16 : subtotal;
+
+                    return `
+                        <div class="cart-item">
+                            <div class="cart-item-icon">${item.product.emoji}</div>
+                            <div class="cart-item-details">
+                                <div class="cart-item-name">${item.product.name}</div>
+                                <div class="cart-item-info">${item.product.brand} - ${item.product.code}</div>
+                                <div class="cart-item-pricing">
+                                    <span class="unit-price">${symbol}${formatCurrency(price)}${unitPriceLabel}</span>
+                                    ${applyIVA ? `<span class="price-with-iva">(${symbol}${formatCurrency(priceWithIVA)}${unitPriceLabel} con IVA)</span>` : ''}
+                                    <span class="subtotal-price">${symbol}${formatCurrency(subtotal)}</span>
+                                </div>
+                            </div>
+                            <div class="quantity-controls">
+                                <button class="qty-btn" onclick="updateQuantity(${item.product.id}, ${item.quantity - (item.product.isBulk ? 0.001 : 1)})">-</button>
+                                <span class="qty-display">${quantityDisplay} ${unitLabel}</span>
+                                <button class="qty-btn" onclick="updateQuantity(${item.product.id}, ${item.quantity + (item.product.isBulk ? 0.001 : 1)})">+</button>
+                                <button class="remove-btn" onclick="removeFromCart(${item.product.id})">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>`;
+                }).join('');
+                processBtn.disabled = false;
+            }
+            
+            updateTotals();
+        }
+
+        // ===== TOTALES =====
+        function setCurrency(currency) {
+            currentCurrency = currency;
+            document.getElementById('vesToggle').classList.toggle('active', currency === 'VES');
+            document.getElementById('usdToggle').classList.toggle('active', currency === 'USD');
+            loadProducts();
+            updateCartUI();
+        }
+
+        function calculateSubtotal() {
+            return cart.reduce((sum, item) => {
+                // Use pricePerUnit for bulk products, and regular price for others
+                const basePrice = item.product.isBulk ? item.product.pricePerUnit : item.product.price;
+                const price = currentCurrency === 'VES' ? basePrice * exchangeRate : basePrice;
+                return sum + (price * item.quantity);
+            }, 0);
+        }
+
+        function updateTotals() {
+            const subtotal = calculateSubtotal();
+            const discountAmount = subtotal * (currentDiscount / 100);
+            const afterDiscount = subtotal - discountAmount;
+            let iva = 0;
+            let total = afterDiscount;
+            
+            // IVA se aplica solo si applyIVA es true
+            if (applyIVA) {
+                iva = afterDiscount * 0.16;
+                total = afterDiscount + iva;
+            }
+            
+            const symbol = currentCurrency === 'VES' ? 'Bs. ' : '$ ';
+            document.getElementById('subtotal').textContent = symbol + formatCurrency(subtotal);
+            document.getElementById('discount').textContent = symbol + formatCurrency(discountAmount);
+            document.getElementById('iva').textContent = symbol + formatCurrency(iva);
+            document.getElementById('total').textContent = symbol + formatCurrency(total);
+        }
+
+        function applyDiscount() {
+            const input = document.getElementById('discountInput').value;
+            if (!input) {
+                showToast('Ingrese un valor de descuento');
+                return;
+            }
+            
+            if (input.includes('%')) {
+                const percentage = parseNumber(input.replace('%', ''));
+                if (isNaN(percentage) || percentage < 0 || percentage > 100) {
+                    showToast('Porcentaje inválido');
+                    return;
+                }
+                currentDiscount = percentage;
+                showToast(`Descuento del ${percentage}% aplicado`);
+            } else {
+                const amount = parseNumber(input);
+                if (isNaN(amount) || amount < 0) {
+                    showToast('Monto inválido');
+                    return;
+                }
+                const subtotal = calculateSubtotal();
+                if (amount > subtotal) {
+                    showToast('Descuento mayor al subtotal');
+                    return;
+                }
+                currentDiscount = (amount / subtotal) * 100; // Convertir monto a porcentaje
+                showToast('Descuento aplicado');
+            }
+            updateTotals();
+        }
+
+        function applyQuickDiscount(percentage) {
+            currentDiscount = percentage;
+            document.getElementById('discountInput').value = `${percentage}%`;
+            showToast(`Descuento rápido del ${percentage}% aplicado`);
+            updateTotals();
+        }
+
+        function toggleTotalsDetails(forceCollapse = false) {
+            const totalsGrid = document.getElementById('totalsGrid');
+            const toggleIcon = document.getElementById('toggleTotalsIcon');
+            const productsSection = document.getElementById('productsSection');
+
+            if (forceCollapse) {
+                totalsDetailsCollapsed = true;
+            } else {
+                totalsDetailsCollapsed = !totalsDetailsCollapsed;
+            }
+
+            if (totalsDetailsCollapsed) {
+                totalsGrid.classList.add('collapsed');
+                toggleIcon.classList.remove('rotated');
+                productsSection.style.flexGrow = 1.5; /* Aumenta el tamaño de la sección de productos */
+            } else {
+                totalsGrid.classList.remove('collapsed');
+                toggleIcon.classList.add('rotated');
+                productsSection.style.flexGrow = 1; /* Vuelve al tamaño normal */
+            }
+        }
+
+        // ===== MODAL TASA DE CAMBIO =====
+        function openExchangeModal() {
+            document.getElementById('exchangeInput').value = exchangeRate;
+            document.getElementById('exchangeModal').classList.add('active');
+        }
+
+        function closeExchangeModal() {
+            document.getElementById('exchangeModal').classList.remove('active');
+        }
+
+        function saveExchangeRate() {
+            const newRate = parseFloat(document.getElementById('exchangeInput').value);
+            if (isNaN(newRate) || newRate <= 0) {
+                showToast('Tasa de cambio inválida');
+                return;
+            }
+            
+            exchangeRate = newRate;
+            localStorage.setItem('pos_exchange_rate', exchangeRate);
+            updateExchangeRateDisplay();
+            closeExchangeModal();
+            loadProducts(); // Recargar productos para actualizar precios
+            updateCartUI(); // Recalcular carrito
+            showToast('Tasa de cambio actualizada');
+        }
+
+        function updateExchangeRateDisplay() {
+            document.getElementById('currentRate').textContent = `${exchangeRate.toFixed(2)} Bs/$`;
+        }
+
+        // ===== MODAL PROCESAMIENTO =====
+        function openProcessModal() {
+            if (cart.length === 0) {
+                showToast('El carrito está vacío');
+                return;
+            }
+            
+            // Resetear datos del modal
+            resetProcessModal();
+            
+            // Cargar métodos de pago
+            loadModalPaymentMethods();
+            
+            // Actualizar totales en el modal
+            updateModalTotals();
+            
+            document.getElementById('processModal').classList.add('active');
+        }
+
+        function closeProcessModal() {
+            document.getElementById('processModal').classList.remove('active');
+            resetProcessModal();
+        }
+
+        function resetProcessModal() {
+            // Limpiar formulario de cliente
+            document.getElementById('customerName').value = '';
+            document.getElementById('customerDocument').value = '';
+            document.getElementById('customerPhone').value = '';
+            document.getElementById('customerEmail').value = '';
+            
+            // Resetear método de pago
+            selectedPaymentMethod = null;
+            document.querySelectorAll('.payment-method').forEach(el => el.classList.remove('selected'));
+            
+            // Ocultar todas las secciones de pago específicas y limpiar sus campos
+            document.getElementById('usdCashSection').style.display = 'none';
+            document.getElementById('paidUsdCash').value = '';
+            document.getElementById('usdCashMessageContainer').innerHTML = '';
+
+            document.getElementById('pagoMovilSection').style.display = 'none';
+            document.getElementById('pagoMovilReference').value = '';
+            
+            document.getElementById('combinedPaymentSection').style.display = 'none';
+            document.getElementById('paidUsdCombined').value = '';
+            document.getElementById('remainingVesCombined').value = '';
+            document.getElementById('combinedPaymentMessageContainer').innerHTML = '';
+            
+            // Resetear el objeto paymentDetails
+            paymentDetails = {};
+
+            // Deshabilitar botón de confirmar
+            document.getElementById('confirmSaleBtn').disabled = true;
+
+            // Asegurarse de que la sección de cliente esté colapsada al abrir el modal
+            toggleSection('customerDataSection', true);
+        }
+
+        function loadModalPaymentMethods() {
+            const container = document.getElementById('modalPaymentMethods');
+            const methods = paymentMethods[currentCurrency] || [];
+            
+            container.innerHTML = methods.map(method => `
+                <div class="payment-method" onclick="selectModalPaymentMethod('${method.id}', event)">
+                    <div class="payment-icon">${method.icon}</div>
+                    <div class="payment-name">${method.name}</div>
+                </div>
+            `).join('');
+        }
+
+        function hideAllPaymentSections() {
+            document.getElementById('usdCashSection').style.display = 'none';
+            document.getElementById('pagoMovilSection').style.display = 'none';
+            document.getElementById('combinedPaymentSection').style.display = 'none';
+            // Add other payment sections here if they are created
+        }
+
+        function selectModalPaymentMethod(methodId, event) {
+            selectedPaymentMethod = methodId;
+            
+            // Actualizar UI
+            document.querySelectorAll('.payment-method').forEach(el => el.classList.remove('selected'));
+            event.currentTarget.classList.add('selected');
+            
+            // Ocultar todas las secciones de pago específicas
+            hideAllPaymentSections();
+            
+            // Mostrar la sección correspondiente y realizar acciones específicas
+            switch (methodId) {
+                case 'usd-cash':
+                    document.getElementById('usdCashSection').style.display = 'block';
+                    handleUsdCashPayment(); // Validate initial state
+                    break;
+                case 'ves-mobile':
+                    document.getElementById('pagoMovilSection').style.display = 'block';
+                    document.getElementById('confirmSaleBtn').disabled = false; // Optional field, so enable
+                    paymentDetails = { reference: '' }; // Initialize paymentDetails for mobile payment
+                    break;
+                case 'combined':
+                    document.getElementById('combinedPaymentSection').style.display = 'block';
+                    handleCombinedPayment(); // Initialize combined payment calculations
+                    break;
+                default: // For 'ves-pos', 'ves-cash', 'usd-zelle' and other simple payments
+                    document.getElementById('confirmSaleBtn').disabled = false;
+                    paymentDetails = {}; // Clear any specific payment details
+                    break;
+            }
+            
+            // Habilitar botón de confirmar si hay método seleccionado (excepto si ya se manejó en el switch)
+            if (!['usd-cash', 'combined'].includes(methodId)) {
+                updateConfirmButton();
+            }
+        }
+
+        function calculateFinalTotalInUsd() {
+            const subtotal = calculateSubtotal(); // This subtotal is in currentCurrency
+            const discountAmount = subtotal * (currentDiscount / 100);
+            const afterDiscount = subtotal - discountAmount;
+            let total = afterDiscount;
+            
+            if (applyIVA) {
+                total = afterDiscount * 1.16;
+            }
+            
+            // Convert to USD if currentCurrency is VES
+            return (currentCurrency === 'VES') ? total / exchangeRate : total;
+        }
+
+        function handleUsdCashPayment() {
+            const totalSaleUsd = calculateFinalTotalInUsd();
+            const paidUsdCashInput = document.getElementById('paidUsdCash');
+            const paidUsd = parseInt(paidUsdCashInput.value) || 0;
+            const messageContainer = document.getElementById('usdCashMessageContainer');
+            const confirmBtn = document.getElementById('confirmSaleBtn');
+
+            messageContainer.innerHTML = ''; // Clear previous messages
+
+            if (paidUsd < totalSaleUsd) {
+                const missingUsd = totalSaleUsd - paidUsd;
+                const missingVes = missingUsd * exchangeRate;
+                messageContainer.innerHTML = `
+                    <div class="payment-message error">
+                        Faltan: $${formatCurrency(missingUsd)} (Bs. ${formatCurrency(missingVes)}).
+                        Por favor, ingrese el monto completo o seleccione "Pago Combinado".
+                    </div>`;
+                confirmBtn.disabled = true;
+                paymentDetails = {}; // Clear details if not fully paid
+            } else {
+                const changeUsd = paidUsd - totalSaleUsd;
+                const changeVes = changeUsd * exchangeRate;
+                if (changeUsd > 0) {
+                    messageContainer.innerHTML = `
+                        <div class="payment-message info">
+                            Vuelto: $${formatCurrency(changeUsd)} (Bs. ${formatCurrency(changeVes)}).
+                        </div>`;
+                } else {
+                    messageContainer.innerHTML = `
+                        <div class="payment-message info">
+                            Monto exacto recibido.
+                        </div>`;
+                }
+                confirmBtn.disabled = false;
+                paymentDetails = {
+                    paidUsd: paidUsd,
+                    changeUsd: changeUsd,
+                    changeVes: changeVes
+                };
+            }
+        }
+
+        function handleCombinedPayment() {
+            const totalSaleUsd = calculateFinalTotalInUsd();
+            const paidUsdCombinedInput = document.getElementById('paidUsdCombined');
+            const remainingVesCombinedInput = document.getElementById('remainingVesCombined');
+            const messageContainer = document.getElementById('combinedPaymentMessageContainer');
+            const confirmBtn = document.getElementById('confirmSaleBtn');
+
+            messageContainer.innerHTML = ''; // Clear previous messages
+
+            // Corrected: Use parseInt for paidUsd
+            let paidUsd = parseInt(paidUsdCombinedInput.value) || 0;
+            
+            if (paidUsd > totalSaleUsd) {
+                messageContainer.innerHTML = `
+                    <div class="payment-message warning">
+                        El monto en USD no puede exceder el total de la venta ($${formatCurrency(totalSaleUsd)}).
+                    </div>`;
+                remainingVesCombinedInput.value = formatCurrency(0);
+                confirmBtn.disabled = true;
+                paymentDetails = {};
+            } else {
+                const remainingUsd = totalSaleUsd - paidUsd;
+                const remainingVes = remainingUsd * exchangeRate;
+                remainingVesCombinedInput.value = formatCurrency(remainingVes);
+                confirmBtn.disabled = false; // Habilita el botón si el monto es válido
+                paymentDetails = {
+                    paidUsd: paidUsd,
+                    remainingVesToPay: remainingVes
+                };
+            }
+            updateConfirmButton(); // Re-evaluate button state
+        }
+
+        function updateModalTotals() {
+            const subtotal = calculateSubtotal();
+            const discountAmount = subtotal * (currentDiscount / 100);
+            const afterDiscount = subtotal - discountAmount;
+            let iva = 0;
+            let total = afterDiscount;
+            
+            if (applyIVA) {
+                iva = afterDiscount * 0.16;
+                total = afterDiscount + iva;
+            }
+            
+            const symbol = currentCurrency === 'VES' ? 'Bs. ' : '$ ';
+            document.getElementById('modalSubtotal').textContent = symbol + formatCurrency(subtotal);
+            document.getElementById('modalDiscount').textContent = symbol + formatCurrency(discountAmount);
+            document.getElementById('modalIva').textContent = symbol + formatCurrency(iva);
+            document.getElementById('modalTotal').textContent = symbol + formatCurrency(total);
+        }
+
+        function calculateFinalTotal() {
+            const subtotal = calculateSubtotal();
+            const discountAmount = subtotal * (currentDiscount / 100);
+            const afterDiscount = subtotal - discountAmount;
+            let total = afterDiscount;
+            
+            if (applyIVA) {
+                total = afterDiscount * 1.16;
+            }
+            
+            return total;
+        }
+
+        function updateConfirmButton() {
+            const btn = document.getElementById('confirmSaleBtn');
+            
+            if (!selectedPaymentMethod) {
+                btn.disabled = true;
+                return;
+            }
+            
+            // Specific validation for each payment method
+            switch (selectedPaymentMethod) {
+                case 'usd-cash':
+                    const totalSaleUsd = calculateFinalTotalInUsd();
+                    const paidUsd = parseInt(document.getElementById('paidUsdCash').value) || 0;
+                    btn.disabled = (paidUsd < totalSaleUsd);
+                    break;
+                case 'combined':
+                    const totalSaleUsdCombined = calculateFinalTotalInUsd();
+                    const paidUsdCombined = parseInt(document.getElementById('paidUsdCombined').value) || 0; // Use parseInt
+                    // If paid USD is already more than total, then disable. Otherwise, enable.
+                    btn.disabled = (paidUsdCombined > totalSaleUsdCombined);
+                    break;
+                case 'ves-mobile': // Reference is optional, so always enabled if selected
+                case 'ves-pos':
+                case 'ves-cash':
+                case 'usd-zelle':
+                case 'usd-cash-simple': // Assuming a simple USD cash option without change calculation
+                    btn.disabled = false;
+                    break;
+                default:
+                    btn.disabled = true;
+                    break;
+            }
+        }
+
+        function confirmSale() {
+            // Recopilar datos del cliente si están disponibles
+            const customerName = document.getElementById('customerName').value.trim();
+            const customerDocument = document.getElementById('customerDocument').value.trim();
+            const customerPhone = document.getElementById('customerPhone').value.trim();
+            const customerEmail = document.getElementById('customerEmail').value.trim();
+            
+            customerData = null;
+            if (customerName || customerDocument || customerPhone || customerEmail) {
+                customerData = {
+                    name: customerName,
+                    document: customerDocument,
+                    phone: customerPhone,
+                    email: customerEmail
+                };
+            }
+            
+            // Mostrar modal de confirmación
+            showConfirmModal(
+                'Confirmar Venta',
+                '¿Está seguro de procesar esta venta? Esta acción no se puede deshacer.',
+                processSale
+            );
+        }
+
+        function processSale() {
+            try {
+                // Capture specific payment details based on selected method
+                let finalPaymentDetails = { ...paymentDetails };
+                let combinedPaymentData = null; // Variable para datos de pago combinado
+
+                if (selectedPaymentMethod === 'ves-mobile') {
+                    finalPaymentDetails.reference = document.getElementById('pagoMovilReference').value.trim();
+                } else if (selectedPaymentMethod === 'usd-cash') {
+                    // Los detalles ya están en 'paymentDetails' desde handleUsdCashPayment
+                } else if (selectedPaymentMethod === 'combined') {
+                    const totalSaleUsd = calculateFinalTotalInUsd();
+                    const paidUsd = parseNumber(document.getElementById('paidUsdCombined').value) || 0;
+                    const remainingVes = (totalSaleUsd - paidUsd) * exchangeRate;
+                    
+                    combinedPaymentData = {
+                        paidUsd: paidUsd,
+                        paidVes: remainingVes,
+                        changeUsd: 0, // No hay vuelto en pago combinado
+                        changeVes: 0
+                    };
+                    // Limpiamos finalPaymentDetails para no duplicar datos
+                    finalPaymentDetails = {}; 
+                }
+                
+                const saleData = {
+                    id: saleId,
+                    items: cart.map(item => {
+                        // Determine the correct price per unit based on product type
+                        const basePrice = item.product.isBulk ? item.product.pricePerUnit : item.product.price;
+                        
+                        // Calculate the unit price and subtotal in the sale's current currency
+                        const unitPrice = (currentCurrency === 'VES') ? 
+                                          (basePrice * exchangeRate) : 
+                                          basePrice;
+                        const subtotal = unitPrice * item.quantity;
+
+                        return {
+                            product: item.product,
+                            quantity: item.quantity,
+                            unit: item.unit, // Store the unit (e.g., 'kg' or 'unidades')
+                            unitPrice: unitPrice,
+                            subtotal: subtotal,
+                            currency: currentCurrency // Store the currency of this item's price
+                        };
+                    }),
+                    paymentMethod: selectedPaymentMethod,
+                    paymentDetails: finalPaymentDetails, // Store the specific payment details
+                    combinedPayment: combinedPaymentData, // Store combined payment data if applicable
+                    currency: currentCurrency, // Main currency of the sale
+                    totals: calculateSaleTotals(),
+                    timestamp: new Date().toISOString(),
+                    customer: customerData,
+                    exchangeRate: exchangeRate,
+                    ivaApplied: applyIVA // Store whether IVA was applied for this sale
+                };
+                
+                // Guardar venta
+                const savedSales = JSON.parse(localStorage.getItem('pos_sales') || '[]');
+                savedSales.push(saleData);
+                localStorage.setItem('pos_sales', JSON.stringify(savedSales));
+                
+                // Actualizar inventario
+                updateInventory();
+                
+                // Mostrar éxito
+                showToast('¡Venta procesada exitosamente!');
+                
+                // Cerrar modales y resetear
+                closeProcessModal();
+                closeConfirmModal();
+                
+                setTimeout(() => {
+                    resetSale();
+                }, 1500);
+                
+            } catch (error) {
+                console.error('Error processing sale:', error);
+                showToast('Error al procesar la venta');
+            }
+        }
+
+        function calculateSaleTotals() {
+            const subtotal = calculateSubtotal(); // This subtotal is already in currentCurrency
+            const discountAmount = subtotal * (currentDiscount / 100);
+            const afterDiscount = subtotal - discountAmount;
+            let iva = 0;
+            let total = afterDiscount;
+            
+            if (applyIVA) {
+                iva = afterDiscount * 0.16;
+                total = afterDiscount + iva;
+            }
+            
+            return { subtotal, discount: discountAmount, iva, total };
+        }
+
+        function updateInventory() {
+            let inventory = JSON.parse(localStorage.getItem('ciervo_inventory')) || [];
+            
+            cart.forEach(item => {
+                const index = inventory.findIndex(p => p.id === item.product.id);
+                if (index !== -1) {
+                    inventory[index].stock -= item.quantity;
+                    if (inventory[index].stock < 0) inventory[index].stock = 0; // Ensure stock is not negative
+                }
+            });
+            
+            localStorage.setItem('ciervo_inventory', JSON.stringify(inventory));
+            
+            // Recargar productos para actualizar stock en la interfaz
+            loadInventoryProducts(); // Reload the global inventoryProducts array
+            loadProducts(); // Re-render the product list
+        }
+
+        function resetSale() {
+            cart = [];
+            selectedPaymentMethod = null;
+            currentDiscount = 0;
+            customerData = null;
+            paymentDetails = {}; // Reset payment details
+            
+            document.getElementById('discountInput').value = '';
+            document.getElementById('searchInput').value = '';
+            
+            saleId = generateSaleId(); // Generate a new sale ID
+            document.getElementById('saleId').textContent = saleId;
+            
+            updateCartUI(); // Update the cart interface
+            document.getElementById('searchInput').focus(); // Re-focus search
+            toggleTotalsDetails(true); // Collapse total details on sale reset
+        }
+
+        // ===== MODAL DE CONFIRMACIÓN =====
+        function showConfirmModal(title, message, callback) {
+            // Ensure elements exist before accessing them
+            const confirmTitleElement = document.getElementById('confirmTitle');
+            const confirmMessageElement = document.getElementById('confirmMessage');
+
+            if (confirmTitleElement) {
+                confirmTitleElement.textContent = title;
+            }
+            if (confirmMessageElement) {
+                confirmMessageElement.textContent = message;
+            }
+            
+            confirmCallback = callback;
+            document.getElementById('confirmModal').classList.add('active');
+            // Focus the confirm button in the confirmation modal
+            const confirmActionBtn = document.getElementById('confirmActionBtn');
+            if (confirmActionBtn) {
+                confirmActionBtn.focus();
+            }
+        }
+
+        function closeConfirmModal() {
+            document.getElementById('confirmModal').classList.remove('active');
+            confirmCallback = null;
+        }
+
+        function executeConfirmAction() {
+            if (confirmCallback) {
+                confirmCallback();
+            }
+        }
+
+        // ===== UTILIDADES =====
+        function closeAllModals() {
+            document.querySelectorAll('.modal').forEach(modal => {
+                modal.classList.remove('active');
+            });
+        }
+
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('es-VE', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            }).format(amount);
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        function goBack() {
+            if (cart.length > 0) {
+                showConfirmModal(
+                    'Salir del POS',
+                    '¿Está seguro de salir? Se perderán los datos del carrito.',
+                    () => {
+                        window.location.href = 'menu.html';
+                    }
+                );
+            } else {
+                window.location.href = 'menu.html';
+            }
+        }
+
+        // Collapsible section function
+        function toggleSection(sectionId, forceCollapse = false) {
+            const sectionContent = document.getElementById(sectionId);
+            const toggleIcon = document.getElementById(sectionId + 'ToggleIcon');
+
+            if (forceCollapse) {
+                sectionContent.classList.add('collapsed');
+                toggleIcon.classList.remove('rotated');
+            } else {
+                sectionContent.classList.toggle('collapsed');
+                toggleIcon.classList.toggle('rotated');
+            }
+        }
+    </script>
+</body>
+</html>

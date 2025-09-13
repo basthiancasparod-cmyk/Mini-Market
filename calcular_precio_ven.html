@@ -1,0 +1,1931 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora de Tasas - Ciervo Administrativo</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Estilos CSS existentes */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(to bottom right, #f8fafc, #dbeafe, #e0e7ff);
+            min-height: 100vh;
+            color: #334155;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        body.dark-mode {
+            background: linear-gradient(to bottom right, #1a202c, #2d3748, #4a5568);
+            color: #e2e8f0;
+        }
+
+        .glassmorphic-bar {
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(16px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            transition: background-color 0.3s, border-color 0.3s;
+        }
+
+        body.dark-mode .glassmorphic-bar {
+            background: rgba(26, 32, 44, 0.7);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .container {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 0 1.5rem;
+        }
+
+        .top-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem 0;
+        }
+
+        .brand-section {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .brand-icon {
+            position: relative;
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(to bottom right, #f59e0b, #d97706);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 10px 15px -3px rgba(245, 158, 11, 0.25);
+        }
+
+        body.dark-mode .brand-icon {
+            box-shadow: 0 10px 15px -3px rgba(245, 158, 11, 0.4);
+        }
+
+        .brand-icon::after {
+            content: '';
+            position: absolute;
+            top: -4px;
+            right: -4px;
+            width: 16px;
+            height: 16px;
+            background: #10b981;
+            border-radius: 50%;
+            border: 2px solid white;
+        }
+
+        .brand-text h1 {
+            font-size: 1.25rem;
+            font-weight: bold;
+            background: linear-gradient(to right, #1e293b, #64748b);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+        }
+
+        body.dark-mode .brand-text h1 {
+            background: linear-gradient(to right, #e2e8f0, #a0aec0);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+        }
+
+        .brand-text p {
+            font-size: 0.875rem;
+            color: #64748b;
+        }
+
+        body.dark-mode .brand-text p {
+            color: #a0aec0;
+        }
+
+        .nav-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .back-button, .mode-toggle {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            background: rgba(255, 255, 255, 0.5);
+            border: none;
+            border-radius: 12px;
+            color: #64748b;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            backdrop-filter: blur(8px);
+        }
+
+        body.dark-mode .back-button, body.dark-mode .mode-toggle {
+            background: rgba(26, 32, 44, 0.5);
+            color: #a0aec0;
+        }
+
+        .back-button:hover, .mode-toggle:hover {
+            background: rgba(255, 255, 255, 0.8);
+            color: #1e293b;
+            transform: translateX(-2px);
+        }
+
+        body.dark-mode .back-button:hover, body.dark-mode .mode-toggle:hover {
+            background: rgba(26, 32, 44, 0.8);
+            color: #e2e8f0;
+        }
+
+        .mode-toggle.active {
+            background: #f59e0b;
+            color: white;
+        }
+
+        body.dark-mode .mode-toggle.active {
+            background: #d97706;
+            color: white;
+        }
+
+        /* Theme Toggle Button */
+        .icon-button.theme-toggle {
+            padding: 0.75rem;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            backdrop-filter: blur(8px);
+            background: rgba(255, 255, 255, 0.5);
+            color: #64748b;
+        }
+
+        body.dark-mode .icon-button.theme-toggle {
+            background: rgba(26, 32, 44, 0.5);
+            color: #a0aec0;
+        }
+
+        .icon-button.theme-toggle:hover {
+            background: rgba(255, 255, 255, 0.8);
+        }
+
+        body.dark-mode .icon-button.theme-toggle:hover {
+            background: rgba(26, 32, 44, 0.8);
+        }
+
+        .main-content {
+            padding: 2rem 0;
+        }
+
+        .module-header-section {
+            text-align: center;
+            margin-bottom: 2rem;
+            padding: 2rem 0;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(254, 243, 199, 1);
+            color: #d97706;
+            padding: 0.5rem 1rem;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            margin-bottom: 1rem;
+        }
+
+        body.dark-mode .badge {
+            background: rgba(245, 158, 11, 0.3);
+            color: #fcd34d;
+        }
+
+        .module-title {
+            font-size: 2.25rem;
+            font-weight: bold;
+            background: linear-gradient(to right, #1e293b, #d97706, #b45309);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            margin-bottom: 1rem;
+        }
+
+        body.dark-mode .module-title {
+            background: linear-gradient(to right, #e2e8f0, #fcd34d, #fbbf24);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+        }
+
+        .module-subtitle {
+            font-size: 1.125rem;
+            color: #64748b;
+            max-width: 48rem;
+            margin: 0 auto;
+        }
+
+        body.dark-mode .module-subtitle {
+            color: #a0aec0;
+        }
+
+        .calculator-container {
+            background: white;
+            border-radius: 24px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            border: 1px solid #e2e8f0;
+            overflow: hidden;
+            margin-bottom: 2rem;
+        }
+
+        body.dark-mode .calculator-container {
+            background: #2d3748;
+            border: 1px solid #4a5568;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        .calculator-header {
+            padding: 1.5rem 2rem;
+            background: linear-gradient(to right, #fef3c7, #fed7aa);
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        body.dark-mode .calculator-header {
+            background: linear-gradient(to right, #4a5568, #64748b);
+            border-bottom: 1px solid #4a5568;
+        }
+
+        .calculator-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        body.dark-mode .calculator-title {
+            color: #e2e8f0;
+        }
+
+        .calculator-body {
+            padding: 2rem;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(1, 1fr);
+            gap: 1.5rem;
+        }
+
+        @media (min-width: 768px) {
+            .form-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group.full-width {
+            grid-column: 1 / -1;
+        }
+
+        .form-label {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #374151;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        body.dark-mode .form-label {
+            color: #e2e8f0;
+        }
+
+        .required {
+            color: #ef4444;
+        }
+
+        .form-input, .form-select {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background: #f8fafc;
+            border: 1px solid #cbd5e1;
+            border-radius: 12px;
+            color: #1e293b;
+            font-size: 0.875rem;
+            transition: all 0.2s;
+        }
+
+        body.dark-mode .form-input, body.dark-mode .form-select {
+            background: #1a202c;
+            border: 1px solid #4a5568;
+            color: #e2e8f0;
+        }
+
+        .form-input:focus, .form-select:focus {
+            outline: none;
+            border-color: #f59e0b;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1);
+        }
+
+        body.dark-mode .form-input:focus, body.dark-mode .form-select:focus {
+            border-color: #fcd34d;
+            background: #2d3748;
+            box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.3);
+        }
+
+        .input-with-addon {
+            display: flex;
+            align-items: center;
+        }
+
+        .input-addon {
+            padding: 0.75rem 1rem;
+            background: #e2e8f0;
+            border: 1px solid #cbd5e1;
+            border-radius: 12px 0 0 12px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #475569;
+        }
+
+        body.dark-mode .input-addon {
+            background: #4a5568;
+            border: 1px solid #4a5568;
+            color: #e2e8f0;
+        }
+
+        .input-with-addon .form-input {
+            border-radius: 0 12px 12px 0;
+        }
+
+        .rate-config {
+            background: #fffbeb;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            border: 1px solid #fef3c7;
+        }
+
+        body.dark-mode .rate-config {
+            background: #4a5568;
+            border: 1px solid #64748b;
+        }
+
+        .rate-config-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+        }
+
+        .rate-config-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        body.dark-mode .rate-config-title {
+            color: #e2e8f0;
+        }
+
+        .rate-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+        }
+
+        @media (min-width: 640px) {
+            .rate-grid {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+
+        .rate-item {
+            background: white;
+            padding: 1rem;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+        }
+
+        body.dark-mode .rate-item {
+            background: #2d3748;
+            border: 1px solid #4a5568;
+        }
+
+        .rate-label {
+            font-size: 0.75rem;
+            color: #64748b;
+            margin-bottom: 0.25rem;
+        }
+
+        body.dark-mode .rate-label {
+            color: #a0aec0;
+        }
+
+        .rate-value {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: #1e293b;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        body.dark-mode .rate-value {
+            color: #e2e8f0;
+        }
+
+        .rate-input {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            background: #f8fafc;
+            color: #1e293b;
+        }
+
+        body.dark-mode .rate-input {
+            background: #1a202c;
+            border: 1px solid #4a5568;
+            color: #e2e8f0;
+        }
+
+        .additional-costs-section {
+            background: #f0f9ff;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            border: 1px solid #bae6fd;
+        }
+
+        body.dark-mode .additional-costs-section {
+            background: #4a5568;
+            border: 1px solid #64748b;
+        }
+
+        .additional-costs-header {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        body.dark-mode .additional-costs-header {
+            color: #e2e8f0;
+        }
+
+        .costs-grid {
+            display: grid;
+            grid-template-columns: repeat(1, 1fr);
+            gap: 1rem;
+        }
+
+        @media (min-width: 768px) {
+            .costs-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        .results-container {
+            background: #f0fdf4;
+            border-radius: 16px;
+            padding: 2rem;
+            margin-top: 2rem;
+            border: 1px solid #bbf7d0;
+        }
+
+        body.dark-mode .results-container {
+            background: #4a5568;
+            border: 1px solid #64748b;
+        }
+
+        .results-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .results-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #166534;
+        }
+
+        body.dark-mode .results-title {
+            color: #86efac;
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(1, 1fr);
+            gap: 1rem;
+        }
+
+        @media (min-width: 768px) {
+            .results-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (min-width: 1024px) {
+            .results-grid {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+
+        .result-item {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            text-align: center;
+            border: 1px solid #bbf7d0;
+        }
+
+        body.dark-mode .result-item {
+            background: #2d3748;
+            border: 1px solid #4a5568;
+        }
+
+        .result-label {
+            font-size: 0.875rem;
+            color: #64748b;
+            margin-bottom: 0.5rem;
+        }
+
+        body.dark-mode .result-label {
+            color: #a0aec0;
+        }
+
+        .result-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #059669;
+        }
+
+        body.dark-mode .result-value {
+            color: #86efac;
+        }
+
+        .result-subvalue {
+            font-size: 0.875rem;
+            color: #059669;
+            margin-top: 0.25rem;
+        }
+
+        body.dark-mode .result-subvalue {
+            color: #86efac;
+        }
+
+        .projection-section {
+            background: #fef7ff;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-top: 1rem;
+            border: 1px solid #f3e8ff;
+        }
+
+        body.dark-mode .projection-section {
+            background: #4a5568;
+            border: 1px solid #64748b;
+        }
+
+        .projection-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 1rem;
+        }
+
+        body.dark-mode .projection-title {
+            color: #e2e8f0;
+        }
+
+        .projection-grid {
+            display: grid;
+            grid-template-columns: repeat(1, 1fr);
+            gap: 1rem;
+        }
+
+        @media (min-width: 768px) {
+            .projection-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        .projection-item {
+            background: white;
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid #f3e8ff;
+        }
+
+        body.dark-mode .projection-item {
+            background: #2d3748;
+            border: 1px solid #4a5568;
+        }
+
+        .projection-period {
+            font-size: 0.75rem;
+            color: #64748b;
+            margin-bottom: 0.5rem;
+        }
+
+        body.dark-mode .projection-period {
+            color: #a0aec0;
+        }
+
+        .projection-value {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #7c3aed;
+        }
+
+        body.dark-mode .projection-value {
+            color: #c4b5fd;
+        }
+
+        .history-container {
+            background: white;
+            border-radius: 24px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            border: 1px solid #e2e8f0;
+            overflow: hidden;
+        }
+
+        body.dark-mode .history-container {
+            background: #2d3748;
+            border: 1px solid #4a5568;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        .history-header {
+            padding: 1.5rem 2rem;
+            background: linear-gradient(to right, #f8fafc, #f1f5f9);
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        body.dark-mode .history-header {
+            background: linear-gradient(to right, #4a5568, #64748b);
+            border-bottom: 1px solid #4a5568;
+        }
+
+        .history-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        body.dark-mode .history-title {
+            color: #e2e8f0;
+        }
+
+        .history-body {
+            padding: 2rem;
+        }
+
+        .history-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .history-table th {
+            background: #f8fafc;
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+            color: #374151;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        body.dark-mode .history-table th {
+            background: #1a202c;
+            color: #e2e8f0;
+            border-bottom: 1px solid #4a5568;
+        }
+
+        .history-table td {
+            padding: 1rem;
+            border-bottom: 1px solid #f1f5f9;
+            color: #334155; /* Default text color */
+        }
+
+        body.dark-mode .history-table td {
+            border-bottom: 1px solid #4a5568;
+            color: #e2e8f0;
+        }
+
+        .history-table tbody tr:hover {
+            background: #f8fafc;
+        }
+
+        body.dark-mode .history-table tbody tr:hover {
+            background: #1a202c;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 12px;
+            font-weight: 500;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background: linear-gradient(to right, #f59e0b, #d97706);
+            color: white;
+            box-shadow: 0 4px 14px 0 rgba(245, 158, 11, 0.25);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 8px 25px 0 rgba(245, 158, 11, 0.35);
+        }
+
+        .btn-secondary {
+            background: #f1f5f9;
+            color: #64748b;
+        }
+
+        body.dark-mode .btn-secondary {
+            background: #4a5568;
+            color: #e2e8f0;
+        }
+
+        .btn-secondary:hover {
+            background: #e2e8f0;
+            color: #475569;
+        }
+
+        body.dark-mode .btn-secondary:hover {
+            background: #64748b;
+            color: #f8fafc;
+        }
+
+        .btn-small {
+            padding: 0.5rem 1rem;
+            font-size: 0.75rem;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-top: 2rem;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .mt-4 {
+            margin-top: 1rem;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .advanced-mode .advanced-only {
+            display: block;
+        }
+
+        .simple-mode .advanced-only {
+            display: none;
+        }
+
+        @media (max-width: 767px) {
+            .module-title {
+                font-size: 1.875rem;
+            }
+            
+            .rate-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .results-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .calculator-body {
+                padding: 1.5rem;
+            }
+
+            .form-actions {
+                flex-direction: column;
+            }
+        }
+
+        /* Estilos para el mensaje de notificación */
+        .notification {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #4CAF50; /* Green */
+            color: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+        }
+        .notification.show {
+            opacity: 1;
+        }
+        .notification.error {
+            background-color: #ef4444;
+        }
+        .notification.info {
+            background-color: #3b82f6;
+        }
+    </style>
+</head>
+<body>
+    <!-- Top Bar -->
+    <div class="glassmorphic-bar">
+        <div class="container">
+            <div class="top-bar">
+                <!-- Brand Section -->
+                <div class="brand-section">
+                    <div class="brand-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/>
+                            <path d="M3 6h18"/>
+                            <path d="M16 10a4 4 0 0 1-8 0"/>
+                        </svg>
+                    </div>
+                    <div class="brand-text">
+                        <h1>Ciervo Administrativo</h1>
+                        <p>Sistema de Gestión Empresarial</p>
+                    </div>
+                </div>
+
+                <!-- Navigation Actions -->
+                <div class="nav-actions">
+                    <!-- Theme Toggle Button -->
+                    <button class="icon-button theme-toggle" onclick="toggleDarkMode()" aria-label="Toggle dark mode">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sun-icon">
+                            <circle cx="12" cy="12" r="4"/>
+                            <path d="M12 2v2"/>
+                            <path d="M12 20v2"/>
+                            <path d="M22 12h-2"/>
+                            <path d="M4 12H2"/>
+                            <path d="M19.78 4.22l-1.42 1.42"/>
+                            <path d="M6.44 17.56l-1.42 1.42"/>
+                            <path d="M4.22 4.22l1.42 1.42"/>
+                            <path d="M17.56 6.44l1.42-1.42"/>
+                        </svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="moon-icon" style="display: none;">
+                            <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
+                        </svg>
+                    </button>
+
+                    <button class="mode-toggle active" id="modeToggle" onclick="toggleMode()">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 20h9"/>
+                            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+                        </svg>
+                        Modo Rápido
+                    </button>
+                    <a href="menu.html" class="back-button">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+                        Volver al Menú
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="container main-content">
+        <!-- Module Header -->
+        <div class="module-header-section">
+            <div class="badge">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                </svg>
+                <span>Calculadora de Tasas</span>
+            </div>
+            <h2 class="module-title">Calculadora de Precios Venezuela</h2>
+            <p class="module-subtitle">
+                Calcula el precio apropiado de venta considerando costos, tasas de cambio y márgenes en el entorno económico venezolano
+            </p>
+        </div>
+
+        <!-- Calculator Section -->
+        <div class="calculator-container">
+            <div class="calculator-header">
+                <h3 class="calculator-title">Configuración de Cálculo</h3>
+            </div>
+            <div class="calculator-body">
+                <!-- Rate Configuration (Advanced only) -->
+                <div class="rate-config advanced-only">
+                    <div class="rate-config-header">
+                        <h4 class="rate-config-title">Tasas de Cambio Actuales</h4>
+                        <button class="btn btn-primary btn-small" onclick="saveRates()">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                                <polyline points="17 21 17 13 7 13 7 21"/>
+                                <polyline points="7 3 7 8 15 8"/>
+                            </svg>
+                            Guardar Tasas
+                        </button>
+                    </div>
+                    <div class="rate-grid">
+                        <div class="rate-item">
+                            <div class="rate-label">Dólar Oficial (BS)</div>
+                            <div class="rate-value">
+                                <input type="number" id="official-rate-input" class="rate-input" value="35" step="0.1" min="1">
+                            </div>
+                        </div>
+                        <div class="rate-item">
+                            <div class="rate-label">Dólar Paralelo (BS)</div>
+                            <div class="rate-value">
+                                <input type="number" id="parallel-rate-input" class="rate-input" value="38" step="0.1" min="1">
+                            </div>
+                        </div>
+                        <div class="rate-item">
+                            <div class="rate-label">Euro (BS)</div>
+                            <div class="rate-value">
+                                <input type="number" id="euro-rate-input" class="rate-input" value="40" step="0.1" min="1">
+                            </div>
+                        </div>
+                        <div class="rate-item">
+                            <div class="rate-label">Inflación Base (%)</div>
+                            <div class="rate-value">
+                                <input type="number" id="base-inflation-input" class="rate-input" value="5" step="0.1" min="0">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <form id="calculator-form">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="form-label" for="productName">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/>
+                                    <path d="M3 6h18"/>
+                                    <path d="M16 10a4 4 0 0 1-8 0"/>
+                                </svg>
+                                Nombre del Producto <span class="required">*</span>
+                            </label>
+                            <input type="text" id="productName" class="form-input" required placeholder="Ej: Arroz">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="productCategory">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="m16 6 4 14"/>
+                                    <path d="M12 6v14"/>
+                                    <path d="M8 8v12"/>
+                                    <path d="M4 4v16"/>
+                                </svg>
+                                Categoría
+                            </label>
+                            <select id="productCategory" class="form-select">
+                                <option value="alimentos">Alimentos</option>
+                                <option value="bebidas">Bebidas</option>
+                                <option value="limpieza">Limpieza</option>
+                                <option value="higiene">Higiene Personal</option>
+                                <option value="otros">Otros</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="costCurrency">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <line x1="12" y1="1" x2="12" y2="23"/>
+                                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                                </svg>
+                                Moneda de Costo <span class="required">*</span>
+                            </label>
+                            <select id="costCurrency" class="form-select" required>
+                                <option value="BS">Bolívares (BS)</option>
+                                <option value="USD" selected>Dólares (USD)</option>
+                                <option value="EUR">Euros (EUR)</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="costAmount">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <line x1="12" y1="1" x2="12" y2="23"/>
+                                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                                </svg>
+                                Costo del Producto <span class="required">*</span>
+                            </label>
+                            <div class="input-with-addon">
+                                <span class="input-addon" id="costCurrencySymbol">$</span>
+                                <input type="number" id="costAmount" class="form-input" required placeholder="0.00" step="0.01" min="0" value="10">
+                            </div>
+                        </div>
+
+                        <div class="form-group advanced-only">
+                            <label class="form-label" for="exchangeRateType">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>
+                                </svg>
+                                Tipo de Tasa para Cálculo
+                            </label>
+                            <select id="exchangeRateType" class="form-select">
+                                <option value="official">Dólar Oficial</option>
+                                <option value="parallel" selected>Dólar Paralelo</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="profitMargin">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                                    <path d="M3 3v5h5"/>
+                                    <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/>
+                                    <path d="M21 21v-5h-5"/>
+                                </svg>
+                                Margen de Ganancia (%)
+                            </label>
+                            <input type="number" id="profitMargin" class="form-input" value="50" step="5" min="0" max="200">
+                        </div>
+
+                        <div class="form-group advanced-only">
+                            <label class="form-label" for="displayRateType">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
+                                    <circle cx="12" cy="12" r="3"/>
+                                </svg>
+                                Tasa para Mostrar USD
+                            </label>
+                            <select id="displayRateType" class="form-select">
+                                <option value="official">Dólar Oficial</option>
+                                <option value="parallel" selected>Dólar Paralelo</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Additional Costs Section (Advanced only) -->
+                    <div class="additional-costs-section advanced-only" style="margin-top: 2rem;">
+                        <div class="additional-costs-header">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M3 3v4.5l9-9 9 9V3"/>
+                                <path d="M21 15h.01"/>
+                                <path d="M21 12h.01"/>
+                                <path d="M21 9h.01"/>
+                                <path d="M21 6h.01"/>
+                                <path d="M21 18h.01"/>
+                                <path d="M3 21h18"/>
+                            </svg>
+                            Costos Adicionales (Opcional)
+                        </div>
+                        <div class="costs-grid">
+                            <div class="form-group">
+                                <label class="form-label" for="transportCost">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/>
+                                        <path d="M15 18H9"/>
+                                        <path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/>
+                                        <circle cx="17" cy="18" r="2"/>
+                                        <circle cx="7" cy="18" r="2"/>
+                                    </svg>
+                                    Transporte (USD)
+                                </label>
+                                <input type="number" id="transportCost" class="form-input" value="0" step="0.01" min="0" placeholder="0.00">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="storageCost">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                                    </svg>
+                                    Almacenamiento (USD)
+                                </label>
+                                <input type="number" id="storageCost" class="form-input" value="0" step="0.01" min="0" placeholder="0.00">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="taxesCost">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+                                        <path d="M15 2H9a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V3a1 1 0 0 0-1-1z"/>
+                                        <path d="m9 14 2 2 4-4"/>
+                                    </svg>
+                                    Impuestos (USD)
+                                </label>
+                                <input type="number" id="taxesCost" class="form-input" value="0" step="0.01" min="0" placeholder="0.00">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" onclick="resetForm()">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                                <path d="M3 3v5h5"/>
+                            </svg>
+                            Limpiar
+                        </button>
+                        <button type="button" class="btn btn-primary" onclick="calculatePrice()">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                                <path d="M3 3v5h5"/>
+                                <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/>
+                                <path d="M21 21v-5h-5"/>
+                            </svg>
+                            Calcular Precio
+                        </button>
+                    </div>
+                </form>
+
+                <div class="results-container" id="resultsContainer" style="display: none;">
+                    <div class="results-header">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                            <path d="M3 3v5h5"/>
+                            <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/>
+                            <path d="M21 21v-5h-5"/>
+                        </svg>
+                        <h3 class="results-title">Resultados del Cálculo</h3>
+                    </div>
+                    <div class="results-grid">
+                        <div class="result-item">
+                            <div class="result-label">Precio Sugerido</div>
+                            <div class="result-value" id="suggested-price">0,00 BS</div>
+                            <div class="result-subvalue" id="suggested-price-usd">0,00 $</div>
+                        </div>
+                        <div class="result-item">
+                            <div class="result-label">Ganancia por Unidad</div>
+                            <div class="result-value" id="profit-per-unit">0,00 BS</div>
+                            <div class="result-subvalue" id="profit-per-unit-usd">0,00 $</div>
+                        </div>
+                        <div class="result-item">
+                            <div class="result-label">Costo Total</div>
+                            <div class="result-value" id="total-cost-bs">0,00 BS</div>
+                            <div class="result-subvalue" id="total-cost-usd">0,00 $</div>
+                        </div>
+                        <div class="result-item">
+                            <div class="result-label">Margen Real</div>
+                            <div class="result-value" id="real-margin">0%</div>
+                            <div class="result-subvalue">Sobre costo total</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Projection Section (Advanced only) -->
+                    <div class="projection-section advanced-only">
+                        <div class="projection-title">Proyección de Precios (Basada en Brecha Cambiaria)</div>
+                        <div class="projection-grid">
+                            <div class="projection-item">
+                                <div class="projection-period">1 Mes</div>
+                                <div class="projection-value" id="projection-1m">0,00 BS</div>
+                            </div>
+                            <div class="projection-item">
+                                <div class="projection-period">3 Meses</div>
+                                <div class="projection-value" id="projection-3m">0,00 BS</div>
+                            </div>
+                            <div class="projection-item">
+                                <div class="projection-period">6 Meses</div>
+                                <div class="projection-value" id="projection-6m">0,00 BS</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center mt-4">
+                        <button class="btn btn-primary" onclick="saveCalculation()">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                                <polyline points="17 21 17 13 7 13 7 21"/>
+                                <polyline points="7 3 7 8 15 8"/>
+                            </svg>
+                            Guardar Cálculo
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- History Section -->
+        <div class="history-container">
+            <div class="history-header">
+                <h3 class="history-title">Historial de Cálculos</h3>
+            </div>
+            <div class="history-body">
+                <table class="history-table">
+                    <thead>
+                        <tr>
+                            <th>Producto</th>
+                            <th>Costo Total (BS/$)</th>
+                            <th>Precio Sugerido (BS)</th>
+                            <th>Margen (%)</th>
+                            <th>Fecha</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historyBody">
+                    </tbody>
+                </table>
+                <div class="text-center mt-4">
+                    <button class="btn btn-secondary" onclick="clearHistory()">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M3 6h18"/>
+                            <path d="M19 6v14c0 1-1 2-2 2H7c0-1-1-2-1-2V6"/>
+                            <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                        </svg>
+                        Limpiar Historial
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Message -->
+    <div id="notificationMessage" class="notification"></div>
+
+    <script>
+        // --- Dark Mode Toggle ---
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark-mode');
+            const isDarkMode = document.body.classList.contains('dark-mode');
+            localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
+            updateThemeToggleIcons(isDarkMode);
+        }
+
+        function applySavedTheme() {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'dark') {
+                document.body.classList.add('dark-mode');
+                updateThemeToggleIcons(true);
+            } else {
+                document.body.classList.remove('dark-mode');
+                updateThemeToggleIcons(false);
+            }
+        }
+
+        function updateThemeToggleIcons(isDarkMode) {
+            const sunIcon = document.querySelector('.sun-icon');
+            const moonIcon = document.querySelector('.moon-icon');
+            if (sunIcon && moonIcon) {
+                if (isDarkMode) {
+                    sunIcon.style.display = 'none';
+                    moonIcon.style.display = 'inline-block';
+                } else {
+                    sunIcon.style.display = 'inline-block';
+                    moonIcon.style.display = 'none';
+                }
+            }
+        }
+
+        // Estado de la aplicación
+        let isAdvancedMode = false;
+        
+        // Tasas de cambio
+        let exchangeRates = {
+            official: 35,
+            parallel: 38,
+            euro: 40,
+            baseInflation: 5
+        };
+
+        // Historial de cálculos
+        let calculationHistory = [];
+
+        // Variable para el debounce del cálculo
+        let calculateTimeout;
+
+        // Inicializar la calculadora
+        document.addEventListener('DOMContentLoaded', function() {
+            // Aplicar tema guardado al cargar
+            applySavedTheme();
+            
+            // Cargar configuración guardada
+            loadSavedSettings();
+            
+            // Cargar historial desde localStorage
+            loadHistory();
+            
+            // Event listeners
+            document.getElementById('costCurrency').addEventListener('change', updateCurrencySymbol);
+            document.getElementById('costCurrency').addEventListener('change', updateRateOptions);
+            
+            // Auto-cálculo en tiempo real con debounce
+            const inputs = ['productName', 'costAmount', 'profitMargin', 'transportCost', 'storageCost', 'taxesCost', 'costCurrency', 'exchangeRateType', 'displayRateType'];
+            inputs.forEach(id => {
+                const element = document.getElementById(id);
+                if (element) {
+                    element.addEventListener('input', () => {
+                        clearTimeout(calculateTimeout);
+                        calculateTimeout = setTimeout(calculatePrice, 500); // Retraso de 500ms
+                    });
+                    element.addEventListener('change', calculatePrice); // Para selects
+                }
+            });
+            
+            // Inicializar interfaz
+            updateCurrencySymbol();
+            updateRateOptions();
+            updateModeDisplay();
+            
+            // Calcular precio inicial si los campos requeridos tienen valores
+            const productNameInput = document.getElementById('productName');
+            const costAmountInput = document.getElementById('costAmount');
+            if (productNameInput.value.trim() !== '' && parseFloat(costAmountInput.value) > 0) {
+                calculatePrice();
+            } else {
+                // Ocultar resultados si no hay datos iniciales válidos
+                document.getElementById('resultsContainer').style.display = 'none';
+            }
+        });
+
+        // Alternar entre modo rápido y avanzado
+        function toggleMode() {
+            isAdvancedMode = !isAdvancedMode;
+            const toggle = document.getElementById('modeToggle');
+            const body = document.body;
+            
+            if (isAdvancedMode) {
+                body.classList.remove('simple-mode');
+                body.classList.add('advanced-mode');
+                toggle.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+                        <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                    Modo Avanzado
+                `;
+                toggle.classList.add('active');
+            } else {
+                body.classList.remove('advanced-mode');
+                body.classList.add('simple-mode');
+                toggle.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 20h9"/>
+                        <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+                    </svg>
+                    Modo Rápido
+                `;
+                toggle.classList.remove('active');
+            }
+            
+            // Guardar preferencia
+            localStorage.setItem('ciervo_advanced_mode', isAdvancedMode);
+            calculatePrice(); // Recalcular al cambiar de modo
+        }
+
+        // Actualizar visualización del modo
+        function updateModeDisplay() {
+            const body = document.body;
+            const toggle = document.getElementById('modeToggle');
+            
+            if (isAdvancedMode) {
+                body.classList.remove('simple-mode');
+                body.classList.add('advanced-mode');
+                toggle.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+                        <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                    Modo Avanzado
+                `;
+                toggle.classList.add('active');
+            } else {
+                body.classList.remove('advanced-mode');
+                body.classList.add('simple-mode');
+                toggle.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 20h9"/>
+                        <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+                    </svg>
+                    Modo Rápido
+                `;
+                toggle.classList.remove('active');
+            }
+        }
+
+        // Cargar configuraciones guardadas
+        function loadSavedSettings() {
+            // Cargar modo
+            const savedMode = localStorage.getItem('ciervo_advanced_mode');
+            if (savedMode !== null) {
+                isAdvancedMode = savedMode === 'true';
+            }
+            
+            // Cargar tasas
+            const savedRates = localStorage.getItem('ciervo_exchange_rates');
+            if (savedRates) {
+                try {
+                    exchangeRates = JSON.parse(savedRates);
+                    updateRateInputs();
+                } catch (e) {
+                    console.error("Error al parsear tasas guardadas:", e);
+                    // Usar valores por defecto si hay un error en los datos guardados
+                }
+            }
+        }
+
+        // Actualizar opciones de tasa según moneda seleccionada
+        function updateRateOptions() {
+            const currency = document.getElementById('costCurrency').value;
+            const rateSelect = document.getElementById('exchangeRateType');
+            
+            if (!rateSelect) return;
+            
+            // Limpiar opciones actuales
+            rateSelect.innerHTML = '';
+            
+            // Agregar opciones según la moneda
+            if (currency === 'BS') {
+                rateSelect.appendChild(new Option('No aplica (ya en BS)', 'none'));
+                rateSelect.disabled = true;
+            } else if (currency === 'USD') {
+                rateSelect.appendChild(new Option('Dólar Oficial', 'official'));
+                rateSelect.appendChild(new Option('Dólar Paralelo', 'parallel'));
+                rateSelect.disabled = false;
+                rateSelect.value = 'parallel'; // Valor por defecto para USD
+            } else if (currency === 'EUR') {
+                rateSelect.appendChild(new Option('Euro', 'euro'));
+                rateSelect.disabled = false;
+                rateSelect.value = 'euro'; // Valor por defecto para EUR
+            }
+            calculatePrice(); // Recalcular al cambiar la moneda de costo
+        }
+
+        // Actualizar símbolo de moneda
+        function updateCurrencySymbol() {
+            const currency = document.getElementById('costCurrency').value;
+            const symbolElement = document.getElementById('costCurrencySymbol');
+            
+            switch(currency) {
+                case 'BS':
+                    symbolElement.textContent = 'BS';
+                    break;
+                case 'USD':
+                    symbolElement.textContent = '$';
+                    break;
+                case 'EUR':
+                    symbolElement.textContent = '€';
+                    break;
+            }
+        }
+
+        // Actualizar campos de entrada con las tasas
+        function updateRateInputs() {
+            const elements = {
+                'official-rate-input': exchangeRates.official,
+                'parallel-rate-input': exchangeRates.parallel,
+                'euro-rate-input': exchangeRates.euro,
+                'base-inflation-input': exchangeRates.baseInflation
+            };
+            
+            Object.entries(elements).forEach(([id, value]) => {
+                const element = document.getElementById(id);
+                if (element) element.value = value;
+            });
+        }
+
+        // Mostrar notificación
+        function showNotification(message, type = 'success') {
+            const notification = document.getElementById('notificationMessage');
+            notification.textContent = message;
+            notification.className = `notification show ${type}`; // Add type for different styles (e.g., 'error')
+            setTimeout(() => {
+                notification.className = notification.className.replace('show', '');
+            }, 3000); // Ocultar después de 3 segundos
+        }
+
+        // Guardar tasas actualizadas
+        function saveRates() {
+            const rateInputs = {
+                official: 'official-rate-input',
+                parallel: 'parallel-rate-input',
+                euro: 'euro-rate-input',
+                baseInflation: 'base-inflation-input'
+            };
+            
+            let isValid = true;
+            Object.entries(rateInputs).forEach(([key, id]) => {
+                const element = document.getElementById(id);
+                if (element) {
+                    const value = parseFloat(element.value);
+                    if (isNaN(value) || value <= 0) {
+                        isValid = false;
+                        element.style.borderColor = '#ef4444'; // Resaltar error
+                    } else {
+                        exchangeRates[key] = value;
+                        element.style.borderColor = ''; // Restaurar borde
+                    }
+                }
+            });
+            
+            if (!isValid) {
+                showNotification('Por favor, ingrese valores válidos para todas las tasas.', 'error');
+                return;
+            }
+            
+            localStorage.setItem('ciervo_exchange_rates', JSON.stringify(exchangeRates));
+            showNotification('Tasas de cambio guardadas correctamente');
+            calculatePrice(); // Recalcular con las nuevas tasas
+        }
+
+        // Calcular precio sugerido (VERSIÓN CORREGIDA)
+        function calculatePrice() {
+            // Validar campos requeridos antes de calcular
+            const productNameInput = document.getElementById('productName');
+            const costAmountInput = document.getElementById('costAmount');
+
+            const productName = productNameInput.value.trim();
+            const costAmount = parseFloat(costAmountInput.value);
+
+            if (!productName || isNaN(costAmount) || costAmount <= 0) {
+                document.getElementById('resultsContainer').style.display = 'none';
+                if (!productName) productNameInput.style.borderColor = '#ef4444'; else productNameInput.style.borderColor = '';
+                if (isNaN(costAmount) || costAmount <= 0) costAmountInput.style.borderColor = '#ef4444'; else costAmountInput.style.borderColor = '';
+                return;
+            } else {
+                productNameInput.style.borderColor = '';
+                costAmountInput.style.borderColor = '';
+            }
+            
+            // Obtener valores
+            const costCurrency = document.getElementById('costCurrency').value;
+            const profitMargin = parseFloat(document.getElementById('profitMargin').value) || 0;
+            
+            // --- INICIO DE LA LÓGICA CORREGIDA ---
+
+            // 1. Calcular costos adicionales en USD (solo en modo avanzado)
+            let additionalCostsUSD = 0;
+            if (isAdvancedMode) {
+                const transportCost = parseFloat(document.getElementById('transportCost').value) || 0;
+                const storageCost = parseFloat(document.getElementById('storageCost').value) || 0;
+                const taxesCost = parseFloat(document.getElementById('taxesCost').value) || 0;
+                additionalCostsUSD = transportCost + storageCost + taxesCost;
+            }
+            
+            let totalCostInBs = 0;
+
+            // 2. Determinar la tasa de dólar a usar para conversiones
+            // Esta tasa se usará para el costo principal (si es USD) y/o para los costos adicionales
+            const dollarRateType = isAdvancedMode ? 
+                (document.getElementById('exchangeRateType').value || 'parallel') : 
+                'parallel';
+            const dollarConversionRate = exchangeRates[dollarRateType];
+
+            // 3. Calcular el costo total en Bolívares según la moneda de origen
+            switch(costCurrency) {
+                case 'USD':
+                    // El costo principal y los adicionales están en USD
+                    const totalCostInUSD = costAmount + additionalCostsUSD;
+                    totalCostInBs = totalCostInUSD * dollarConversionRate;
+                    break;
+
+                case 'EUR':
+                    // El costo principal se convierte de EUR a BS. Los adicionales de USD a BS.
+                    const costBaseInBs = costAmount * exchangeRates.euro;
+                    const additionalCostsInBs = additionalCostsUSD * dollarConversionRate;
+                    totalCostInBs = costBaseInBs + additionalCostsInBs;
+                    break;
+
+                case 'BS':
+                    // El costo principal ya está en BS. Solo se convierten los adicionales de USD a BS.
+                    const additionalCostsInBsFromUSD = additionalCostsUSD * dollarConversionRate;
+                    totalCostInBs = costAmount + additionalCostsInBsFromUSD;
+                    break;
+            }
+            
+            // --- FIN DE LA LÓGICA CORREGIDA ---
+
+            // El resto del cálculo utiliza la base 'totalCostInBs' que ahora es correcta
+            const suggestedPriceInBs = totalCostInBs * (1 + profitMargin / 100);
+            const profitPerUnitInBs = suggestedPriceInBs - totalCostInBs;
+            
+            const displayRateValue = isAdvancedMode ? 
+                exchangeRates[document.getElementById('displayRateType').value] : 
+                exchangeRates.parallel;
+            
+            updateResults(suggestedPriceInBs, profitPerUnitInBs, totalCostInBs, profitMargin, displayRateValue);
+            
+            if (isAdvancedMode) {
+                calculateProjections(suggestedPriceInBs);
+            }
+            
+            document.getElementById('resultsContainer').style.display = 'block';
+        }
+
+        // Actualizar resultados en la interfaz
+        function updateResults(suggestedPrice, profit, totalCost, margin, displayRate) {
+            document.getElementById('suggested-price').textContent = `${formatCurrency(suggestedPrice)} BS`;
+            document.getElementById('suggested-price-usd').textContent = `≈ ${formatCurrency(suggestedPrice / displayRate)} $`;
+            
+            document.getElementById('profit-per-unit').textContent = `${formatCurrency(profit)} BS`;
+            document.getElementById('profit-per-unit-usd').textContent = `≈ ${formatCurrency(profit / displayRate)} $`;
+            
+            // Punto de equilibrio (costo total)
+            document.getElementById('total-cost-bs').textContent = `${formatCurrency(totalCost)} BS`;
+            document.getElementById('total-cost-usd').textContent = `≈ ${formatCurrency(totalCost / displayRate)} $`;
+            
+            document.getElementById('real-margin').textContent = `${margin}%`;
+        }
+
+        // Calcular proyecciones basadas en brecha cambiaria
+        function calculateProjections(currentPrice) {
+            // Calcular brecha cambiaria como indicador de inflación futura
+            const exchangeGap = ((exchangeRates.parallel - exchangeRates.official) / exchangeRates.official) * 100;
+            const baseInflation = exchangeRates.baseInflation;
+            
+            // Proyectar inflación mensual basada en la brecha cambiaria
+            // Ajuste: Asegurar que monthlyInflation no sea negativo o demasiado bajo
+            let monthlyInflation = baseInflation + (exchangeGap * 0.1); 
+            if (monthlyInflation < 0) monthlyInflation = 0; // No permitir inflación negativa
+            
+            // Calcular proyecciones
+            const projection1m = currentPrice * (1 + monthlyInflation / 100);
+            const projection3m = currentPrice * Math.pow(1 + monthlyInflation / 100, 3);
+            const projection6m = currentPrice * Math.pow(1 + monthlyInflation / 100, 6);
+            
+            // Mostrar proyecciones
+            document.getElementById('projection-1m').textContent = `${formatCurrency(projection1m)} BS`;
+            document.getElementById('projection-3m').textContent = `${formatCurrency(projection3m)} BS`;
+            document.getElementById('projection-6m').textContent = `${formatCurrency(projection6m)} BS`;
+        }
+
+        // Guardar cálculo en historial
+        function saveCalculation() {
+            const productName = document.getElementById('productName').value.trim();
+            const costAmount = parseFloat(document.getElementById('costAmount').value);
+
+            if (!productName || isNaN(costAmount) || costAmount <= 0) {
+                showNotification('Por favor, complete los campos requeridos (Nombre del Producto, Costo del Producto).', 'error');
+                return;
+            }
+
+            // Recalcular para obtener los valores más recientes y correctos
+            calculatePrice(); 
+
+            // Obtener los valores ya calculados y formateados de la interfaz
+            const suggestedPriceText = document.getElementById('suggested-price').textContent;
+            const realMarginText = document.getElementById('real-margin').textContent;
+            const totalCostBsText = document.getElementById('total-cost-bs').textContent; 
+            const totalCostUsdText = document.getElementById('total-cost-usd').textContent; 
+
+            const calculation = {
+                id: Date.now(),
+                product: productName,
+                totalCostBs: totalCostBsText,
+                totalCostUsd: totalCostUsdText,
+                price: suggestedPriceText,
+                margin: realMarginText,
+                date: new Date().toLocaleString('es-VE', { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
+                category: document.getElementById('productCategory').value
+            };
+            
+            calculationHistory.unshift(calculation);
+            
+            // Mantener solo los últimos 20 cálculos
+            if (calculationHistory.length > 20) {
+                calculationHistory = calculationHistory.slice(0, 20);
+            }
+            
+            localStorage.setItem('ciervo_calculation_history', JSON.stringify(calculationHistory));
+            updateHistoryDisplay();
+            
+            showNotification('Cálculo guardado en historial');
+        }
+
+        // Cargar historial desde localStorage
+        function loadHistory() {
+            const savedHistory = localStorage.getItem('ciervo_calculation_history');
+            if (savedHistory) {
+                try {
+                    calculationHistory = JSON.parse(savedHistory);
+                    updateHistoryDisplay();
+                } catch (error) {
+                    console.error('Error cargando historial:', error);
+                    calculationHistory = [];
+                }
+            }
+        }
+
+        // Actualizar visualización del historial
+        function updateHistoryDisplay() {
+            const historyBody = document.getElementById('historyBody');
+            historyBody.innerHTML = '';
+            
+            if (calculationHistory.length === 0) {
+                historyBody.innerHTML = `
+                    <tr>
+                        <td colspan="5" style="text-align: center; padding: 2rem; color: #64748b;">
+                            No hay cálculos en el historial
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            calculationHistory.forEach(calc => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${calc.product}</td>
+                    <td>${calc.totalCostBs} ${calc.totalCostUsd ? `(${calc.totalCostUsd})` : ''}</td>
+                    <td>${calc.price}</td>
+                    <td>${calc.margin}</td>
+                    <td>${calc.date}</td>
+                `;
+                historyBody.appendChild(row);
+            });
+        }
+
+        // Limpiar historial
+        function clearHistory() {
+            if (confirm('¿Está seguro de que desea borrar todo el historial?')) {
+                calculationHistory = [];
+                localStorage.removeItem('ciervo_calculation_history');
+                updateHistoryDisplay();
+                showNotification('Historial de cálculos limpiado.');
+            }
+        }
+
+        // Resetear formulario
+        function resetForm() {
+            document.getElementById('productName').value = '';
+            document.getElementById('productCategory').value = 'alimentos';
+            document.getElementById('costCurrency').value = 'USD';
+            document.getElementById('costAmount').value = '10'; // Restaurar valor inicial
+            document.getElementById('profitMargin').value = '50'; // Restaurar valor inicial
+            
+            // Resetear campos avanzados si están presentes
+            if (document.getElementById('exchangeRateType')) { // Check if element exists (only in advanced mode)
+                document.getElementById('exchangeRateType').value = 'parallel';
+            }
+            if (document.getElementById('displayRateType')) {
+                document.getElementById('displayRateType').value = 'parallel';
+            }
+            if (document.getElementById('transportCost')) {
+                document.getElementById('transportCost').value = '0';
+            }
+            if (document.getElementById('storageCost')) {
+                document.getElementById('storageCost').value = '0';
+            }
+            if (document.getElementById('taxesCost')) {
+                document.getElementById('taxesCost').value = '0';
+            }
+            
+            // Restaurar bordes de validación
+            document.getElementById('productName').style.borderColor = '';
+            document.getElementById('costAmount').style.borderColor = '';
+
+            updateCurrencySymbol();
+            updateRateOptions();
+            calculatePrice(); // Recalcular con los valores reseteados
+            showNotification('Formulario limpiado y valores restaurados.');
+        }
+
+        // Formatear moneda
+        function formatCurrency(amount) {
+            if (isNaN(amount)) return '0,00';
+            
+            return new Intl.NumberFormat('es-VE', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            }).format(amount);
+        }
+
+        // Validar entrada numérica (mejorado para no solo cambiar borde)
+        function validateNumericInput(input) {
+            const value = parseFloat(input.value);
+            if (isNaN(value) || value < 0) {
+                input.style.borderColor = '#ef4444';
+                return false;
+            } else {
+                input.style.borderColor = '';
+                return true;
+            }
+        }
+
+        // Agregar validación en tiempo real a los inputs numéricos
+        document.addEventListener('DOMContentLoaded', function() {
+            const numericInputs = [
+                'costAmount', 'profitMargin', 'transportCost', 
+                'storageCost', 'taxesCost', 'official-rate-input', 
+                'parallel-rate-input', 'euro-rate-input', 'base-inflation-input'
+            ];
+            
+            numericInputs.forEach(id => {
+                const input = document.getElementById(id);
+                if (input) {
+                    input.addEventListener('blur', function() {
+                        validateNumericInput(this);
+                    });
+                    
+                    input.addEventListener('input', function() {
+                        // Limpiar estilo de error al escribir
+                        this.style.borderColor = '';
+                    });
+                }
+            });
+        });
+
+        // Función para exportar datos (para futuras implementaciones)
+        function exportCalculation() {
+            const data = {
+                product: document.getElementById('productName').value,
+                cost: document.getElementById('costAmount').value,
+                currency: document.getElementById('costCurrency').value,
+                margin: document.getElementById('profitMargin').value,
+                suggestedPrice: document.getElementById('suggested-price').textContent,
+                profit: document.getElementById('profit-per-unit').textContent,
+                totalCost: document.getElementById('total-cost-bs').textContent, // Changed from break-even
+                timestamp: new Date().toISOString()
+            };
+            
+            console.log('Datos para exportar:', data);
+            showNotification('Funcionalidad de exportación no implementada aún.', 'info');
+        }
+
+        // Manejo de errores global
+        window.addEventListener('error', function(e) {
+            console.error('Error global:', e.error);
+            showNotification('Se ha producido un error inesperado. Por favor, intente de nuevo.', 'error');
+        });
+
+        // Prevenir envío del formulario
+        document.getElementById('calculator-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            calculatePrice();
+        });
+
+        // Función para comparar con cálculos anteriores
+        function compareWithHistory() {
+            const currentProduct = document.getElementById('productName').value.trim().toLowerCase();
+            const similarCalculations = calculationHistory.filter(calc => 
+                calc.product.toLowerCase().includes(currentProduct) || 
+                currentProduct.includes(calc.product.toLowerCase())
+            );
+            
+            if (similarCalculations.length > 0) {
+                console.log('Cálculos similares encontrados:', similarCalculations);
+                // Aquí se podría mostrar una comparación visual o un tooltip
+                // showNotification(`Se encontraron ${similarCalculations.length} cálculos similares para "${currentProduct}".`, 'info');
+            }
+        });
+
+        // Detectar cambios en el nombre del producto para comparaciones
+        document.getElementById('productName').addEventListener('input', function() {
+            if (this.value.trim().length > 3) {
+                compareWithHistory();
+            }
+        });
+
+        // Mejorar la accesibilidad
+        document.addEventListener('keydown', function(e) {
+            // Permitir cálculo con Enter
+            if (e.key === 'Enter' && e.ctrlKey) {
+                e.preventDefault(); // Prevenir el envío del formulario si hay un campo de texto activo
+                calculatePrice();
+            }
+            
+            // Permitir resetear con Ctrl+R
+            if (e.key === 'r' && e.ctrlKey) {
+                e.preventDefault();
+                resetForm();
+            }
+        });
+
+        // Auto-guardar configuración
+        setInterval(function() {
+            const currentSettings = {
+                advancedMode: isAdvancedMode,
+                rates: exchangeRates
+            };
+            localStorage.setItem('ciervo_auto_save', JSON.stringify(currentSettings));
+            // showNotification('Configuración guardada automáticamente.', 'info'); // Demasiado frecuente
+        }, 30000); // Auto-guardar cada 30 segundos
+
+        console.log('Calculadora de Precios Venezuela inicializada correctamente');
+    </script>
+</body>
+</html>

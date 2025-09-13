@@ -1,0 +1,2069 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cuentas por Cobrar y Pagar - Ciervo Administrativo</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.1/dist/umd/lucide.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Base Styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            min-height: 100vh;
+            color: #334155;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        /* Light Mode */
+        body {
+            background: linear-gradient(to bottom right, #f8fafc, #dbeafe, #e0e7ff);
+        }
+
+        .glassmorphic-bar {
+            background: rgba(255, 255, 255, 0.7);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .brand-text h1 {
+            background: linear-gradient(to right, #1e293b, #64748b);
+            -webkit-background-clip: text;
+            color: transparent;
+        }
+
+        .brand-text p, .page-subtitle, .section-subtitle, .form-label, .price-cost, .empty-state p {
+            color: #64748b;
+        }
+
+        .back-button {
+            background: rgba(255, 255, 255, 0.5);
+            color: #64748b;
+        }
+
+        .back-button:hover {
+            background: rgba(255, 255, 255, 0.8);
+            color: #1e293b;
+        }
+
+        .badge {
+            background: rgba(14, 165, 233, 0.1);
+            color: #0ea5e9;
+        }
+
+        .page-title {
+            background: linear-gradient(to right, #1e293b, #1e40af, #7c3aed);
+            -webkit-background-clip: text;
+            color: transparent;
+        }
+
+        .search-input {
+            background: rgba(255, 255, 255, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: #1e293b;
+        }
+
+        .search-input:focus {
+            background: rgba(255, 255, 255, 0.9);
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+        }
+
+        .search-icon {
+            color: #64748b;
+        }
+
+        .btn-primary {
+            background: linear-gradient(to right, #3b82f6, #6366f1);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.7);
+            color: #64748b;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.9);
+        }
+
+        .stat-card {
+            background: white;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        .stat-value, .section-title, .product-details h4, .price-main, .margin-value {
+            color: #1e293b;
+        }
+
+        .stat-label {
+            color: #64748b;
+        }
+
+        .data-container {
+            background: white;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e2e8f0;
+        }
+
+        .data-header {
+            border-bottom: 1px solid #e2e8f0;
+            background: linear-gradient(to right, #f8fafc, #f1f5f9);
+        }
+
+        .data-table th {
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+            white-space: nowrap;
+            background: #f8fafc;
+            color: #374151;
+            border-bottom: 1px solid #e2e8f0;
+            cursor: pointer; /* Make sortable headers clickable */
+        }
+
+        .data-table th.asc::after {
+            content: " ▲";
+        }
+
+        .data-table th.desc::after {
+            content: " ▼";
+        }
+
+        .data-table td {
+            padding: 1rem;
+            vertical-align: middle;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .data-table tbody tr:hover {
+            background: #f8fafc;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .status-pending { background: #fef3c7; color: #92400e; }
+        .status-paid { background: #dcfce7; color: #166534; }
+        .status-overdue { background: #fee2e2; color: #991b1b; }
+
+        .btn-edit { background: #dbeafe; color: #2563eb; }
+        .btn-edit:hover { background: #bfdbfe; }
+        .btn-delete { background: #fee2e2; color: #dc2626; }
+        .btn-delete:hover { background: #fecaca; }
+        .btn-pay { background: #dcfce7; color: #166534; }
+        .btn-pay:hover { background: #bbf7d0; }
+        .btn-partial-pay { background: #e0e7ff; color: #4f46e5; }
+        .btn-partial-pay:hover { background: #c7d2fe; }
+
+
+        .modal-content {
+            background: white;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        }
+
+        .modal-title {
+            color: #1e293b;
+        }
+
+        .close-button:hover {
+            background: #f1f5f9;
+        }
+
+        .form-input, .form-select, .form-textarea {
+            border: 1px solid #d1d5db;
+        }
+
+        .form-input:focus, .form-select:focus, .form-textarea:focus {
+            outline: none;
+        }
+
+        .form-input.invalid, .form-select.invalid, .form-textarea.invalid {
+            border-color: #dc2626;
+        }
+
+        .calculated-field {
+            cursor: not-allowed;
+        }
+
+        .btn-cancel {
+            background: #f8fafc;
+            color: #64748b;
+            border: 1px solid #e2e8f0;
+        }
+
+        .btn-cancel:hover {
+            background: #f1f5f9;
+        }
+
+        .empty-state {
+            color: #64748b;
+        }
+
+        .empty-state-icon {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1rem;
+        }
+
+        /* Dark Mode */
+        body.dark-mode {
+            background: linear-gradient(to bottom right, #1a202c, #2d3748, #4a5568);
+            color: #e2e8f0;
+        }
+
+        body.dark-mode .glassmorphic-bar {
+            background: rgba(26, 32, 44, 0.7);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        body.dark-mode .brand-text h1 {
+            background: linear-gradient(to right, #e2e8f0, #cbd5e0);
+            -webkit-background-clip: text;
+            color: transparent;
+        }
+
+        body.dark-mode .brand-text p, body.dark-mode .page-subtitle, body.dark-mode .section-subtitle,
+        body.dark-mode .form-label, body.dark-mode .price-cost, body.dark-mode .empty-state p {
+            color: #a0aec0;
+        }
+
+        body.dark-mode .back-button {
+            background: rgba(45, 55, 72, 0.5);
+            color: #a0aec0;
+        }
+
+        body.dark-mode .back-button:hover {
+            background: rgba(45, 55, 72, 0.8);
+            color: #e2e8f0;
+        }
+
+        body.dark-mode .badge {
+            background: rgba(14, 165, 233, 0.2);
+            color: #90cdf4;
+        }
+
+        body.dark-mode .page-title {
+            background: linear-gradient(to right, #e2e8f0, #90cdf4, #a78bfa);
+            -webkit-background-clip: text;
+            color: transparent;
+        }
+
+        body.dark-mode .search-input {
+            background: rgba(45, 55, 72, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #e2e8f0;
+        }
+
+        body.dark-mode .search-input:focus {
+            background: rgba(45, 55, 72, 0.9);
+            border-color: #6366f1;
+            box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+        }
+
+        body.dark-mode .search-icon {
+            color: #a0aec0;
+        }
+
+        body.dark-mode .btn-primary {
+            background: linear-gradient(to right, #6366f1, #8b5cf6);
+        }
+
+        body.dark-mode .btn-secondary {
+            background: rgba(45, 55, 72, 0.7);
+            color: #a0aec0;
+        }
+
+        body.dark-mode .btn-secondary:hover {
+            background: rgba(45, 55, 72, 0.9);
+        }
+
+        body.dark-mode .stat-card {
+            background: #2d3748;
+            border: 1px solid #4a5568;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+        }
+
+        body.dark-mode .stat-value, body.dark-mode .section-title, body.dark-mode .product-details h4,
+        body.dark-mode .price-main, body.dark-mode .margin-value {
+            color: #e2e8f0;
+        }
+
+        body.dark-mode .stat-label {
+            color: #a0aec0;
+        }
+
+        body.dark-mode .data-container {
+            background: #2d3748;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.3);
+            border: 1px solid #4a5568;
+        }
+
+        body.dark-mode .data-header {
+            border-bottom: 1px solid #4a5568;
+            background: linear-gradient(to right, #2d3748, #1a202c);
+        }
+
+        body.dark-mode .data-table th {
+            background: #1a202c;
+            color: #cbd5e0;
+            border-bottom: 1px solid #4a5568;
+        }
+
+        body.dark-mode .data-table td {
+            border-bottom: 1px solid #4a5568;
+        }
+
+        body.dark-mode .data-table tbody tr:hover {
+            background: #1a202c;
+        }
+
+        body.dark-mode .status-pending { background: #5a4a2a; color: #f6ad55; }
+        body.dark-mode .status-paid { background: #2f574e; color: #68d391; }
+        body.dark-mode .status-overdue { background: #632b2b; color: #fc8181; }
+
+        body.dark-mode .btn-edit { background: #426a9e; color: #90cdf4; }
+        body.dark-mode .btn-edit:hover { background: #5a80b3; }
+        body.dark-mode .btn-delete { background: #632b2b; color: #fc8181; }
+        body.dark-mode .btn-delete:hover { background: #7a3d3d; }
+        body.dark-mode .btn-pay { background: #2f574e; color: #68d391; }
+        body.dark-mode .btn-pay:hover { background: #4a7c70; }
+        body.dark-mode .btn-partial-pay { background: #4338ca; color: #a5b4fc; }
+        body.dark-mode .btn-partial-pay:hover { background: #6366f1; }
+
+        body.dark-mode .modal-content {
+            background: #2d3748;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
+        }
+
+        body.dark-mode .modal-title {
+            color: #e2e8f0;
+        }
+
+        body.dark-mode .close-button:hover {
+            background: #1a202c;
+        }
+
+        body.dark-mode .form-input, body.dark-mode .form-select, body.dark-mode .form-textarea {
+            background: #1a202c;
+            border: 1px solid #4a5568;
+            color: #e2e8f0;
+        }
+
+        body.dark-mode .form-input:focus, body.dark-mode .form-select:focus, body.dark-mode .form-textarea:focus {
+            border-color: #6366f1;
+            box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+        }
+
+        body.dark-mode .form-input.invalid, body.dark-mode .form-select.invalid, body.dark-mode .form-textarea.invalid {
+            border-color: #fc8181;
+        }
+
+        body.dark-mode .calculated-field {
+            background: #1a202c;
+            border-color: #4a5568;
+            color: #a0aec0;
+        }
+
+        body.dark-mode .btn-cancel {
+            background: #1a202c;
+            color: #a0aec0;
+            border: 1px solid #4a5568;
+        }
+
+        body.dark-mode .btn-cancel:hover {
+            background: #2d3748;
+        }
+
+        body.dark-mode .empty-state {
+            color: #a0aec0;
+        }
+
+        body.dark-mode .empty-state-icon {
+            background: #1a202c;
+            color: #a0aec0;
+        }
+
+        /* General Layout */
+        .container {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 0 1.5rem;
+        }
+
+        .glassmorphic-bar {
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            backdrop-filter: blur(16px);
+        }
+
+        .top-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem 0;
+        }
+
+        .brand-section {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .brand-icon {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(to bottom right, #3b82f6, #9333ea);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.25);
+        }
+
+        .brand-text h1 {
+            font-size: 1.25rem;
+            font-weight: bold;
+        }
+
+        .brand-text p {
+            font-size: 0.875rem;
+        }
+
+        .back-button {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 12px;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            backdrop-filter: blur(8px);
+        }
+
+        .back-button:hover {
+            transform: translateX(-2px);
+        }
+
+        .main-content {
+            padding: 2rem 0;
+        }
+
+        .page-header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            margin-bottom: 1rem;
+        }
+
+        .page-title {
+            font-size: 2.25rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+        }
+
+        .page-subtitle {
+            font-size: 1.125rem;
+            max-width: 48rem;
+            margin: 0 auto;
+        }
+
+        .action-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .search-container {
+            position: relative;
+            flex: 1;
+            min-width: 250px;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 0.75rem 1rem 0.75rem 3rem;
+            border-radius: 12px;
+            backdrop-filter: blur(8px);
+            transition: all 0.2s;
+        }
+
+        .search-input:focus {
+            outline: none;
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        .btn {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1rem;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 500;
+            text-decoration: none;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.3);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            border-radius: 16px;
+            padding: 1.5rem;
+            transition: all 0.2s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        .stat-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+        }
+
+        .stat-icon {
+            padding: 0.75rem;
+            border-radius: 12px;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        .stat-label {
+            font-size: 0.875rem;
+            margin-top: 0.25rem;
+        }
+
+        .stat-change {
+            font-size: 0.75rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .stat-change.positive {
+            color: #059669;
+        }
+
+        .stat-change.negative {
+            color: #dc2626;
+        }
+
+        .data-container {
+            border-radius: 24px;
+            overflow: hidden;
+            margin-bottom: 2rem;
+        }
+
+        .data-header {
+            padding: 2rem;
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+
+        .table-container {
+            overflow-x: auto;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .action-buttons-cell {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: center;
+        }
+
+        .btn-icon {
+            padding: 0.5rem;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Modal Styles */
+        .modal {
+            position: fixed;
+            inset: 0;
+            z-index: 100;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(8px);
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            border-radius: 24px;
+            width: 90%;
+            max-width: 700px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            padding: 2rem 2rem 0 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .modal-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        .close-button {
+            padding: 0.5rem;
+            border: none;
+            background: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .modal-body {
+            padding: 2rem;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.5rem;
+        }
+
+        .form-section {
+            grid-column: 1 / -1;
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .form-section:last-of-type {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+        .form-section-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 1rem;
+        }
+        body.dark-mode .form-section {
+            border-bottom-color: #4a5568;
+        }
+        body.dark-mode .form-section-title {
+            color: #e2e8f0;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .form-group.full-width {
+            grid-column: 1 / -1;
+        }
+
+        .form-label {
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .form-input, .form-select, .form-textarea {
+            padding: 0.75rem;
+            border-radius: 8px;
+            transition: all 0.2s;
+            font-size: 0.875rem;
+        }
+
+        .form-input:focus, .form-select:focus, .form-textarea:focus {
+            outline: none;
+        }
+
+        .form-textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .modal-footer {
+            padding: 0 2rem 2rem 2rem;
+            display: flex;
+            justify-content: flex-end;
+            gap: 1rem;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+        }
+
+        .empty-state-icon {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1rem;
+        }
+
+        /* Dark Mode Toggle */
+        .theme-toggle {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1.5rem;
+            color: #64748b;
+            transition: color 0.3s;
+        }
+
+        .dark-mode .theme-toggle {
+            color: #e2e8f0;
+        }
+
+        .theme-toggle:hover {
+            color: #1e293b;
+        }
+
+        .dark-mode .theme-toggle:hover {
+            color: #90cdf4;
+        }
+
+        /* Responsive Adjustments */
+        @media (max-width: 767px) {
+            .action-bar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .search-container {
+                min-width: auto;
+            }
+
+            .action-buttons {
+                justify-content: center;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .data-table {
+                font-size: 0.875rem;
+            }
+
+            .data-table th,
+            .data-table td {
+                padding: 0.75rem 0.5rem;
+            }
+
+            .action-buttons-cell {
+                flex-direction: column;
+            }
+
+            .modal-content {
+                margin: 1rem;
+                width: calc(100% - 2rem);
+            }
+
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+            .form-section {
+                grid-column: 1 / -1;
+            }
+        }
+
+        /* New styles for UX improvements */
+        .error-message {
+            color: #dc2626;
+            font-size: 0.75rem;
+            display: none;
+            margin-top: 0.25rem;
+        }
+
+        @keyframes flash-green {
+            from { background-color: rgba(76, 175, 80, 0.3); }
+            to { background-color: transparent; }
+        }
+        .row-paid-flash {
+            animation: flash-green 0.7s ease-out;
+        }
+
+        .reports-section {
+            display: none; /* Hidden by default */
+            margin-top: 2rem;
+            padding: 2rem;
+            background: white;
+            border-radius: 24px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        body.dark-mode .reports-section {
+            background: #2d3748;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.3);
+        }
+        .reports-section h3 {
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- Top Bar -->
+    <div class="glassmorphic-bar">
+        <div class="container">
+            <div class="top-bar">
+                <div class="brand-section">
+                    <div class="brand-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 2v20M17 5H7l-5 5 5 5h10l5-5-5-5z"/>
+                        </svg>
+                    </div>
+                    <div class="brand-text">
+                        <h1>Cuentas por Cobrar y Pagar</h1>
+                        <p>Gestión Financiera</p>
+                    </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <button class="theme-toggle" onclick="toggleDarkMode()" aria-label="Toggle dark mode">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sun-icon">
+                            <circle cx="12" cy="12" r="4"/>
+                            <path d="M12 2v2"/>
+                            <path d="M12 20v2"/>
+                            <path d="m4.93 4.93 1.41 1.41"/>
+                            <path d="m17.66 17.66 1.41 1.41"/>
+                            <path d="M2 12h2"/>
+                            <path d="M20 12h2"/>
+                            <path d="m6.34 17.66-1.41 1.41"/>
+                            <path d="m19.07 4.93-1.41 1.41"/>
+                        </svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="moon-icon" style="display: none;">
+                            <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
+                        </svg>
+                    </button>
+                    <a href="menu.html" class="back-button">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M19 12H6m0 0l6 6m-6-6l6-6"/>
+                        </svg>
+                        <span>Volver al Menú</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="container main-content">
+        <!-- Page Header -->
+        <div class="page-header">
+            <div class="badge">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 2v20M17 5H7l-5 5 5 5h10l5-5-5-5z"/>
+                </svg>
+                <span>Gestión Financiera</span>
+            </div>
+            <h2 class="page-title">Cuentas por Cobrar y Pagar</h2>
+            <p class="page-subtitle">
+                Administra tus flujos de efectivo, registra transacciones y mantén un control preciso de tus finanzas.
+            </p>
+        </div>
+
+        <!-- Action Bar -->
+        <div class="action-bar">
+            <div class="search-container">
+                <input type="text" class="search-input" placeholder="Buscar por descripción, contacto o tipo..." id="searchInput">
+                <svg xmlns="http://www.w3.org/2000/svg" class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="8"/>
+                    <path d="m21 21-4.35-4.35"/>
+                </svg>
+            </div>
+            <div class="filter-group">
+                <label class="form-label" for="categoryFilter" style="margin-bottom: 0;">Categoría:</label>
+                <select class="form-select" id="categoryFilter" onchange="filterAccounts()">
+                    <option value="">Todas</option>
+                    <option value="Operaciones">Operaciones</option>
+                    <option value="Marketing">Marketing</option>
+                    <option value="Ventas">Ventas</option>
+                    <option value="Personal">Personal</option>
+                    <option value="Administración">Administración</option>
+                    <option value="Otros">Otros</option>
+                </select>
+            </div>
+            <div class="action-buttons">
+                <button class="btn btn-primary" onclick="openModal('add', 'cobrar')">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M5 12h14"/>
+                        <path d="M12 5v14"/>
+                    </svg>
+                    Nueva Cuenta por Cobrar
+                </button>
+                <button class="btn btn-secondary" onclick="openModal('add', 'pagar')">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M5 12h14"/>
+                        <path d="M12 5v14"/>
+                    </svg>
+                    Nueva Cuenta por Pagar
+                </button>
+                <button class="btn btn-secondary" onclick="exportAccounts()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="7,10 12,15 17,10"/>
+                        <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                    Exportar
+                </button>
+                <button class="btn btn-secondary" onclick="toggleReportsSection()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 3v18h18"/>
+                        <path d="M18.7 8.3l-4.4 4.4-6-6L3 14"/>
+                    </svg>
+                    Reportes
+                </button>
+            </div>
+        </div>
+
+        <!-- Stats Grid -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon" style="background: linear-gradient(to bottom right, #34d399, #14b8a6);">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 2v20M17 5H7l-5 5 5 5h10l5-5-5-5z"/>
+                        </svg>
+                    </div>
+                    <div class="stat-change positive">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="23,6 13.5,15.5 8.5,10.5 1,18"/>
+                        </svg>
+                        +5%
+                    </div>
+                </div>
+                <div class="stat-value" id="totalReceivable">\$0</div>
+                <div class="stat-label">Total por Cobrar</div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon" style="background: linear-gradient(to bottom right, #ef4444, #dc2626);">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 2v20M17 5H7l-5 5 5 5h10l5-5-5-5z"/>
+                        </svg>
+                    </div>
+                    <div class="stat-change negative">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="23,18 13.5,8.5 8.5,13.5 1,6"/>
+                        </svg>
+                        -2%
+                    </div>
+                </div>
+                <div class="stat-value" id="totalPayable">\$0</div>
+                <div class="stat-label">Total por Pagar</div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon" style="background: linear-gradient(to bottom right, #f59e0b, #fbbf24);">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 2v20M17 5H7l-5 5 5 5h10l5-5-5-5z"/>
+                        </svg>
+                    </div>
+                    <div class="stat-change positive">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="23,6 13.5,15.5 8.5,10.5 1,18"/>
+                        </svg>
+                        +1
+                    </div>
+                </div>
+                <div class="stat-value" id="overdueReceivable">0</div>
+                <div class="stat-label">Cuentas por Cobrar Vencidas</div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon" style="background: linear-gradient(to bottom right, #60a5fa, #3b82f6);">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 2v20M17 5H7l-5 5 5 5h10l5-5-5-5z"/>
+                        </svg>
+                    </div>
+                    <div class="stat-change negative">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="23,18 13.5,8.5 8.5,13.5 1,6"/>
+                        </svg>
+                        -1
+                    </div>
+                </div>
+                <div class="stat-value" id="overduePayable">0</div>
+                <div class="stat-label">Cuentas por Pagar Vencidas</div>
+            </div>
+        </div>
+
+        <!-- Reports Section -->
+        <div class="reports-section" id="reportsSection">
+            <h3 class="section-title">Flujo de Caja Mensual</h3>
+            <canvas id="cashFlowChart"></canvas>
+        </div>
+
+        <!-- Accounts Receivable Table -->
+        <div class="data-container">
+            <div class="data-header">
+                <h3 class="section-title">Cuentas por Cobrar</h3>
+                <p class="section-subtitle">Gestiona el dinero que tus clientes te deben.</p>
+            </div>
+            <div class="table-container">
+                <table class="data-table" id="receivableTable">
+                    <thead>
+                        <tr>
+                            <th data-sort-key="description">Descripción</th>
+                            <th data-sort-key="contact">Contacto</th>
+                            <th data-sort-key="category">Categoría</th>
+                            <th data-sort-key="amount">Monto Total</th>
+                            <th data-sort-key="pendingAmount">Monto Pendiente</th>
+                            <th data-sort-key="dueDate">Fecha de Vencimiento</th>
+                            <th data-sort-key="status">Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="receivableTableBody">
+                        <!-- Dynamic content will be inserted here -->
+                    </tbody>
+                </table>
+                <div id="emptyStateReceivable" class="empty-state" style="display: none;">
+                    <div class="empty-state-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 2v20M17 5H7l-5 5 5 5h10l5-5-5-5z"/>
+                        </svg>
+                    </div>
+                    <h3>No hay cuentas por cobrar</h3>
+                    <p>Registra tus primeras cuentas por cobrar para empezar a gestionar tus ingresos.</p>
+                    <button class="btn btn-primary" onclick="openModal('add', 'cobrar')" style="margin-top: 1rem;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M5 12h14"/>
+                            <path d="M12 5v14"/>
+                        </svg>
+                        Agregar Cuenta por Cobrar
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Accounts Payable Table -->
+        <div class="data-container">
+            <div class="data-header">
+                <h3 class="section-title">Cuentas por Pagar</h3>
+                <p class="section-subtitle">Gestiona el dinero que le debes a tus proveedores o acreedores.</p>
+            </div>
+            <div class="table-container">
+                <table class="data-table" id="payableTable">
+                    <thead>
+                        <tr>
+                            <th data-sort-key="description">Descripción</th>
+                            <th data-sort-key="contact">Contacto</th>
+                            <th data-sort-key="category">Categoría</th>
+                            <th data-sort-key="amount">Monto Total</th>
+                            <th data-sort-key="pendingAmount">Monto Pendiente</th>
+                            <th data-sort-key="dueDate">Fecha de Vencimiento</th>
+                            <th data-sort-key="status">Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="payableTableBody">
+                        <!-- Dynamic content will be inserted here -->
+                    </tbody>
+                </table>
+                <div id="emptyStatePayable" class="empty-state" style="display: none;">
+                    <div class="empty-state-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 2v20M17 5H7l-5 5 5 5h10l5-5-5-5z"/>
+                        </svg>
+                    </div>
+                    <h3>No hay cuentas por pagar</h3>
+                    <p>Registra tus primeras cuentas por pagar para mantener un control de tus obligaciones.</p>
+                    <button class="btn btn-primary" onclick="openModal('add', 'pagar')" style="margin-top: 1rem;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M5 12h14"/>
+                            <path d="M12 5v14"/>
+                        </svg>
+                        Agregar Cuenta por Pagar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Account Modal -->
+    <div class="modal" id="accountModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modalTitle">Nueva Cuenta</h3>
+                <button class="close-button" onclick="closeModal()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M18 6 6 18"/>
+                        <path d="m6 6 12 12"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="accountForm" class="form-grid">
+                    <div class="form-section">
+                        <h4 class="form-section-title">Detalles de la Cuenta</h4>
+                        <div class="form-group">
+                            <label class="form-label" for="accountType">Tipo de Cuenta *</label>
+                            <select class="form-select" id="accountType" required>
+                                <option value="">Seleccionar tipo</option>
+                                <option value="cobrar">Por Cobrar</option>
+                                <option value="pagar">Por Pagar</option>
+                            </select>
+                            <p class="error-message" id="accountType-error"></p>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="accountDescription">Descripción *</label>
+                            <input type="text" class="form-input" id="accountDescription" required>
+                            <p class="error-message" id="accountDescription-error"></p>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="accountContact">Contacto / Entidad *</label>
+                            <input type="text" class="form-input" id="accountContact" required>
+                            <p class="error-message" id="accountContact-error"></p>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="accountAmount">Monto Total * ($)</label>
+                            <input type="number" class="form-input" id="accountAmount" min="0.01" step="0.01" required>
+                            <p class="error-message" id="accountAmount-error"></p>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="accountDueDate">Fecha de Vencimiento *</label>
+                            <input type="date" class="form-input" id="accountDueDate" required>
+                            <p class="error-message" id="accountDueDate-error"></p>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="accountCategory">Categoría *</label>
+                            <select class="form-select" id="accountCategory" required>
+                                <option value="">Seleccionar categoría</option>
+                                <option value="Operaciones">Operaciones</option>
+                                <option value="Marketing">Marketing</option>
+                                <option value="Ventas">Ventas</option>
+                                <option value="Personal">Personal</option>
+                                <option value="Administración">Administración</option>
+                                <option value="Otros">Otros</option>
+                            </select>
+                            <p class="error-message" id="accountCategory-error"></p>
+                        </div>
+                        <div class="form-group full-width">
+                            <label class="form-label" for="accountNotes">Notas Adicionales</label>
+                            <textarea class="form-textarea" id="accountNotes" placeholder="Cualquier detalle relevante sobre la cuenta"></textarea>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-cancel" onclick="closeModal()">Cancelar</button>
+                <button type="submit" class="btn btn-primary" onclick="saveAccount(event)" id="saveButton">Guardar Cuenta</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Register Payment Modal -->
+    <div class="modal" id="paymentModal">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h3 class="modal-title">Registrar Pago</h3>
+                <button class="close-button" onclick="closePaymentModal()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M18 6 6 18"/>
+                        <path d="m6 6 12 12"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="paymentForm">
+                    <div class="form-group">
+                        <label class="form-label" for="paymentAmount">Monto del Pago * ($)</label>
+                        <input type="number" class="form-input" id="paymentAmount" min="0.01" step="0.01" required>
+                        <p class="error-message" id="paymentAmount-error"></p>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-cancel" onclick="closePaymentModal()">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="confirmPayment()">Registrar Pago</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div class="modal" id="deleteModal">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h3 class="modal-title">Confirmar Eliminación</h3>
+                <button class="close-button" onclick="closeDeleteModal()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M18 6 6 18"/>
+                        <path d="m6 6 12 12"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p>¿Estás seguro de que deseas eliminar esta cuenta?</p>
+                <p style="font-weight: 600; color: #dc2626; margin-top: 1rem;">Esta acción no se puede deshacer.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-cancel" onclick="closeDeleteModal()">Cancelar</button>
+                <button type="button" class="btn" style="background: #dc2626; color: white;" onclick="confirmDelete()">Eliminar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let accounts = [];
+        let editingAccountId = null;
+        let deletingAccountId = null;
+        let payingAccountId = null; // For partial payments
+        let nextAccountId = 1;
+        let currentSort = { key: null, direction: 'asc' }; // For table sorting
+        let cashFlowChartInstance = null; // To store the Chart.js instance
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            }
+            loadAccounts();
+            setupEventListeners();
+            updateDashboard();
+            applySavedTheme();
+        });
+
+        // Event Listeners
+        function setupEventListeners() {
+            document.getElementById('searchInput').addEventListener('input', filterAccounts);
+            document.getElementById('categoryFilter').addEventListener('change', filterAccounts);
+            
+            document.getElementById('accountModal').addEventListener('click', function(e) {
+                if (e.target === this) closeModal();
+            });
+            
+            document.getElementById('deleteModal').addEventListener('click', function(e) {
+                if (e.target === this) closeDeleteModal();
+            });
+
+            document.getElementById('paymentModal').addEventListener('click', function(e) {
+                if (e.target === this) closePaymentModal();
+            });
+
+            // Add event listeners for table sorting
+            document.querySelectorAll('.data-table th[data-sort-key]').forEach(header => {
+                header.addEventListener('click', function() {
+                    const sortKey = this.getAttribute('data-sort-key');
+                    sortAccounts(sortKey);
+                });
+            });
+        }
+
+        // Account Management Functions
+        function loadAccounts() {
+            const savedAccounts = localStorage.getItem('ciervo_accounts');
+            if (savedAccounts) {
+                accounts = JSON.parse(savedAccounts);
+                nextAccountId = accounts.length > 0 ? Math.max(...accounts.map(a => a.id)) + 1 : 1;
+                updateAccountStatuses(); // AÑADIR LLAMADA AQUÍ
+            } else {
+                // No hay datos guardados, inicializar como un array vacío.
+                accounts = [];
+                nextAccountId = 1;
+            }
+            renderAccounts();
+        }
+
+        function saveAccounts() {
+            localStorage.setItem('ciervo_accounts', JSON.stringify(accounts));
+        }
+
+        function updateAccountStatuses() {
+            const today = new Date().toISOString().split('T')[0];
+            accounts.forEach(a => {
+                if (a.status !== 'paid') {
+                    const totalPaid = a.payments.reduce((sum, p) => sum + p.amount, 0);
+                    if (totalPaid >= a.amount) {
+                        a.status = 'paid';
+                    } else if (a.dueDate < today) {
+                        a.status = 'overdue';
+                    } else {
+                        a.status = 'pending';
+                    }
+                }
+            });
+            saveAccounts(); // Guardar los estados actualizados
+        }
+
+        function renderAccounts() {
+            const receivableBody = document.getElementById('receivableTableBody');
+            const payableBody = document.getElementById('payableTableBody');
+            const emptyStateReceivable = document.getElementById('emptyStateReceivable');
+            const emptyStatePayable = document.getElementById('emptyStatePayable');
+
+            receivableBody.innerHTML = '';
+            payableBody.innerHTML = '';
+
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const categoryFilter = document.getElementById('categoryFilter').value;
+
+            const filteredAccounts = accounts.filter(a => {
+                const matchesSearch = a.description.toLowerCase().includes(searchTerm) ||
+                                      a.contact.toLowerCase().includes(searchTerm) ||
+                                      a.type.toLowerCase().includes(searchTerm);
+                const matchesCategory = categoryFilter === '' || a.category === categoryFilter;
+                return matchesSearch && matchesCategory;
+            });
+
+            const filteredReceivable = filteredAccounts.filter(a => a.type === 'cobrar');
+            const filteredPayable = filteredAccounts.filter(a => a.type === 'pagar');
+
+            // Apply sorting
+            const sortedReceivable = [...filteredReceivable].sort((a, b) => sortCompare(a, b, currentSort.key, currentSort.direction));
+            const sortedPayable = [...filteredPayable].sort((a, b) => sortCompare(a, b, currentSort.key, currentSort.direction));
+
+            if (sortedReceivable.length === 0) {
+                emptyStateReceivable.style.display = 'block';
+            } else {
+                emptyStateReceivable.style.display = 'none';
+                sortedReceivable.forEach(account => {
+                    receivableBody.innerHTML += createAccountRow(account);
+                });
+            }
+
+            if (sortedPayable.length === 0) {
+                emptyStatePayable.style.display = 'block';
+            } else {
+                emptyStatePayable.style.display = 'none';
+                sortedPayable.forEach(account => {
+                    payableBody.innerHTML += createAccountRow(account);
+                });
+            }
+            
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            }
+            updateSortIndicators();
+        }
+
+        function createAccountRow(account) {
+            const statusClass = `status-${account.status}`;
+            const statusText = {
+                'pending': 'Pendiente',
+                'paid': 'Pagado',
+                'overdue': 'Vencido'
+            }[account.status];
+
+            const dueDate = new Date(account.dueDate).toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' });
+            const totalPaid = account.payments.reduce((sum, p) => sum + p.amount, 0);
+            const pendingAmount = account.amount - totalPaid;
+
+            return `
+                <tr data-account-id="${account.id}">
+                    <td>${account.description}</td>
+                    <td>${account.contact}</td>
+                    <td>${account.category || 'N/A'}</td>
+                    <td>\$${account.amount.toFixed(2)}</td>
+                    <td>\$${pendingAmount.toFixed(2)}</td>
+                    <td>${dueDate}</td>
+                    <td>
+                        <span class="status-badge ${statusClass}">
+                            ${statusText}
+                        </span>
+                    </td>
+                    <td>
+                        <div class="action-buttons-cell">
+                            ${account.status !== 'paid' ? `<button class="btn-icon btn-partial-pay" onclick="openPaymentModal(${account.id})" title="Registrar Pago">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M12 2v20M17 5H7l-5 5 5 5h10l5-5-5-5z"/>
+                                </svg>
+                            </button>` : ''}
+                            <button class="btn-icon btn-edit" onclick="editAccount(${account.id})" title="Editar">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                </svg>
+                            </button>
+                            <button class="btn-icon btn-delete" onclick="deleteAccount(${account.id})" title="Eliminar">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M3 6h18"/>
+                                    <path d="M19 6v14c0 1-1 2-2 2H7c0-1-1-2-1-2V6"/>
+                                    <path d="M8 6V4c0-1 1-2 2-2h4c0 1 1 2 1 2v2"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }
+
+        function filterAccounts() {
+            renderAccounts(); // Re-render accounts with current filters
+        }
+
+        // Modal Functions
+        function openModal(mode, type = null, accountId = null) {
+            editingAccountId = accountId;
+            const modal = document.getElementById('accountModal');
+            const title = document.getElementById('modalTitle');
+            const saveButton = document.getElementById('saveButton');
+            const accountTypeSelect = document.getElementById('accountType');
+            
+            resetForm(); // Always reset form and errors first
+
+            if (mode === 'add') {
+                title.textContent = 'Nueva Cuenta';
+                saveButton.textContent = 'Guardar Cuenta';
+                if (type) {
+                    accountTypeSelect.value = type;
+                    accountTypeSelect.disabled = false; // Enable for new accounts
+                }
+            } else {
+                const account = accounts.find(a => a.id === accountId);
+                if (!account) {
+                    console.error('Account not found for editing:', accountId);
+                    closeModal();
+                    return;
+                }
+                title.textContent = 'Editar Cuenta';
+                saveButton.textContent = 'Actualizar Cuenta';
+                fillForm(account);
+                accountTypeSelect.disabled = true; // Disable type change when editing
+            }
+            
+            modal.classList.add('show');
+            document.getElementById('accountDescription').focus();
+        }
+
+        function closeModal() {
+            document.getElementById('accountModal').classList.remove('show');
+            editingAccountId = null;
+            resetForm();
+        }
+
+        function resetForm() {
+            document.getElementById('accountForm').reset();
+            document.getElementById('accountType').disabled = false;
+            const formInputs = document.querySelectorAll('#accountForm .form-input, #accountForm .form-select, #accountForm .form-textarea');
+            formInputs.forEach(input => {
+                input.classList.remove('invalid');
+            });
+            document.querySelectorAll('.error-message').forEach(msg => {
+                msg.textContent = '';
+                msg.style.display = 'none';
+            });
+        }
+
+        function fillForm(account) {
+            document.getElementById('accountType').value = account.type;
+            document.getElementById('accountDescription').value = account.description;
+            document.getElementById('accountContact').value = account.contact;
+            document.getElementById('accountAmount').value = account.amount;
+            document.getElementById('accountDueDate').value = account.dueDate;
+            document.getElementById('accountCategory').value = account.category || '';
+            document.getElementById('accountNotes').value = account.notes || '';
+        }
+
+        function validateForm() {
+            let isValid = true;
+            const fields = [
+                { id: 'accountType', message: 'Selecciona un tipo de cuenta.' },
+                { id: 'accountDescription', message: 'La descripción es obligatoria.' },
+                { id: 'accountContact', message: 'El contacto es obligatorio.' },
+                { id: 'accountAmount', message: 'El monto debe ser un número positivo.' },
+                { id: 'accountDueDate', message: 'La fecha de vencimiento es obligatoria.' },
+                { id: 'accountCategory', message: 'La categoría es obligatoria.' }
+            ];
+
+            fields.forEach(field => {
+                const input = document.getElementById(field.id);
+                const errorMsg = document.getElementById(`${field.id}-error`);
+                errorMsg.style.display = 'none';
+                input.classList.remove('invalid');
+
+                let value = input.value.trim();
+                if (input.type === 'number') {
+                    value = parseFloat(value);
+                }
+
+                if (value === '' || (input.type === 'number' && (isNaN(value) || value <= 0))) {
+                    errorMsg.textContent = field.message;
+                    errorMsg.style.display = 'block';
+                    input.classList.add('invalid');
+                    isValid = false;
+                }
+            });
+            return isValid;
+        }
+
+        function saveAccount(event) {
+            if (event) event.preventDefault();
+            
+            if (!validateForm()) {
+                showNotification('Por favor, corrige los errores del formulario.', 'error');
+                return;
+            }
+            
+            const accountType = document.getElementById('accountType').value;
+            const description = document.getElementById('accountDescription').value.trim();
+            const contact = document.getElementById('accountContact').value.trim();
+            const amount = parseFloat(document.getElementById('accountAmount').value);
+            const dueDate = document.getElementById('accountDueDate').value;
+            const category = document.getElementById('accountCategory').value;
+            const notes = document.getElementById('accountNotes').value.trim();
+
+            let accountData = {
+                type: accountType,
+                description: description,
+                contact: contact,
+                amount: amount,
+                dueDate: dueDate,
+                category: category,
+                notes: notes
+            };
+
+            if (editingAccountId) {
+                const index = accounts.findIndex(a => a.id === editingAccountId);
+                if (index !== -1) {
+                    // Preserve payments and original status if not explicitly changed
+                    accountData.payments = accounts[index].payments || [];
+                    accountData.status = accounts[index].status; 
+                    
+                    accounts[index] = { ...accounts[index], ...accountData };
+                    showNotification('Cuenta actualizada exitosamente', 'success');
+                } else {
+                    showNotification('Error: Cuenta no encontrada para actualizar.', 'error');
+                }
+            } else {
+                accountData.id = nextAccountId++;
+                accountData.payments = []; // Initialize payments array for new accounts
+                accounts.push(accountData);
+                showNotification('Cuenta agregada exitosamente', 'success');
+            }
+            
+            updateAccountStatuses(); // Re-evaluate status after save
+            renderAccounts();
+            updateDashboard();
+            closeModal();
+        }
+
+        function editAccount(accountId) {
+            openModal('edit', null, accountId);
+        }
+
+        function deleteAccount(accountId) {
+            deletingAccountId = accountId;
+            document.getElementById('deleteModal').classList.add('show');
+        }
+
+        function closeDeleteModal() {
+            document.getElementById('deleteModal').classList.remove('show');
+            deletingAccountId = null;
+        }
+
+        function confirmDelete() {
+            if (deletingAccountId) {
+                const initialLength = accounts.length;
+                accounts = accounts.filter(a => a.id !== deletingAccountId);
+                if (accounts.length < initialLength) {
+                    saveAccounts();
+                    renderAccounts();
+                    updateDashboard();
+                    showNotification('Cuenta eliminada exitosamente', 'success');
+                } else {
+                    showNotification('Error: No se pudo eliminar la cuenta.', 'error');
+                }
+                closeDeleteModal();
+            }
+        }
+
+        // Partial Payment Functions
+        function openPaymentModal(accountId) {
+            payingAccountId = accountId;
+            const account = accounts.find(a => a.id === accountId);
+            if (!account) {
+                showNotification('Error: Cuenta no encontrada para registrar pago.', 'error');
+                return;
+            }
+            const totalPaid = account.payments.reduce((sum, p) => sum + p.amount, 0);
+            const pendingAmount = account.amount - totalPaid;
+            document.getElementById('paymentAmount').value = pendingAmount.toFixed(2);
+            document.getElementById('paymentAmount').max = pendingAmount.toFixed(2);
+            document.getElementById('paymentAmount-error').style.display = 'none';
+            document.getElementById('paymentAmount').classList.remove('invalid');
+            document.getElementById('paymentModal').classList.add('show');
+            document.getElementById('paymentAmount').focus();
+        }
+
+        function closePaymentModal() {
+            document.getElementById('paymentModal').classList.remove('show');
+            payingAccountId = null;
+            document.getElementById('paymentForm').reset();
+        }
+
+        function confirmPayment() {
+            const paymentInput = document.getElementById('paymentAmount');
+            const paymentAmount = parseFloat(paymentInput.value);
+            const errorMsg = document.getElementById('paymentAmount-error');
+            errorMsg.style.display = 'none';
+            paymentInput.classList.remove('invalid');
+
+            if (isNaN(paymentAmount) || paymentAmount <= 0) {
+                errorMsg.textContent = 'El monto del pago debe ser un número positivo.';
+                errorMsg.style.display = 'block';
+                paymentInput.classList.add('invalid');
+                return;
+            }
+
+            const account = accounts.find(a => a.id === payingAccountId);
+            if (!account) {
+                showNotification('Error: Cuenta no encontrada para registrar pago.', 'error');
+                closePaymentModal();
+                return;
+            }
+
+            const totalPaid = account.payments.reduce((sum, p) => sum + p.amount, 0);
+            const pendingAmount = account.amount - totalPaid;
+
+            if (paymentAmount > pendingAmount) {
+                errorMsg.textContent = `El pago no puede exceder el monto pendiente (\$${pendingAmount.toFixed(2)}).`;
+                errorMsg.style.display = 'block';
+                paymentInput.classList.add('invalid');
+                return;
+            }
+
+            account.payments.push({ amount: paymentAmount, date: new Date().toISOString().split('T')[0] });
+            
+            // Visual confirmation flash
+            const row = document.querySelector(`tr[data-account-id="${payingAccountId}"]`);
+            if (row) {
+                row.classList.add('row-paid-flash');
+                setTimeout(() => {
+                    row.classList.remove('row-paid-flash');
+                }, 700);
+            }
+
+            updateAccountStatuses(); // This will mark as paid if fully paid
+            saveAccounts();
+            renderAccounts();
+            updateDashboard();
+            showNotification('Pago registrado exitosamente.', 'success');
+            closePaymentModal();
+        }
+
+        // Dashboard Functions
+        function updateDashboard() {
+            let totalReceivable = 0;
+            let totalPayable = 0;
+            let overdueReceivable = 0;
+            let overduePayable = 0;
+
+            accounts.forEach(a => {
+                if (a.status !== 'paid') { // Only count active (pending/overdue) accounts
+                    const totalPaid = a.payments.reduce((sum, p) => sum + p.amount, 0);
+                    const pendingAmount = a.amount - totalPaid;
+
+                    if (a.type === 'cobrar') {
+                        totalReceivable += pendingAmount;
+                        if (a.status === 'overdue') {
+                            overdueReceivable++;
+                        }
+                    } else { // type === 'pagar'
+                        totalPayable += pendingAmount;
+                        if (a.status === 'overdue') {
+                            overduePayable++;
+                        }
+                    }
+                }
+            });
+
+            document.getElementById('totalReceivable').textContent = `\$${totalReceivable.toFixed(2)}`;
+            document.getElementById('totalPayable').textContent = `\$${totalPayable.toFixed(2)}`;
+            document.getElementById('overdueReceivable').textContent = overdueReceivable;
+            document.getElementById('overduePayable').textContent = overduePayable;
+        }
+
+        // Utility Functions
+        function exportAccounts() {
+            if (accounts.length === 0) {
+                showNotification('No hay cuentas para exportar.', 'info');
+                return;
+            }
+
+            const data = accounts.map(a => {
+                const totalPaid = a.payments.reduce((sum, p) => sum + p.amount, 0);
+                const pendingAmount = a.amount - totalPaid;
+                return {
+                    Tipo: a.type === 'cobrar' ? 'Por Cobrar' : 'Por Pagar',
+                    Descripción: a.description,
+                    Contacto: a.contact,
+                    Categoría: a.category || '',
+                    'Monto Total': a.amount.toFixed(2),
+                    'Monto Pagado': totalPaid.toFixed(2),
+                    'Monto Pendiente': pendingAmount.toFixed(2),
+                    'Fecha de Vencimiento': a.dueDate,
+                    Estado: { 'pending': 'Pendiente', 'paid': 'Pagado', 'overdue': 'Vencido' }[a.status],
+                    Notas: a.notes || ''
+                };
+            });
+            
+            const csv = convertToCSV(data);
+            downloadCSV(csv, 'cuentas_ciervo.csv');
+            showNotification('Cuentas exportadas exitosamente.', 'success');
+        }
+
+        function convertToCSV(data) {
+            if (data.length === 0) return '';
+
+            const headers = Object.keys(data[0]).join(',');
+            const rows = data.map(row => 
+                Object.values(row).map(value => {
+                    let stringValue = String(value);
+                    if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
+                        return `"${stringValue.replace(/"/g, '""')}"`;
+                    }
+                    return stringValue;
+                }).join(',')
+            ).join('\n');
+            return headers + '\n' + rows;
+        }
+
+        function downloadCSV(csv, filename) {
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            if (link.download !== undefined) {
+                const url = URL.createObjectURL(blob);
+                link.setAttribute('href', url);
+                link.setAttribute('download', filename);
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+        }
+
+        // Table Sorting
+        function sortAccounts(key) {
+            if (currentSort.key === key) {
+                currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSort.key = key;
+                currentSort.direction = 'asc';
+            }
+            renderAccounts();
+        }
+
+        function sortCompare(a, b, key, direction) {
+            let valA = a[key];
+            let valB = b[key];
+
+            if (key === 'dueDate') {
+                valA = new Date(valA);
+                valB = new Date(valB);
+            } else if (key === 'amount') {
+                valA = parseFloat(valA);
+                valB = parseFloat(valB);
+            } else if (key === 'pendingAmount') {
+                const totalPaidA = a.payments.reduce((sum, p) => sum + p.amount, 0);
+                const pendingAmountA = a.amount - totalPaidA;
+                const totalPaidB = b.payments.reduce((sum, p) => sum + p.amount, 0);
+                const pendingAmountB = b.amount - totalPaidB;
+                valA = pendingAmountA;
+                valB = pendingAmountB;
+            } else if (typeof valA === 'string') {
+                return direction === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+            }
+
+            if (valA < valB) {
+                return direction === 'asc' ? -1 : 1;
+            }
+            if (valA > valB) {
+                return direction === 'asc' ? 1 : -1;
+            }
+            return 0;
+        }
+
+        function updateSortIndicators() {
+            document.querySelectorAll('.data-table th[data-sort-key]').forEach(header => {
+                header.classList.remove('asc', 'desc');
+                if (header.getAttribute('data-sort-key') === currentSort.key) {
+                    header.classList.add(currentSort.direction);
+                }
+            });
+        }
+
+        // Reports Section
+        function toggleReportsSection() {
+            const reportsSection = document.getElementById('reportsSection');
+            if (reportsSection.style.display === 'block') {
+                reportsSection.style.display = 'none';
+            } else {
+                reportsSection.style.display = 'block';
+                renderCashFlowChart();
+            }
+        }
+
+        function renderCashFlowChart() {
+            if (cashFlowChartInstance) {
+                cashFlowChartInstance.destroy(); // Destroy previous chart instance
+            }
+
+            const monthlyData = {}; // { 'YYYY-MM': { income: 0, expense: 0 } }
+
+            accounts.forEach(account => {
+                if (account.status === 'paid') {
+                    account.payments.forEach(payment => {
+                        const paymentDate = new Date(payment.date);
+                        const monthKey = `${paymentDate.getFullYear()}-${(paymentDate.getMonth() + 1).toString().padStart(2, '0')}`;
+                        
+                        if (!monthlyData[monthKey]) {
+                            monthlyData[monthKey] = { income: 0, expense: 0 };
+                        }
+
+                        if (account.type === 'cobrar') {
+                            monthlyData[monthKey].income += payment.amount;
+                        } else { // pagar
+                            monthlyData[monthKey].expense += payment.amount;
+                        }
+                    });
+                }
+            });
+
+            const sortedMonths = Object.keys(monthlyData).sort();
+            const labels = sortedMonths.map(month => {
+                const [year, mon] = month.split('-');
+                const date = new Date(year, parseInt(mon) - 1);
+                return date.toLocaleString('es-ES', { month: 'short', year: 'numeric' });
+            });
+
+            const incomeData = sortedMonths.map(month => monthlyData[month].income);
+            const expenseData = sortedMonths.map(month => monthlyData[month].expense);
+
+            const ctx = document.getElementById('cashFlowChart').getContext('2d');
+            cashFlowChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Ingresos',
+                            data: incomeData,
+                            backgroundColor: 'rgba(75, 192, 192, 0.6)',
+                            borderColor: 'rgba(75, 192, 192, 1)',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Egresos',
+                            data: expenseData,
+                            backgroundColor: 'rgba(255, 99, 132, 0.6)',
+                            borderColor: 'rgba(255, 99, 132, 1)',
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            stacked: false,
+                            title: {
+                                display: true,
+                                text: 'Mes'
+                            }
+                        },
+                        y: {
+                            stacked: false,
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Monto ($)'
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.y !== null) {
+                                        label += new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'USD' }).format(context.parsed.y);
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+
+        // Notification System
+        function showNotification(message, type = 'info') {
+            const notificationContainer = document.createElement('div');
+            notificationContainer.classList.add('notification', type);
+            notificationContainer.textContent = message;
+            
+            Object.assign(notificationContainer.style, {
+                position: 'fixed',
+                bottom: '20px',
+                right: '20px',
+                padding: '15px 25px',
+                borderRadius: '10px',
+                color: 'white',
+                zIndex: '1000',
+                opacity: '0',
+                transition: 'opacity 0.3s ease-in-out, transform 0.3s ease-in-out',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+            });
+
+            if (type === 'success') {
+                notificationContainer.style.backgroundColor = '#4CAF50';
+            } else if (type === 'error') {
+                notificationContainer.style.backgroundColor = '#F44336';
+            } else {
+                notificationContainer.style.backgroundColor = '#2196F3';
+            }
+
+            document.body.appendChild(notificationContainer);
+
+            setTimeout(() => {
+                notificationContainer.style.opacity = '1';
+                notificationContainer.style.transform = 'translateY(0)';
+            }, 10);
+
+            setTimeout(() => {
+                notificationContainer.style.opacity = '0';
+                notificationContainer.style.transform = 'translateY(20px)';
+                notificationContainer.addEventListener('transitionend', () => notificationContainer.remove());
+            }, 3000);
+        }
+
+        // Dark Mode Functionality
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark-mode');
+            const isDarkMode = document.body.classList.contains('dark-mode');
+            localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
+            updateThemeToggleIcons(isDarkMode);
+        }
+
+        function applySavedTheme() {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'dark') {
+                document.body.classList.add('dark-mode');
+                updateThemeToggleIcons(true);
+            } else {
+                document.body.classList.remove('dark-mode');
+                updateThemeToggleIcons(false);
+            }
+        }
+
+        function updateThemeToggleIcons(isDarkMode) {
+            const sunIcon = document.querySelector('.sun-icon');
+            const moonIcon = document.querySelector('.moon-icon');
+            if (isDarkMode) {
+                if (sunIcon) sunIcon.style.display = 'none';
+                if (moonIcon) moonIcon.style.display = 'inline-block';
+            } else {
+                if (sunIcon) sunIcon.style.display = 'inline-block';
+                if (moonIcon) moonIcon.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>

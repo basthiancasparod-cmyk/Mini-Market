@@ -1,0 +1,1747 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iniciar Sesión - Ciervo Administrativo</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Firebase Scripts -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-blue: #3b82f6;
+            --primary-purple: #9333ea;
+            --secondary-green: #10b981;
+            --background-light: #f8fafc;
+            --background-dark: #1e293b;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --border-color: #e2e8f0;
+            --error-color: #ef4444;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --glass-bg: rgba(255, 255, 255, 0.85);
+            --glass-border: rgba(255, 255, 255, 0.2);
+            --panel-bg: rgba(255, 255, 255, 0.95);
+            --input-bg: var(--background-light);
+            --input-border-focus: var(--primary-blue);
+            --feature-item-bg: rgba(255, 255, 255, 0.5);
+            --role-selector-bg: rgba(239, 246, 255, 0.8);
+            --role-option-bg: rgba(255, 255, 255, 0.9);
+            --role-option-hover-bg: rgba(59, 130, 246, 0.05);
+            --role-option-selected-bg: rgba(59, 130, 246, 0.1);
+            --toast-bg-error: linear-gradient(135deg, #ef4444, #dc2626);
+            --toast-bg-success: linear-gradient(135deg, #10b981, #059669);
+            --toast-bg-info: linear-gradient(135deg, #3b82f6, #2563eb);
+            --toast-bg-warning: linear-gradient(135deg, #f59e0b, #d97706);
+        }
+
+        body.dark-mode {
+            --background-light: #1a202c;
+            --background-dark: #0f172a;
+            --text-primary: #f8fafc;
+            --text-secondary: #cbd5e1;
+            --text-light: #94a3b8;
+            --border-color: #475569;
+            --glass-bg: rgba(30, 41, 59, 0.85);
+            --glass-border: rgba(71, 85, 105, 0.2);
+            --panel-bg: rgba(15, 23, 42, 0.95);
+            --input-bg: #1e293b;
+            --input-border-focus: #60a5fa;
+            --feature-item-bg: rgba(30, 41, 59, 0.5);
+            --role-selector-bg: rgba(30, 41, 59, 0.8);
+            --role-option-bg: rgba(30, 41, 59, 0.9);
+            --role-option-hover-bg: rgba(59, 130, 246, 0.15);
+            --role-option-selected-bg: rgba(59, 130, 246, 0.25);
+            --toast-bg-error: linear-gradient(135deg, #dc2626, #b91c1c);
+            --toast-bg-success: linear-gradient(135deg, #059669, #047857);
+            --toast-bg-info: linear-gradient(135deg, #2563eb, #1d4ed8);
+            --toast-bg-warning: linear-gradient(135deg, #d97706, #b45309);
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #3b82f6 100%);
+            min-height: 100vh;
+            display: flex;
+            position: relative;
+            overflow: hidden;
+            color: var(--text-primary);
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        body.dark-mode {
+            background: linear-gradient(135deg, #1a202c 0%, #2d3748 50%, #1e293b 100%);
+        }
+
+        /* Animated Background */
+        .bg-animation {
+            position: absolute;
+            inset: 0;
+            overflow: hidden;
+            z-index: 0;
+        }
+
+        .floating-shape {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            animation: float 8s ease-in-out infinite;
+        }
+
+        body.dark-mode .floating-shape {
+            background: rgba(71, 85, 105, 0.1);
+        }
+
+        .shape-1 { width: 300px; height: 300px; top: -150px; left: -150px; animation-delay: 0s; }
+        .shape-2 { width: 200px; height: 200px; top: 20%; right: -100px; animation-delay: 3s; }
+        .shape-3 { width: 150px; height: 150px; bottom: -75px; left: 30%; animation-delay: 6s; }
+        .shape-4 { width: 400px; height: 400px; bottom: -200px; right: -200px; animation-delay: 2s; }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(0deg) scale(1); opacity: 0.3; }
+            33% { transform: translateY(-30px) rotate(120deg) scale(1.1); opacity: 0.5; }
+            66% { transform: translateY(20px) rotate(240deg) scale(0.9); opacity: 0.4; }
+        }
+
+        /* Main Layout */
+        .login-wrapper {
+            display: flex;
+            width: 100%;
+            min-height: 100vh;
+            position: relative;
+            z-index: 10;
+        }
+
+        /* Left Panel - Branding */
+        .branding-panel {
+            flex: 0 0 45%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            border-right: 1px solid var(--glass-border);
+            position: relative;
+            overflow: hidden;
+            transition: background 0.3s ease, border-color 0.3s ease;
+        }
+
+        .branding-panel::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(to right, var(--primary-blue), var(--primary-purple), var(--secondary-green));
+        }
+
+        .brand-logo {
+            position: relative;
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, var(--primary-blue), var(--primary-purple));
+            border-radius: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 15px 30px -10px rgba(59, 130, 246, 0.4);
+            animation: pulse-logo 4s ease-in-out infinite;
+        }
+
+        @keyframes pulse-logo {
+            0%, 100% { transform: scale(1); box-shadow: 0 15px 30px -10px rgba(59, 130, 246, 0.4); }
+            50% { transform: scale(1.05); box-shadow: 0 20px 40px -10px rgba(59, 130, 246, 0.6); }
+        }
+
+        .brand-logo::after {
+            content: '';
+            position: absolute;
+            top: -4px;
+            right: -4px;
+            width: 18px;
+            height: 18px;
+            background: var(--secondary-green);
+            border-radius: 50%;
+            border: 3px solid var(--glass-bg);
+            animation: pulse-dot 3s ease-in-out infinite;
+        }
+
+        body.dark-mode .brand-logo::after {
+            border-color: var(--glass-bg);
+        }
+
+        @keyframes pulse-dot {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+        }
+
+        .brand-title {
+            font-size: 1.8rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--text-primary), var(--primary-blue), var(--primary-purple));
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            margin-bottom: 0.5rem;
+            text-align: center;
+            line-height: 1.2;
+            transition: background 0.3s ease;
+        }
+
+        body.dark-mode .brand-title {
+            background: linear-gradient(135deg, var(--text-primary), var(--primary-blue), var(--primary-purple));
+            background-clip: text;
+            -webkit-background-clip: text;
+        }
+
+        .brand-subtitle {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            text-align: center;
+            margin-bottom: 2rem;
+            line-height: 1.5;
+            max-width: 350px;
+            transition: color 0.3s ease;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .feature-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 1rem;
+            background: var(--feature-item-bg);
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .feature-item:hover {
+            transform: translateY(-3px);
+            background: rgba(255, 255, 255, 0.7);
+            box-shadow: 0 8px 20px -5px rgba(0, 0, 0, 0.1);
+        }
+
+        body.dark-mode .feature-item:hover {
+            background: rgba(30, 41, 59, 0.7);
+            box-shadow: 0 8px 20px -5px rgba(0, 0, 0, 0.3);
+        }
+
+        .feature-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--primary-blue), var(--secondary-green));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .feature-text {
+            font-size: 0.85rem;
+            color: var(--text-primary);
+            font-weight: 500;
+            line-height: 1.3;
+            transition: color 0.3s ease;
+        }
+
+        /* Right Panel - Login Form */
+        .login-panel {
+            flex: 0 0 55%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+            background: var(--panel-bg);
+            backdrop-filter: blur(20px);
+            transition: background 0.3s ease;
+        }
+
+        .login-container {
+            width: 100%;
+            max-width: 400px;
+            animation: slideIn 0.6s ease-out;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .login-title {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+            transition: color 0.3s ease;
+        }
+
+        .login-subtitle {
+            font-size: 0.95rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+            transition: color 0.3s ease;
+        }
+
+        .security-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--secondary-green);
+            padding: 0.5rem 1rem;
+            border-radius: 50px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin: 1.25rem 0;
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            transition: background 0.3s ease, border-color 0.3s ease;
+        }
+
+        body.dark-mode .security-badge {
+            background: rgba(16, 185, 129, 0.2);
+            border-color: rgba(16, 185, 129, 0.3);
+        }
+
+        /* Form Styles */
+        .login-form {
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+
+        .form-group {
+            position: relative;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: color 0.3s ease;
+        }
+
+        .required {
+            color: var(--error-color);
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 0.9rem 0.9rem 0.9rem 2.8rem;
+            background: var(--input-bg);
+            border: 2px solid var(--border-color);
+            border-radius: 12px;
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            outline: none;
+        }
+
+        .form-input:focus {
+            border-color: var(--input-border-focus);
+            background: var(--panel-bg);
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+            transform: translateY(-1px);
+        }
+
+        body.dark-mode .form-input:focus {
+            box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.2);
+        }
+
+        .form-input.error {
+            border-color: var(--error-color);
+            background: rgba(239, 68, 68, 0.05);
+        }
+
+        body.dark-mode .form-input.error {
+            background: rgba(239, 68, 68, 0.15);
+        }
+
+        .form-input.success {
+            border-color: var(--success-color);
+            background: rgba(16, 185, 129, 0.05);
+        }
+
+        body.dark-mode .form-input.success {
+            background: rgba(16, 185, 129, 0.15);
+        }
+
+        .input-icon {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-light);
+            transition: color 0.2s;
+            z-index: 2;
+        }
+
+        .form-input:focus ~ .input-icon {
+            color: var(--input-border-focus);
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-light);
+            cursor: pointer;
+            transition: all 0.2s;
+            z-index: 2;
+        }
+
+        .password-toggle:hover {
+            color: var(--text-secondary);
+            transform: translateY(-50%) scale(1.1);
+        }
+
+        .caps-indicator {
+            position: absolute;
+            right: 3rem;
+            top: 50%;
+            transform: translateY(-50%);
+            background: var(--warning-color);
+            color: white;
+            padding: 0.2rem 0.4rem;
+            border-radius: 5px;
+            font-size: 0.65rem;
+            font-weight: 600;
+            display: none;
+            animation: bounceIn 0.3s ease;
+        }
+
+        @keyframes bounceIn {
+            0% { opacity: 0; transform: translateY(-50%) scale(0.8); }
+            100% { opacity: 1; transform: translateY(-50%) scale(1); }
+        }
+
+        .validation-message {
+            font-size: 0.75rem;
+            margin-top: 0.4rem;
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+            opacity: 0;
+            transform: translateY(-5px);
+            transition: all 0.3s ease;
+        }
+
+        .validation-message.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .validation-error {
+            color: var(--error-color);
+        }
+
+        .validation-success {
+            color: var(--success-color);
+        }
+
+        .validation-warning {
+            color: var(--warning-color);
+        }
+
+        /* Login Button */
+        .login-button {
+            width: 100%;
+            padding: 1.1rem;
+            background: linear-gradient(135deg, var(--primary-blue), var(--primary-purple));
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 8px 20px -5px rgba(59, 130, 246, 0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.6rem;
+            margin-top: 0.9rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .login-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .login-button:hover::before {
+            left: 100%;
+        }
+
+        .login-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 30px -5px rgba(59, 130, 246, 0.5);
+        }
+
+        .login-button:active {
+            transform: translateY(-1px);
+        }
+
+        .login-button.loading {
+            opacity: 0.8;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .login-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: 0 8px 20px -5px rgba(59, 130, 246, 0.2);
+        }
+
+        .loading-spinner {
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top: 2px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+           100% { transform: rotate(360deg); }
+        }
+
+        /* Toast Messages */
+        .toast {
+            position: fixed;
+            top: 1.5rem;
+            right: 1.5rem;
+            z-index: 1000;
+            padding: 0.9rem 1.3rem;
+            border-radius: 10px;
+            color: white;
+            font-weight: 500;
+            font-size: 0.85rem;
+            animation: slideInToast 0.3s ease-out, fadeOutToast 0.3s ease-out 4.7s forwards;
+            max-width: 350px;
+            box-shadow: 0 12px 30px -5px rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+        }
+
+        .toast-error { background: var(--toast-bg-error); }
+        .toast-success { background: var(--toast-bg-success); }
+        .toast-info { background: var(--toast-bg-info); }
+        .toast-warning { background: var(--toast-bg-warning); }
+
+        @keyframes slideInToast {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        @keyframes fadeOutToast {
+            to { opacity: 0; transform: translateX(100%); }
+        }
+
+        /* Footer */
+        .login-footer {
+            position: absolute;
+            bottom: 1.5rem;
+            right: 1.5rem;
+            color: var(--text-light);
+            font-size: 0.75rem;
+            text-align: right;
+            transition: color 0.3s ease;
+        }
+
+        /* Dark Mode Toggle */
+        .dark-mode-toggle {
+            position: fixed;
+            top: 1.5rem;
+            left: 1.5rem;
+            z-index: 1000;
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .dark-mode-toggle:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .dark-mode-toggle svg {
+            width: 20px;
+            height: 20px;
+            color: var(--text-primary);
+            transition: color 0.3s ease;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1024px) {
+            .login-wrapper {
+                flex-direction: column;
+            }
+            
+            .branding-panel {
+                flex: 0 0 auto;
+                padding: 1.5rem;
+                border-right: none;
+                border-bottom: 1px solid var(--glass-border);
+            }
+            
+            .login-panel {
+                flex: 0 0 auto;
+                padding: 1.5rem;
+            }
+            
+            .brand-title {
+                font-size: 1.7rem;
+            }
+            
+            .feature-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .branding-panel,
+            .login-panel {
+                padding: 1.2rem;
+            }
+            
+            .brand-logo {
+                width: 70px;
+                height: 70px;
+            }
+            
+            .brand-title {
+                font-size: 1.5rem;
+            }
+            
+            .feature-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .role-options {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .branding-panel,
+            .login-panel {
+                padding: 1rem;
+            }
+            
+            .login-container {
+                max-width: 100%;
+            }
+            
+            .toast {
+                top: 1rem;
+                right: 1rem;
+                left: 1rem;
+                max-width: none;
+            }
+            
+            .login-footer {
+                bottom: 1rem;
+                right: 1rem;
+            }
+
+            .dark-mode-toggle {
+                top: 1rem;
+                left: 1rem;
+            }
+            
+            .admin-user-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.5rem;
+            }
+            
+            .admin-actions {
+                width: 100%;
+                justify-content: flex-end;
+            }
+        }
+
+        /* Accessibility */
+        @media (prefers-reduced-motion: reduce) {
+            *,
+            *::before,
+            *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+
+        /* High contrast mode */
+        @media (prefers-contrast: high) {
+            .form-input {
+                border-width: 3px;
+            }
+            
+            .role-option {
+                border-width: 3px;
+            }
+        }
+
+        /* Focus styles for accessibility */
+        .form-input:focus-visible,
+        .role-option:focus-visible,
+        .login-button:focus-visible,
+        .dark-mode-toggle:focus-visible {
+            outline: 3px solid var(--primary-blue);
+            outline-offset: 2px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Background Animation -->
+    <div class="bg-animation">
+        <div class="floating-shape shape-1"></div>
+        <div class="floating-shape shape-2"></div>
+        <div class="floating-shape shape-3"></div>
+        <div class="floating-shape shape-4"></div>
+    </div>
+
+    <!-- Main Login Wrapper -->
+    <div class="login-wrapper">
+        <!-- Branding Panel -->
+        <div class="branding-panel">
+            <div class="brand-logo">
+                <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 3h18v18h-18z"/>
+                    <path d="M7 8h10"/>
+                    <path d="M7 12h10"/>
+                    <path d="M7 16h6"/>
+                    <circle cx="17" cy="16" r="2"/>
+                </svg>
+            </div>
+            
+            <h1 class="brand-title">Ciervo Administrativo</h1>
+            <p class="brand-subtitle">
+                Sistema integral de gestión para minimarket. 
+                Controla inventario, ventas, clientes y más.
+            </p>
+            
+            <div class="feature-grid">
+                <div class="feature-item">
+                    <div class="feature-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M3 3h18l-1 13H4L3 3z"/>
+                            <path d="M8 21a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/>
+                            <path d="M19 21a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/>
+                        </svg>
+                    </div>
+                    <span class="feature-text">Gestión de Ventas</span>
+                </div>
+                
+                <div class="feature-item">
+                    <div class="feature-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect width="18" height="18" x="3" y="3" rx="2"/>
+                            <circle cx="9" cy="9" r="2"/>
+                            <path d="M21 15c0 1-1 2-2 2h-1l-1-1v-1"/>
+                        </svg>
+                    </div>
+                    <span class="feature-text">Control de Inventario</span>
+                </div>
+                
+                <div class="feature-item">
+                    <div class="feature-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                            <circle cx="9" cy="7" r="4"/>
+                            <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                        </svg>
+                    </div>
+                    <span class="feature-text">Administración</span>
+                </div>
+                
+                <div class="feature-item">
+                    <div class="feature-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="12" y1="1" x2="12" y2="23"/>
+                            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                        </svg>
+                    </div>
+                    <span class="feature-text">Reportes Financieros</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Login Panel -->
+        <div class="login-panel">
+            <div class="login-container">
+                <div class="login-header">
+                    <h2 class="login-title">Iniciar Sesión</h2>
+                    <p class="login-subtitle">
+                        Accede a tu cuenta para gestionar tu minimarket
+                    </p>
+                    
+                    <div class="security-badge">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M9 12l2 2 4-4"/>
+                            <path d="M21 12c-1 0-3-1-3-3s2-3 3-3 3 1 3 3-2 3-3 3"/>
+                            <path d="M3 12c1 0 3-1 3-3s-2-3-3-3-3 1-3 3 2 3 3 3"/>
+                            <path d="M3 12v6a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-6"/>
+                        </svg>
+                        <span>Sistema Seguro</span>
+                    </div>
+                </div>
+
+                <!-- Formulario de Propietario (owner-auth-form) -->
+                <form class="login-form" id="owner-auth-form">
+                    <!-- Email Field -->
+                    <div class="form-group">
+                        <label class="form-label" for="email">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                                <polyline points="22,6 12,13 2,6"/>
+                            </svg>
+                            Email <span class="required">*</span>
+                        </label>
+                        <div style="position: relative;">
+                            <input 
+                                type="email" 
+                                id="email" 
+                                name="email" 
+                                class="form-input" 
+                                placeholder="Ingrese su email"
+                                required
+                                autocomplete="email"
+                            >
+                            <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                                <polyline points="22,6 12,13 2,6"/>
+                            </svg>
+                        </div>
+                        <div class="validation-message" id="email-message"></div>
+                    </div>
+
+                    <!-- Password Field -->
+                    <div class="form-group">
+                        <label class="form-label" for="password">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>
+                                <path d="m7 11V7a5 5 0 0 1 10 0v4"/>
+                            </svg>
+                            Contraseña <span class="required">*</span>
+                        </label>
+                        <div style="position: relative;">
+                            <input 
+                                type="password" 
+                                id="password" 
+                                name="password" 
+                                class="form-input" 
+                                placeholder="Ingrese su contraseña"
+                                required
+                                autocomplete="current-password"
+                            >
+                            <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>
+                                <path d="m7 11V7a5 5 0 0 1 10 0v4"/>
+                            </svg>
+                            <div class="caps-indicator" id="capsIndicator">CAPS LOCK ACTIVO</div>
+                            <svg class="password-toggle" id="passwordToggle" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                <circle cx="12" cy="12" r="3"/>
+                            </svg>
+                        </div>
+                        <div class="validation-message" id="password-message"></div>
+                    </div>
+
+                    <!-- Auth Buttons -->
+                    <button type="button" class="login-button" id="registerButton">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                            <circle cx="9" cy="7" r="4"/>
+                            <line x1="19" y1="8" x2="19" y2="14"/>
+                            <line x1="22" y1="11" x2="16" y2="11"/>
+                        </svg>
+                        <span id="registerButtonText">Registrarse</span>
+                    </button>
+
+                    <button type="button" class="login-button" id="loginButton">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
+                            <polyline points="10,17 15,12 10,7"/>
+                            <line x1="15" y1="12" x2="3" y2="12"/>
+                        </svg>
+                        <span id="loginButtonText">Iniciar Sesión</span>
+                    </button>
+                </form>
+
+                <!-- Tarjeta de Credenciales Demo (demo-credentials-card) -->
+                <div id="demo-credentials-card" class="login-form" style="display: none; text-align: center;">
+                    <h2 class="login-title" style="color: var(--success-color);">¡Sistema Activado!</h2>
+                    <p class="login-subtitle">
+                        Su cuenta de propietario ha sido aprobada.
+                        Ahora puede iniciar sesión como operador con las credenciales por defecto:
+                    </p>
+                    <div style="background: var(--background-light); padding: 1rem; border-radius: 10px; margin: 1.5rem 0; border: 1px solid var(--border-color);">
+                        <p style="font-weight: 600; margin-bottom: 0.5rem;">Usuario: <span style="color: var(--primary-blue);">admin</span></p>
+                        <p style="font-weight: 600;">Clave: <span style="color: var(--primary-blue);">admin123</span></p>
+                        <p style="font-weight: 600; margin-top: 0.5rem;">Rol: <span style="color: var(--primary-blue);">Administrador</span></p>
+                    </div>
+                    <button type="button" class="login-button" id="continueToLoginButton">
+                        <span>Continuar a Iniciar Sesión</span>
+                    </button>
+                </div>
+
+                <!-- Formulario de Registro de Operador -->
+                <div id="operator-register-container" class="login-form" style="display: none;">
+                    <h2 class="login-title">Registrar Primer Operador</h2>
+                    <p class="login-subtitle">
+                        No se encontraron operadores. Por favor, registre el primer usuario para acceder al sistema.
+                    </p>
+                    <div class="form-group">
+                        <label class="form-label" for="new-system-username">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                                <circle cx="9" cy="7" r="4"/>
+                            </svg>
+                            Nuevo Usuario <span class="required">*</span>
+                        </label>
+                        <input 
+                            type="text" 
+                            id="new-system-username" 
+                            class="form-input" 
+                            placeholder="Ej: admin, cajero1"
+                            required
+                        >
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="new-system-password">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>
+                                <path d="m7 11V7a5 5 0 0 1 10 0v4"/>
+                            </svg>
+                            Nueva Clave <span class="required">*</span>
+                        </label>
+                        <input 
+                            type="password" 
+                            id="new-system-password"
+                            class="form-input" 
+                            placeholder="Ingrese la clave para el operador"
+                            required
+                        >
+                    </div>
+                    <button type="button" class="login-button" id="registerOperatorButton">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                             <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                             <circle cx="9" cy="7" r="4"/>
+                             <line x1="19" y1="8" x2="19" y2="14"/>
+                             <line x1="22" y1="11" x2="16" y2="11"/>
+                        </svg>
+                        <span id="registerOperatorButtonText">Registrar Operador</span>
+                    </button>
+                     <button type="button" class="login-button" id="backToOwnerLoginFromRegister" style="background: var(--text-secondary); margin-top: 1rem;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="15 18 9 12 15 6"></polyline>
+                        </svg>
+                        <span>Volver</span>
+                    </button>
+                </div>
+
+                <!-- Formulario de Operador (operator-login-container) -->
+                <div id="operator-login-container" class="login-form" style="display: none;">
+                    <h2 class="login-title">Ingreso de Operador</h2>
+                    <p class="login-subtitle">
+                        Ingrese sus credenciales de operador para acceder al sistema.
+                    </p>
+                    <div class="form-group">
+                        <label class="form-label" for="system-username">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                                <circle cx="9" cy="7" r="4"/>
+                            </svg>
+                            Usuario del Sistema <span class="required">*</span>
+                        </label>
+                        <div style="position: relative;">
+                            <input 
+                                type="text" 
+                                id="system-username" 
+                                name="system-username" 
+                                class="form-input" 
+                                placeholder="Ingrese su usuario de operador"
+                                required
+                                autocomplete="username"
+                            >
+                            <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                                <circle cx="9" cy="7" r="4"/>
+                            </svg>
+                        </div>
+                        <div class="validation-message" id="system-username-message"></div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="system-password">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>
+                                <path d="m7 11V7a5 5 0 0 1 10 0v4"/>
+                            </svg>
+                            Clave del Sistema <span class="required">*</span>
+                        </label>
+                        <div style="position: relative;">
+                            <input 
+                                type="password" 
+                                id="system-password" 
+                                name="system-password" 
+                                class="form-input" 
+                                placeholder="Ingrese su clave de operador"
+                                required
+                                autocomplete="current-password"
+                            >
+                            <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>
+                                <path d="m7 11V7a5 5 0 0 1 10 0v4"/>
+                            </svg>
+                            <div class="caps-indicator" id="capsIndicatorOperator">CAPS LOCK ACTIVO</div>
+                            <svg class="password-toggle" id="passwordToggleOperator" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                <circle cx="12" cy="12" r="3"/>
+                            </svg>
+                        </div>
+                        <div class="validation-message" id="system-password-message"></div>
+                    </div>
+                    <button type="button" class="login-button" id="operatorLoginButton">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
+                            <polyline points="10,17 15,12 10,7"/>
+                            <line x1="15" y1="12" x2="3" y2="12"/>
+                        </svg>
+                        <span id="operatorLoginButtonText">Ingresar al Sistema</span>
+                    </button>
+                    <!-- Nuevo botón para volver al login de propietario -->
+                    <button type="button" class="login-button" id="backToOwnerLoginButton" style="background: var(--text-secondary); margin-top: 1rem;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="15 18 9 12 15 6"></polyline>
+                        </svg>
+                        <span>Volver al login de Propietario</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dark Mode Toggle -->
+    <div class="dark-mode-toggle" id="darkModeToggle" role="button" aria-label="Toggle dark mode" tabindex="0">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-moon">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+        </svg>
+    </div>
+
+    <!-- Footer -->
+    <div class="login-footer">
+        <p>&copy; 2024 Ciervo Administrativo</p>
+        <p>Sistema Seguro de Gestión</p>
+    </div>
+
+    <script>
+        // PEGA AQUÍ TU OBJETO firebaseConfig DE FIREBASE
+        const firebaseConfig = {
+            apiKey: "AIzaSyCyaIC2-pCCQf_mJWGtG6v-0kA1l2Or2CQ",
+            authDomain: "mini-market-ciervo-index.firebaseapp.com",
+            databaseURL: "https://mini-market-ciervo-index-default-rtdb.firebaseio.com",
+            projectId: "mini-market-ciervo-index",
+            storageBucket: "mini-market-ciervo-index.firebasestorage.app",
+            messagingSenderId: "828978506509",
+            appId: "1:828978506509:web:52b6220033072038115e44"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        // Referencias a los contenedores principales
+        const ownerAuthForm = document.getElementById('owner-auth-form');
+        const operatorLoginContainer = document.getElementById('operator-login-container');
+        const operatorRegisterContainer = document.getElementById('operator-register-container'); // Keep this reference
+
+        // --- Funciones de Utilidad ---
+        function showToast(message, type) {
+            // Eliminar toasts existentes para evitar solapamiento
+            document.querySelectorAll('.toast').forEach(t => t.remove());
+
+            const toast = document.createElement('div');
+            toast.classList.add('toast', `toast-${type}`);
+            let iconSvg = '';
+            switch (type) {
+                case 'success': iconSvg = '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline>'; break;
+                case 'error': iconSvg = '<circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line>'; break;
+                case 'info': iconSvg = '<circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line>'; break;
+                case 'warning': iconSvg = '<circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line>'; break;
+            }
+            toast.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${iconSvg}</svg><span>${message}</span>`;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 5000);
+        }
+
+        /**
+         * Alterna el modo oscuro de la interfaz.
+         */
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark-mode');
+            const isDarkMode = document.body.classList.contains('dark-mode');
+            localStorage.setItem('darkMode', isDarkMode);
+        }
+
+        /**
+         * Carga la preferencia de modo oscuro del usuario al cargar la página.
+         */
+        function loadDarkModePreference() {
+            const isDarkMode = localStorage.getItem('darkMode') === 'true';
+            if (isDarkMode) {
+                document.body.classList.add('dark-mode');
+            }
+        }
+
+        /**
+         * Alterna la visibilidad de la contraseña en el campo de entrada.
+         * @param {string} fieldId - El ID del campo de contraseña.
+         * @param {string} toggleId - El ID del icono de alternar.
+         */
+        function togglePasswordVisibility(fieldId, toggleId) {
+            const passwordField = document.getElementById(fieldId);
+            const toggleIcon = document.getElementById(toggleId);
+            
+            if (!passwordField || !toggleIcon) return;
+
+            if (passwordField.type === 'password') {
+                passwordField.type = 'text';
+                toggleIcon.innerHTML = `
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                    <line x1="1" y1="1" x2="23" y2="23"/>
+                `;
+                toggleIcon.setAttribute('aria-label', 'Ocultar contraseña');
+            } else {
+                passwordField.type = 'password';
+                toggleIcon.innerHTML = `
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                `;
+                toggleIcon.setAttribute('aria-label', 'Mostrar contraseña');
+            }
+        }
+
+        /**
+         * Muestra u oculta el indicador de Bloq Mayús.
+         * @param {KeyboardEvent} event - El evento de teclado.
+         * @param {string} capsIndicatorId - El ID del indicador de Bloq Mayús.
+         */
+        function checkCapsLock(event, capsIndicatorId) {
+            const capsIndicator = document.getElementById(capsIndicatorId);
+            if (!capsIndicator) return;
+            
+            if (event.getModifierState && event.getModifierState('CapsLock')) {
+                capsIndicator.style.display = 'block';
+            } else {
+                capsIndicator.style.display = 'none';
+            }
+        }
+
+        /**
+         * Valida un campo de formulario y muestra mensajes de error/éxito.
+         * @param {HTMLInputElement} field - El campo de entrada a validar.
+         * @returns {boolean} - True si el campo es válido, false en caso contrario.
+         */
+        function validateField(field) {
+            const fieldName = field.name;
+            const value = field.value.trim();
+            const messageElement = document.getElementById(`${fieldName}-message`);
+            
+            let isValid = false;
+            let message = '';
+            let messageType = '';
+            
+            switch (fieldName) {
+                case 'email':
+                    if (value.length === 0) {
+                        message = ''; // No message if empty, let 'required' handle it
+                    } else if (!/\S+@\S+\.\S+/.test(value)) {
+                        message = '⚠ Formato de email inválido';
+                        messageType = 'error';
+                    } else {
+                        message = '✓ Email válido';
+                        messageType = 'success';
+                        isValid = true;
+                    }
+                    
+                    field.classList.remove('error', 'success');
+                    if (messageType === 'error') field.classList.add('error');
+                    if (messageType === 'success') field.classList.add('success');
+                    break;
+                    
+                case 'password':
+                    if (value.length === 0) {
+                        message = ''; // No message if empty
+                    } else if (value.length < 6) {
+                        message = '⚠ Contraseña debe tener al menos 6 caracteres';
+                        messageType = 'error';
+                    } else {
+                        message = '✓ Contraseña válida';
+                        messageType = 'success';
+                        isValid = true;
+                    }
+                    
+                    field.classList.remove('error', 'success');
+                    if (messageType === 'error') field.classList.add('error');
+                    if (messageType === 'success') field.classList.add('success');
+                    break;
+                case 'system-username':
+                    if (value.length === 0) {
+                        message = '⚠ El usuario no puede estar vacío';
+                        messageType = 'error';
+                    } else {
+                        message = '✓ Usuario válido';
+                        messageType = 'success';
+                        isValid = true;
+                    }
+                    field.classList.remove('error', 'success');
+                    if (messageType === 'error') field.classList.add('error');
+                    if (messageType === 'success') field.classList.add('success');
+                    break;
+                case 'system-password':
+                    if (value.length === 0) {
+                        message = '⚠ La clave no puede estar vacía';
+                        messageType = 'error';
+                    } else {
+                        message = '✓ Clave válida';
+                        messageType = 'success';
+                        isValid = true;
+                    }
+                    field.classList.remove('error', 'success');
+                    if (messageType === 'error') field.classList.add('error');
+                    if (messageType === 'success') field.classList.add('success');
+                    break;
+            }
+            
+            if (messageElement) {
+                messageElement.textContent = message;
+                messageElement.className = `validation-message ${message ? 'show' : ''} ${messageType ? 'validation-' + messageType : ''}`;
+                if (message) messageElement.setAttribute('aria-live', 'polite');
+            }
+            
+            updateAuthButtons();
+            return isValid;
+        }
+
+        /**
+         * Limpia los mensajes de validación de un campo.
+         * @param {HTMLInputElement} field - El campo de entrada.
+         */
+        function clearValidation(field) {
+            const fieldName = field.name;
+            const messageElement = document.getElementById(`${fieldName}-message`);
+            
+            if (messageElement) {
+                messageElement.textContent = '';
+                messageElement.className = 'validation-message';
+                messageElement.removeAttribute('aria-live');
+            }
+            
+            field.classList.remove('error', 'success');
+            updateAuthButtons();
+        }
+
+        /**
+         * Actualiza el estado de los botones de autenticación (habilitado/deshabilitado).
+         */
+        function updateAuthButtons() {
+            const emailField = document.getElementById('email');
+            const passwordField = document.getElementById('password');
+            const registerButton = document.getElementById('registerButton');
+            const loginButton = document.getElementById('loginButton');
+
+            if (emailField && passwordField && registerButton && loginButton) {
+                const email = emailField.value.trim();
+                const password = passwordField.value;
+                const isOwnerFormValid = /\S+@\S+\.\S+/.test(email) && password.length >= 6;
+                
+                registerButton.disabled = !isOwnerFormValid;
+                loginButton.disabled = !isOwnerFormValid;
+            }
+
+            const systemUsernameField = document.getElementById('system-username');
+            const systemPasswordField = document.getElementById('system-password');
+            const operatorLoginButton = document.getElementById('operatorLoginButton');
+
+            if (systemUsernameField && systemPasswordField && operatorLoginButton) {
+                const username = systemUsernameField.value.trim();
+                const password = systemPasswordField.value;
+                const isOperatorFormValid = username.length > 0 && password.length > 0;
+
+                operatorLoginButton.disabled = !isOperatorFormValid;
+            }
+        }
+
+        /**
+         * Maneja el proceso de registro de un nuevo usuario propietario.
+         */
+        async function handleOwnerRegister() {
+            const emailField = document.getElementById('email');
+            const passwordField = document.getElementById('password');
+            const registerButton = document.getElementById('registerButton');
+            const registerButtonText = document.getElementById('registerButtonText');
+
+            const isEmailValid = validateField(emailField);
+            const isPasswordValid = validateField(passwordField);
+
+            if (!isEmailValid || !isPasswordValid) {
+                showToast('Por favor, corrija los errores del formulario.', 'error');
+                return;
+            }
+
+            const email = emailField.value.trim();
+            const password = passwordField.value;
+
+            const originalButtonText = registerButtonText.textContent;
+            registerButton.classList.add('loading');
+            registerButton.disabled = true;
+            registerButtonText.innerHTML = '<div class="loading-spinner"></div>';
+
+            try {
+                // Verificar si el usuario ya existe en Firebase
+                const snapshot = await db.ref('users').orderByChild('email').equalTo(email).once('value');
+                
+                if (snapshot.exists()) {
+                    const userData = snapshot.val();
+                    const userKey = Object.keys(userData)[0];
+                    const user = userData[userKey];
+
+                    if (user.ingreso) {
+                        showToast('Este email ya está registrado y aprobado. Inicie sesión.', 'info');
+                    } else {
+                        showToast('Este email ya está registrado pero pendiente de aprobación.', 'warning');
+                    }
+                    return;
+                }
+
+                // Crear nuevo usuario en Firebase
+                await db.ref('users').push({
+                    email: email,
+                    password: password, // En un caso real, esto debería estar hasheado
+                    ingreso: false,
+                    createdAt: new Date().toISOString()
+                });
+
+                showToast('¡Registro exitoso! Espere la aprobación de un administrador.', 'info');
+
+                // Limpiar campos
+                emailField.value = '';
+                passwordField.value = '';
+                clearValidation(emailField);
+                clearValidation(passwordField);
+
+            } catch (error) {
+                console.error('Error durante el registro de propietario:', error.message);
+                showToast('Error al registrar propietario. Por favor, intente de nuevo.', 'error');
+            } finally {
+                registerButton.classList.remove('loading');
+                registerButton.disabled = false;
+                registerButtonText.textContent = originalButtonText;
+            }
+        }
+
+        /**
+         * NUEVA LÓGICA: Maneja el inicio de sesión del propietario.
+         * Redirige a gestión de usuarios si no hay operadores, o muestra el login de operador si existen.
+         */
+        async function handleOwnerLogin() {
+            const emailField = document.getElementById('email');
+            const passwordField = document.getElementById('password');
+            const loginButton = document.getElementById('loginButton');
+            const loginButtonText = document.getElementById('loginButtonText');
+
+            const isEmailValid = validateField(emailField);
+            const isPasswordValid = validateField(passwordField);
+
+            if (!isEmailValid || !isPasswordValid) {
+                showToast('Por favor, corrija los errores del formulario.', 'error');
+                return;
+            }
+
+            const email = emailField.value.trim();
+            const password = passwordField.value;
+
+            const originalButtonText = loginButtonText.textContent;
+            loginButton.classList.add('loading');
+            loginButton.disabled = true;
+            loginButtonText.innerHTML = '<div class="loading-spinner"></div>';
+
+            try {
+                const snapshot = await db.ref('users').orderByChild('email').equalTo(email).once('value');
+                if (!snapshot.exists()) {
+                    showToast('Email o contraseña incorrectos.', 'error');
+                    return;
+                }
+
+                let userFound = false;
+                let userApproved = false;
+                let ownerData = null;
+
+                snapshot.forEach(childSnapshot => {
+                    const user = childSnapshot.val();
+                    if (user.password === password) {
+                        userFound = true;
+                        userApproved = user.ingreso;
+                        ownerData = { id: childSnapshot.key, ...user };
+                    }
+                });
+
+                if (!userFound) {
+                    showToast('Email o contraseña incorrectos.', 'error');
+                    return;
+                }
+                if (!userApproved) {
+                    showToast('Su cuenta aún no ha sido aprobada por el administrador.', 'warning');
+                    return;
+                }
+
+                // **LÓGICA CLAVE DE REDIRECCIÓN**
+                const operatorsSnapshot = await db.ref('operadores').orderByChild('propietario').equalTo(email).once('value');
+                
+                // Guardamos el email del propietario para usarlo en las otras páginas
+                sessionStorage.setItem('propietarioActual', email);
+
+                if (operatorsSnapshot.exists()) {
+                    // Si existen operadores, mostramos el formulario de login para ellos
+                    showToast('Inicio de sesión de propietario exitoso. Ingrese como operador.', 'success');
+                    ownerAuthForm.style.display = 'none';
+                    operatorLoginContainer.style.display = 'flex';
+                } else {
+                    // Si NO existen operadores, lo redirigimos a crear el primero
+                    showToast('Bienvenido. Debe registrar su primer usuario operador.', 'info');
+                    window.location.href = 'gestion_usuario.html';
+                }
+
+            } catch (error) {
+                console.error('Error en login de propietario:', error.message);
+                showToast('Error al iniciar sesión.', 'error');
+            } finally {
+                loginButton.classList.remove('loading');
+                loginButton.disabled = false;
+                loginButtonText.textContent = originalButtonText;
+            }
+        }
+
+        /**
+         * Maneja el registro de un nuevo operador en la base de datos.
+         */
+        async function handleOperatorRegister() {
+            const usernameField = document.getElementById('new-system-username');
+            const passwordField = document.getElementById('new-system-password');
+            const registerButton = document.getElementById('registerOperatorButton');
+            const registerButtonText = document.getElementById('registerOperatorButtonText');
+
+            const username = usernameField.value.trim();
+            const password = passwordField.value;
+
+            if (!username || !password) {
+                showToast('El usuario y la clave no pueden estar vacíos.', 'error');
+                return;
+            }
+
+            const originalButtonText = registerButtonText.textContent;
+            registerButton.classList.add('loading');
+            registerButton.disabled = true;
+            registerButtonText.innerHTML = '<div class="loading-spinner"></div>';
+
+            try {
+                const currentOwner = JSON.parse(sessionStorage.getItem('currentOwner') || '{}');
+                if (!currentOwner.email) {
+                    showToast('Error de sesión de propietario. Vuelva a iniciar sesión.', 'error');
+                    return;
+                }
+
+                await db.ref('operadores').push({
+                    username: username,
+                    password: password, // En un caso real, esto debería estar hasheado
+                    propietario: currentOwner.email,
+                    role: 'Administrador', // Rol por defecto para el primer usuario
+                    createdAt: new Date().toISOString()
+                });
+
+                showToast('¡Operador registrado con éxito!', 'success');
+                
+                // Ocultar registro y mostrar login para que ingrese con las nuevas credenciales
+                operatorRegisterContainer.style.display = 'none';
+                operatorLoginContainer.style.display = 'flex';
+                document.getElementById('system-username').value = username; // Pre-llenar usuario
+                document.getElementById('system-password').focus();
+
+            } catch (error) {
+                console.error('Error registrando operador:', error.message);
+                showToast('No se pudo registrar el operador.', 'error');
+            } finally {
+                registerButton.classList.remove('loading');
+                registerButton.disabled = false;
+                registerButtonText.textContent = originalButtonText;
+            }
+        }
+        
+        /**
+         * NUEVA LÓGICA: Maneja el inicio de sesión del operador.
+         * Verifica el status del operador antes de permitir el ingreso.
+         */
+        async function handleOperatorLogin() {
+            const systemUsernameField = document.getElementById('system-username');
+            const systemPasswordField = document.getElementById('system-password');
+            const operatorLoginButton = document.getElementById('operatorLoginButton');
+            const operatorLoginButtonText = document.getElementById('operatorLoginButtonText');
+
+            const isUsernameValid = validateField(systemUsernameField);
+            const isPasswordValid = validateField(systemPasswordField);
+            
+            if (!isUsernameValid || !isPasswordValid) {
+                showToast('Usuario y clave son requeridos.', 'error');
+                return;
+            }
+
+            const username = systemUsernameField.value.trim();
+            const password = systemPasswordField.value;
+            const propietarioEmail = sessionStorage.getItem('propietarioActual');
+
+            if (!propietarioEmail) {
+                showToast('Error de sesión. Vuelva a iniciar sesión como propietario.', 'error');
+                handleSignOutAndReturn();
+                return;
+            }
+
+            const originalButtonText = operatorLoginButtonText.textContent;
+            operatorLoginButton.classList.add('loading');
+            operatorLoginButton.disabled = true;
+            operatorLoginButtonText.innerHTML = '<div class="loading-spinner"></div>';
+            
+            try {
+                const snapshot = await db.ref('operadores').orderByChild('propietario').equalTo(propietarioEmail).once('value');
+                if (!snapshot.exists()) {
+                    showToast('No se encontraron operadores para esta cuenta.', 'error');
+                    return;
+                }
+
+                let operatorFound = null;
+                snapshot.forEach(childSnapshot => {
+                    const operator = childSnapshot.val();
+                    if (operator.username === username && operator.password === password) {
+                        operatorFound = operator;
+                    }
+                });
+
+                if (!operatorFound) {
+                    showToast('Usuario o clave de operador incorrectos.', 'error');
+                    return;
+                }
+
+                // **LÓGICA CLAVE DE VERIFICACIÓN DE STATUS**
+                if (operatorFound.status !== 'active') {
+                    const statusMessage = `Su usuario está '${operatorFound.status}'. Comuníquese con el administrador del sistema.`;
+                    showToast(statusMessage, 'warning');
+                    return;
+                }
+                
+                // Si todo es correcto, guardamos los datos del operador y redirigimos
+                showToast(`¡Bienvenido, ${operatorFound.username}!`, 'success'); // Usar username o firstName si existe
+                // Guardamos el objeto COMPLETO del operador para usarlo en el menú
+                sessionStorage.setItem('currentUser', JSON.stringify(operatorFound));
+                window.location.href = 'menu.html';
+
+            } catch (error) {
+                console.error('Error en login de operador:', error.message);
+                showToast('Error al ingresar como operador.', 'error');
+            } finally {
+                operatorLoginButton.classList.remove('loading');
+                operatorLoginButton.disabled = false;
+                operatorLoginButtonText.textContent = originalButtonText;
+            }
+        }
+
+        /**
+         * Cierra la sesión del propietario y regresa al formulario de login del propietario.
+         */
+        function handleSignOutAndReturn() {
+            sessionStorage.removeItem('currentOwner'); // Limpiar el currentOwner si se usó
+            sessionStorage.removeItem('propietarioActual');
+            sessionStorage.removeItem('currentUser');
+            showToast('Sesión cerrada. Volviendo al login de propietario.', 'info');
+            
+            ownerAuthForm.style.display = 'flex';
+            operatorLoginContainer.style.display = 'none';
+            operatorRegisterContainer.style.display = 'none'; // Ensure this is hidden too
+            
+            // Limpiar los campos del formulario de propietario
+            document.getElementById('email').value = '';
+            document.getElementById('password').value = '';
+            clearValidation(document.getElementById('email'));
+            clearValidation(document.getElementById('password'));
+
+            // Limpiar campos del formulario de operador
+            if (document.getElementById('system-username')) document.getElementById('system-username').value = '';
+            if (document.getElementById('system-password')) document.getElementById('system-password').value = '';
+            if (document.getElementById('new-system-username')) document.getElementById('new-system-username').value = '';
+            if (document.getElementById('new-system-password')) document.getElementById('new-system-password').value = '';
+        }
+
+        /**
+         * Configura todos los event listeners para los elementos de la interfaz.
+         */
+        function setupEventListeners() {
+            loadDarkModePreference();
+
+            // Owner Auth Form fields
+            const emailField = document.getElementById('email');
+            const passwordField = document.getElementById('password');
+            const passwordToggle = document.getElementById('passwordToggle');
+            const registerButton = document.getElementById('registerButton');
+            const loginButton = document.getElementById('loginButton');
+
+            if (emailField) {
+                emailField.addEventListener('input', () => clearValidation(emailField));
+                emailField.addEventListener('blur', () => validateField(emailField));
+                emailField.addEventListener('input', updateAuthButtons);
+            }
+
+            if (passwordField) {
+                passwordField.addEventListener('input', () => clearValidation(passwordField));
+                passwordField.addEventListener('blur', () => validateField(passwordField));
+                passwordField.addEventListener('keydown', (e) => checkCapsLock(e, 'capsIndicator'));
+                passwordField.addEventListener('keyup', (e) => checkCapsLock(e, 'capsIndicator'));
+                passwordField.addEventListener('input', updateAuthButtons);
+            }
+
+            if (passwordToggle) {
+                passwordToggle.addEventListener('click', () => togglePasswordVisibility('password', 'passwordToggle'));
+            }
+
+            if (registerButton) registerButton.addEventListener('click', handleOwnerRegister);
+            if (loginButton) loginButton.addEventListener('click', handleOwnerLogin);
+
+            // Demo Credentials Card button (this part will now be skipped for owner login)
+            // This section is commented out as per the new logic where demo-credentials-card is not directly used after owner login.
+            // const continueToLoginButton = document.getElementById('continueToLoginButton');
+            // if (continueToLoginButton) {
+            //     continueToLoginButton.addEventListener('click', () => {
+            //         demoCredentialsCard.style.display = 'none';
+            //         operatorLoginContainer.style.display = 'flex';
+            //         showToast('Ahora ingrese con las credenciales de operador por defecto.', 'info');
+            //     });
+            // }
+
+            // Operator Login Form fields
+            const systemUsernameField = document.getElementById('system-username');
+            const systemPasswordField = document.getElementById('system-password');
+            const passwordToggleOperator = document.getElementById('passwordToggleOperator');
+            const operatorLoginButton = document.getElementById('operatorLoginButton');
+            const backToOwnerLoginButton = document.getElementById('backToOwnerLoginButton');
+
+            if (systemUsernameField) {
+                systemUsernameField.addEventListener('input', () => clearValidation(systemUsernameField));
+                systemUsernameField.addEventListener('blur', () => validateField(systemUsernameField));
+                systemUsernameField.addEventListener('input', updateAuthButtons);
+            }
+
+            if (systemPasswordField) {
+                systemPasswordField.addEventListener('input', () => clearValidation(systemPasswordField));
+                systemPasswordField.addEventListener('blur', () => validateField(systemPasswordField));
+                systemPasswordField.addEventListener('keydown', (e) => checkCapsLock(e, 'capsIndicatorOperator'));
+                systemPasswordField.addEventListener('keyup', (e) => checkCapsLock(e, 'capsIndicatorOperator'));
+                systemPasswordField.addEventListener('input', updateAuthButtons);
+            }
+
+            if (passwordToggleOperator) {
+                passwordToggleOperator.addEventListener('click', () => togglePasswordVisibility('system-password', 'passwordToggleOperator'));
+            }
+
+            if (operatorLoginButton) operatorLoginButton.addEventListener('click', handleOperatorLogin);
+            if (backToOwnerLoginButton) backToOwnerLoginButton.addEventListener('click', handleSignOutAndReturn);
+
+            // Operator Register Form
+            const registerOperatorButton = document.getElementById('registerOperatorButton');
+            const backToOwnerLoginFromRegister = document.getElementById('backToOwnerLoginFromRegister');
+
+            if (registerOperatorButton) registerOperatorButton.addEventListener('click', handleOperatorRegister);
+            if (backToOwnerLoginFromRegister) {
+                backToOwnerLoginFromRegister.addEventListener('click', () => {
+                    handleSignOutAndReturn(); 
+                });
+            }
+
+            // Dark Mode Toggle
+            const darkModeToggle = document.getElementById('darkModeToggle');
+            if (darkModeToggle) {
+                darkModeToggle.addEventListener('click', toggleDarkMode);
+                darkModeToggle.addEventListener('keydown', (event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        toggleDarkMode();
+                    }
+                });
+            }
+        }
+
+        // Inicializar cuando el DOM esté cargado
+        document.addEventListener('DOMContentLoaded', setupEventListeners);
+    </script>
+</body>
+</html>

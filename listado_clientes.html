@@ -1,0 +1,1290 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Listado de Clientes - Ciervo Administrativo</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.1/dist/umd/lucide.js"></script>
+    <style>
+        /* Base Styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(to bottom right, #f8fafc, #dbeafe, #e0e7ff);
+            min-height: 100vh;
+            color: #334155;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        /* Dark Mode Styles */
+        body.dark-mode {
+            background: linear-gradient(to bottom right, #1a202c, #2d3748, #4a5568);
+            color: #e2e8f0;
+        }
+
+        .glassmorphic-bar {
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(16px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            transition: background-color 0.3s, border-color 0.3s;
+        }
+
+        .dark-mode .glassmorphic-bar {
+            background: rgba(26, 32, 44, 0.7);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .container {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 0 1.5rem;
+        }
+
+        .top-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem 0;
+        }
+
+        .brand-section {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .brand-icon {
+            position: relative;
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(to bottom right, #3b82f6, #9333ea);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.25);
+        }
+
+        .brand-icon::after {
+            content: '';
+            position: absolute;
+            top: -4px;
+            right: -4px;
+            width: 16px;
+            height: 16px;
+            background: #10b981;
+            border-radius: 50%;
+            border: 2px solid white;
+        }
+
+        .brand-text h1 {
+            font-size: 1.25rem;
+            font-weight: bold;
+            background: linear-gradient(to right, #1e293b, #64748b);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+        }
+
+        .dark-mode .brand-text h1 {
+            background: linear-gradient(to right, #e2e8f0, #cbd5e1);
+            background-clip: text;
+            -webkit-background-clip: text;
+        }
+
+        .brand-text p {
+            font-size: 0.875rem;
+            color: #64748b;
+        }
+
+        .dark-mode .brand-text p {
+            color: #a0aec0;
+        }
+
+        .nav-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .back-button {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            background: rgba(255, 255, 255, 0.5);
+            border: none;
+            border-radius: 12px;
+            color: #64748b;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            backdrop-filter: blur(8px);
+        }
+
+        .dark-mode .back-button {
+            background: rgba(255, 255, 255, 0.1);
+            color: #cbd5e1;
+        }
+
+        .back-button:hover {
+            background: rgba(255, 255, 255, 0.8);
+            color: #1e293b;
+            transform: translateX(-2px);
+        }
+
+        .dark-mode .back-button:hover {
+            background: rgba(255, 255, 255, 0.2);
+            color: #e2e8f0;
+        }
+
+        .main-content {
+            padding: 2rem 0;
+        }
+
+        .module-header-section {
+            text-align: center;
+            margin-bottom: 2rem;
+            padding: 2rem 0;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(219, 234, 254, 1);
+            color: #1d4ed8;
+            padding: 0.5rem 1rem;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            margin-bottom: 1rem;
+        }
+
+        .dark-mode .badge {
+            background: rgba(59, 130, 246, 0.2);
+            color: #90cdf4;
+        }
+
+        .module-title {
+            font-size: 2.25rem;
+            font-weight: bold;
+            background: linear-gradient(to right, #1e293b, #1e40af, #7c3aed);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            margin-bottom: 1rem;
+        }
+
+        .dark-mode .module-title {
+            background: linear-gradient(to right, #e2e8f0, #90cdf4, #b794f4);
+            background-clip: text;
+            -webkit-background-clip: text;
+        }
+
+        .module-subtitle {
+            font-size: 1.125rem;
+            color: #64748b;
+            max-width: 48rem;
+            margin: 0 auto;
+        }
+
+        .dark-mode .module-subtitle {
+            color: #a0aec0;
+        }
+
+        .tab-container {
+            background: white;
+            border-radius: 24px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            border: 1px solid #e2e8f0;
+            overflow: hidden;
+            transition: background-color 0.3s, border-color 0.3s, box-shadow 0.3s;
+        }
+
+        .dark-mode .tab-container {
+            background: #2d3748;
+            border: 1px solid #4a5568;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        .tab-content-area {
+            padding: 2rem;
+        }
+
+        /* Clients List Styles */
+        .list-header {
+            margin-bottom: 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        @media (min-width: 768px) {
+            .list-header {
+                flex-direction: row;
+                justify-content: space-between;
+                align-items: center;
+            }
+        }
+
+        .search-section {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            flex: 1;
+        }
+
+        @media (min-width: 768px) {
+            .search-section {
+                flex-direction: row;
+                align-items: center;
+            }
+        }
+
+        .search-input-container {
+            position: relative;
+            flex: 1;
+        }
+
+        .search-input-container svg {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #94a3b8;
+        }
+
+        .dark-mode .search-input-container svg {
+            color: #a0aec0;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 0.75rem 1rem 0.75rem 3rem;
+            background: #f8fafc;
+            border: 1px solid #cbd5e1;
+            border-radius: 12px;
+            color: #1e293b;
+            font-size: 0.875rem;
+            transition: all 0.2s;
+        }
+
+        .dark-mode .search-input {
+            background: #4a5568;
+            border: 1px solid #64748b;
+            color: #e2e8f0;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .dark-mode .search-input:focus {
+            border-color: #90cdf4;
+            background: #2d3748;
+            box-shadow: 0 0 0 3px rgba(144, 205, 244, 0.2);
+        }
+
+        .filter-controls {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .filter-select {
+            padding: 0.75rem 1rem;
+            background: #f8fafc;
+            border: 1px solid #cbd5e1;
+            border-radius: 12px;
+            color: #1e293b;
+            font-size: 0.875rem;
+            min-width: 150px;
+            transition: all 0.2s;
+        }
+
+        .dark-mode .filter-select {
+            background: #4a5568;
+            border: 1px solid #64748b;
+            color: #e2e8f0;
+        }
+
+        .filter-select:focus {
+            outline: none;
+            border-color: #3b82f6;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .dark-mode .filter-select:focus {
+            border-color: #90cdf4;
+            background: #2d3748;
+            box-shadow: 0 0 0 3px rgba(144, 205, 244, 0.2);
+        }
+
+        .export-button {
+            padding: 0.75rem 1.5rem;
+            background: #10b981;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .export-button:hover {
+            background: #0e9f73;
+        }
+
+        .dark-mode .export-button {
+            background: #059669;
+        }
+
+        .dark-mode .export-button:hover {
+            background: #047857;
+        }
+
+        /* Table Styles */
+        .clients-table-container {
+            overflow-x: auto; /* Allows horizontal scrolling for small screens */
+        }
+
+        .clients-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1.5rem;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden; /* Ensures rounded corners apply to content */
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+
+        .dark-mode .clients-table {
+            background: #2d3748;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+        }
+
+        .clients-table th,
+        .clients-table td {
+            padding: 1rem 1.25rem;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .dark-mode .clients-table th,
+        .dark-mode .clients-table td {
+            border-bottom: 1px solid #4a5568;
+        }
+
+        .clients-table th {
+            background: #f8fafc;
+            color: #64748b;
+            font-weight: 600;
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .dark-mode .clients-table th {
+            background: #4a5568;
+            color: #cbd5e1;
+        }
+
+        .clients-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .clients-table tbody tr:hover {
+            background: #f0f4f8;
+        }
+
+        .dark-mode .clients-table tbody tr:hover {
+            background: #3a4454;
+        }
+
+        .client-name-cell {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .client-avatar-small {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(to bottom right, #3b82f6, #9333ea);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 0.75rem;
+            font-weight: bold;
+        }
+
+        .client-info-text {
+            color: #334155;
+            font-size: 0.875rem;
+        }
+
+        .dark-mode .client-info-text {
+            color: #e2e8f0;
+        }
+
+        .client-secondary-info {
+            color: #64748b;
+            font-size: 0.75rem;
+        }
+
+        .dark-mode .client-secondary-info {
+            color: #a0aec0;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .action-button {
+            padding: 0.5rem 0.75rem;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            background: #f8fafc;
+            color: #334155;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.875rem;
+        }
+
+        .dark-mode .action-button {
+            background: #4a5568;
+            border-color: #64748b;
+            color: #e2e8f0;
+        }
+
+        .action-button:hover {
+            background: #e2e8f0;
+            border-color: #94a3b8;
+        }
+
+        .dark-mode .action-button:hover {
+            background: #64748b;
+            border-color: #a0aec0;
+        }
+
+        .no-clients-message {
+            text-align: center;
+            padding: 3rem;
+            color: #64748b;
+            font-size: 1.125rem;
+        }
+
+        .dark-mode .no-clients-message {
+            color: #a0aec0;
+        }
+
+        .no-clients-message svg {
+            margin-bottom: 1rem;
+            color: #94a3b8;
+        }
+
+        .dark-mode .no-clients-message svg {
+            color: #64748b;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        /* Dark Mode Toggle Button */
+        .dark-mode-toggle {
+            background: none;
+            border: none;
+            color: inherit;
+            cursor: pointer;
+            font-size: 1.25rem;
+            margin-right: 0.5rem;
+            padding: 0.5rem;
+            border-radius: 8px;
+            transition: background-color 0.2s, color 0.2s;
+        }
+
+        .dark-mode-toggle:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .dark-mode .dark-mode-toggle {
+            color: inherit;
+        }
+
+        .dark-mode .dark-mode-toggle:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        /* Pagination Styles */
+        .pagination-controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+
+        .pagination-button {
+            padding: 0.5rem 1rem;
+            background: #e2e8f0;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: #334155;
+            font-weight: 500;
+        }
+
+        .dark-mode .pagination-button {
+            background: #4a5568;
+            border: 1px solid #64748b;
+            color: #e2e8f0;
+        }
+
+        .pagination-button:hover:not(:disabled) {
+            background: #cbd5e1;
+            border-color: #94a3b8;
+        }
+
+        .dark-mode .pagination-button:hover:not(:disabled) {
+            background: #64748b;
+            border-color: #a0aec0;
+        }
+
+        .pagination-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .pagination-info {
+            font-size: 0.875rem;
+            color: #64748b;
+        }
+
+        .dark-mode .pagination-info {
+            color: #a0aec0;
+        }
+
+        /* Modal Styles */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            /* Ensure it's hidden by default */
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+
+        .modal.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+            width: 90%;
+            max-width: 500px;
+            position: relative;
+            transform: translateY(-20px); /* Initial state for animation */
+            transition: transform 0.3s ease;
+        }
+
+        .modal.visible .modal-content {
+            transform: translateY(0); /* Final state for animation */
+        }
+
+        .dark-mode .modal-content {
+            background: #2d3748;
+            color: #e2e8f0;
+        }
+
+        .modal-close-button {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #64748b;
+        }
+
+        .dark-mode .modal-close-button {
+            color: #a0aec0;
+        }
+
+        .modal-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 1.5rem;
+            color: #1e293b;
+        }
+
+        .dark-mode .modal-title {
+            color: #e2e8f0;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: #334155;
+        }
+
+        .dark-mode .form-group label {
+            color: #cbd5e1;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            background: #f8fafc;
+            color: #1e293b;
+            font-size: 1rem;
+        }
+
+        .dark-mode .form-group input {
+            background: #4a5568;
+            border-color: #64748b;
+            color: #e2e8f0;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .dark-mode .form-group input:focus {
+            border-color: #90cdf4;
+            box-shadow: 0 0 0 3px rgba(144, 205, 244, 0.2);
+        }
+
+        .modal-buttons {
+            display: flex;
+            justify-content: flex-end;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .modal-button {
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .modal-button.cancel {
+            background: #e2e8f0;
+            color: #334155;
+            border: 1px solid #cbd5e1;
+        }
+
+        .dark-mode .modal-button.cancel {
+            background: #4a5568;
+            color: #e2e8f0;
+            border-color: #64748b;
+        }
+
+        .modal-button.cancel:hover {
+            background: #cbd5e1;
+        }
+
+        .dark-mode .modal-button.cancel:hover {
+            background: #64748b;
+        }
+
+        .modal-button.save {
+            background: #3b82f6;
+            color: white;
+            border: 1px solid #3b82f6;
+        }
+
+        .dark-mode .modal-button.save {
+            background: #60a5fa;
+            border-color: #60a5fa;
+        }
+
+        .modal-button.save:hover {
+            background: #2563eb;
+        }
+
+        .dark-mode .modal-button.save:hover {
+            background: #3b82f6;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 767px) {
+            .module-title {
+                font-size: 1.875rem;
+            }
+            
+            .filter-controls {
+                flex-direction: column;
+            }
+            
+            .filter-select {
+                min-width: auto;
+            }
+            
+            .clients-table th,
+            .clients-table td {
+                padding: 0.75rem;
+            }
+
+            .list-header {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .export-button {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Top Bar -->
+    <div class="glassmorphic-bar">
+        <div class="container">
+            <div class="top-bar">
+                <!-- Brand Section -->
+                <div class="brand-section">
+                    <div class="brand-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg>
+                    </div>
+                    <div class="brand-text">
+                        <h1>Ciervo Administrativo</h1>
+                        <p>Sistema de Gestión Empresarial</p>
+                    </div>
+                </div>
+
+                <!-- Navigation Actions -->
+                <div class="nav-actions">
+                    <button id="darkModeToggle" class="dark-mode-toggle">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sun-icon"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="M4.93 4.93l1.41 1.41"/><path d="M17.66 17.66l1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="M4.93 19.07l1.41-1.41"/><path d="M17.66 6.34l1.41-1.41"/></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="moon-icon hidden"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+                    </button>
+                    <a href="menu.html" class="back-button">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+                        Volver al Menú
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="container main-content">
+        <!-- Module Header -->
+        <div class="module-header-section">
+            <div class="badge">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M17 18.5V10a2 2 0 0 0-2-2H9a2 2 0 0 0-2 2v8.5"/>
+                    <circle cx="12" cy="5" r="3"/>
+                    <path d="M12 18.5V22"/>
+                    <path d="M9 18.5H15"/>
+                </svg>
+                <span>Gestión de Clientes</span>
+            </div>
+            <h2 class="module-title">Listado de Clientes</h2>
+            <p class="module-subtitle">
+                Visualiza y gestiona los clientes registrados a través de las ventas.
+            </p>
+        </div>
+
+        <!-- Clients List Section -->
+        <div class="tab-container">
+            <div class="tab-content-area">
+                <div class="clients-list-container">
+                    <div class="list-header">
+                        <div class="search-section">
+                            <div class="search-input-container">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="11" cy="11" r="8"/>
+                                    <path d="m21 21-4.35-4.35"/>
+                                </svg>
+                                <input type="text" placeholder="Buscar clientes..." class="search-input" id="clientSearch">
+                            </div>
+                            <div class="filter-controls">
+                                <select class="filter-select" id="documentTypeFilter">
+                                    <option value="">Todos los tipos</option>
+                                    <option value="V">Venezolano</option>
+                                    <option value="E">Extranjero</option>
+                                    <option value="J">Jurídico</option>
+                                    <option value="G">Gubernamental</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button class="export-button" id="exportClientsButton">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+                            </svg>
+                            Exportar
+                        </button>
+                    </div>
+
+                    <div class="clients-table-container">
+                        <table class="clients-table">
+                            <thead>
+                                <tr>
+                                    <th>Nombre</th>
+                                    <th>Documento</th>
+                                    <th>Teléfono</th>
+                                    <th>Email</th>
+                                    <th>Última Venta</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="clientsTableBody">
+                                <!-- Clients will be populated here from localStorage -->
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="no-clients-message hidden" id="noClientsMessage">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M17 18.5V10a2 2 0 0 0-2-2H9a2 2 0 0 0-2 2v8.5"/>
+                            <circle cx="12" cy="5" r="3"/>
+                            <path d="M12 18.5V22"/>
+                            <path d="M9 18.5H15"/>
+                        </svg>
+                        <h3>No hay clientes registrados</h3>
+                        <p>Los clientes se registran automáticamente al completar los datos en el módulo de ventas (POS).</p>
+                    </div>
+
+                    <div class="pagination-controls">
+                        <button id="prevPage" class="pagination-button" disabled>Anterior</button>
+                        <span id="paginationInfo" class="pagination-info"></span>
+                        <button id="nextPage" class="pagination-button">Siguiente</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Client Modal -->
+    <div id="editClientModal" class="modal">
+        <div class="modal-content">
+            <button class="modal-close-button" id="closeModalButton">&times;</button>
+            <h3 class="modal-title">Editar Cliente</h3>
+            <form id="editClientForm">
+                <input type="hidden" id="editClientId">
+                <div class="form-group">
+                    <label for="editClientName">Nombre:</label>
+                    <input type="text" id="editClientName" required>
+                </div>
+                <div class="form-group">
+                    <label for="editClientDocument">Documento:</label>
+                    <input type="text" id="editClientDocument">
+                </div>
+                <div class="form-group">
+                    <label for="editClientPhone">Teléfono:</label>
+                    <input type="text" id="editClientPhone">
+                </div>
+                <div class="form-group">
+                    <label for="editClientEmail">Email:</label>
+                    <input type="email" id="editClientEmail">
+                </div>
+                <div class="modal-buttons">
+                    <button type="button" class="modal-button cancel" id="cancelEditButton">Cancelar</button>
+                    <button type="submit" class="modal-button save">Guardar Cambios</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let allClientsData = []; // Stores all clients after initial load
+        let filteredClientsData = []; // Stores clients after search/filter
+        let currentPage = 1;
+        const clientsPerPage = 10; // Number of clients to display per page
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize Lucide icons
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            } else {
+                setTimeout(() => {
+                    if (typeof lucide !== 'undefined') {
+                        lucide.createIcons();
+                    }
+                }, 100);
+            }
+            
+            // Load all clients once
+            allClientsData = getClients();
+            filterAndRenderClients(); // Initial render with all clients
+
+            // Add event listeners for search and filters
+            const searchInput = document.getElementById('clientSearch');
+            const documentTypeFilter = document.getElementById('documentTypeFilter');
+            const prevPageButton = document.getElementById('prevPage');
+            const nextPageButton = document.getElementById('nextPage');
+            const exportClientsButton = document.getElementById('exportClientsButton');
+            
+            if (searchInput) {
+                searchInput.addEventListener('input', () => {
+                    currentPage = 1; // Reset to first page on new search/filter
+                    filterAndRenderClients();
+                });
+            }
+            if (documentTypeFilter) {
+                documentTypeFilter.addEventListener('change', () => {
+                    currentPage = 1; // Reset to first page on new search/filter
+                    filterAndRenderClients();
+                });
+            }
+
+            if (prevPageButton) {
+                prevPageButton.addEventListener('click', () => {
+                    if (currentPage > 1) {
+                        currentPage--;
+                        renderClientsTable(filteredClientsData);
+                    }
+                });
+            }
+            if (nextPageButton) {
+                nextPageButton.addEventListener('click', () => {
+                    const totalPages = Math.ceil(filteredClientsData.length / clientsPerPage);
+                    if (currentPage < totalPages) {
+                        currentPage++;
+                        renderClientsTable(filteredClientsData);
+                    }
+                });
+            }
+
+            if (exportClientsButton) {
+                exportClientsButton.addEventListener('click', exportClientsToCSV);
+            }
+
+            // Modal event listeners
+            const editClientModal = document.getElementById('editClientModal');
+            const closeModalButton = document.getElementById('closeModalButton');
+            const cancelEditButton = document.getElementById('cancelEditButton');
+            const editClientForm = document.getElementById('editClientForm');
+
+            // Corrected modal closing logic
+            function closeEditModal() {
+                editClientModal.classList.remove('visible'); // Use 'visible' class for showing/hiding
+            }
+
+            if (closeModalButton) {
+                closeModalButton.addEventListener('click', closeEditModal);
+            }
+            if (cancelEditButton) {
+                cancelEditButton.addEventListener('click', closeEditModal);
+            }
+            // Close modal if clicking outside the content
+            editClientModal.addEventListener('click', (event) => {
+                if (event.target === editClientModal) {
+                    closeEditModal();
+                }
+            });
+
+            if (editClientForm) {
+                editClientForm.addEventListener('submit', handleEditClientSubmit);
+            }
+
+            // Initialize dark mode
+            initDarkMode();
+        });
+
+        // Dark Mode Functionality
+        function initDarkMode() {
+            const darkModeToggle = document.getElementById('darkModeToggle');
+            const sunIcon = darkModeToggle.querySelector('.sun-icon');
+            const moonIcon = darkModeToggle.querySelector('.moon-icon');
+            const isDarkMode = localStorage.getItem('darkMode') === 'enabled';
+
+            if (isDarkMode) {
+                document.body.classList.add('dark-mode');
+                sunIcon.classList.add('hidden');
+                moonIcon.classList.remove('hidden');
+            } else {
+                document.body.classList.remove('dark-mode');
+                sunIcon.classList.remove('hidden');
+                moonIcon.classList.add('hidden');
+            }
+
+            darkModeToggle.addEventListener('click', () => {
+                document.body.classList.toggle('dark-mode');
+                const currentMode = document.body.classList.contains('dark-mode');
+                localStorage.setItem('darkMode', currentMode ? 'enabled' : 'disabled');
+
+                if (currentMode) {
+                    sunIcon.classList.add('hidden');
+                    moonIcon.classList.remove('hidden');
+                } else {
+                    sunIcon.classList.remove('hidden');
+                    moonIcon.classList.add('hidden');
+                }
+            });
+        }
+
+        // Function to get clients from localStorage
+        function getClients() {
+            try {
+                const sales = JSON.parse(localStorage.getItem('pos_sales') || '[]');
+                const uniqueClients = new Map(); // To store unique clients by document or name-phone
+
+                sales.forEach(sale => {
+                    if (sale.customer && (sale.customer.name || sale.customer.document || sale.customer.phone || sale.customer.email)) {
+                        const hasData = sale.customer.name || sale.customer.document || sale.customer.phone || sale.customer.email;
+                        
+                        if (hasData) {
+                            const documentId = sale.customer.document;
+                            const fallbackId = `${sale.customer.name || ''}-${sale.customer.phone || ''}`;
+                            const clientId = documentId || fallbackId;
+
+                            if (clientId) {
+                                // If client already exists, update lastSaleDate if current sale is more recent
+                                if (uniqueClients.has(clientId)) {
+                                    const existingClient = uniqueClients.get(clientId);
+                                    if (new Date(sale.timestamp) > new Date(existingClient.lastSaleDate)) {
+                                        existingClient.lastSaleDate = sale.timestamp;
+                                    }
+                                } else {
+                                    uniqueClients.set(clientId, {
+                                        id: Date.now() + Math.random().toString(36).substr(2, 9), // More robust unique ID
+                                        name: sale.customer.name || 'N/A',
+                                        document: documentId || 'N/A',
+                                        phone: sale.customer.phone || 'N/A',
+                                        email: sale.customer.email || 'N/A',
+                                        lastSaleDate: sale.timestamp
+                                    });
+                                }
+                            }
+                        }
+                    }
+                });
+
+                // Convert Map values to an array
+                const clientsArray = Array.from(uniqueClients.values());
+
+                // Sort clients by last sale date (most recent first)
+                clientsArray.sort((a, b) => new Date(b.lastSaleDate) - new Date(a.lastSaleDate));
+
+                return clientsArray;
+            } catch (e) {
+                console.error("Error parsing sales from localStorage:", e);
+                return [];
+            }
+        }
+
+        // Function to save clients to localStorage (simulated, as clients are derived from sales)
+        // For editing, we'll update the client data in allClientsData and re-render.
+        // A real-world scenario would involve updating the original sales data or having a separate client database.
+        function saveClient(updatedClient) {
+            const index = allClientsData.findIndex(client => client.id === updatedClient.id);
+            if (index !== -1) {
+                allClientsData[index] = updatedClient;
+                // In a real application, you would also update the underlying sales data
+                // or a dedicated clients array in localStorage.
+                // For this simulation, we just update the in-memory allClientsData.
+                filterAndRenderClients(); // Re-render the table with updated data
+            }
+        }
+
+        // Filter clients based on search and document type, then render
+        function filterAndRenderClients() {
+            const searchTerm = document.getElementById('clientSearch').value.toLowerCase();
+            const documentTypeFilterValue = document.getElementById('documentTypeFilter').value.toLowerCase();
+            
+            filteredClientsData = allClientsData.filter(client => {
+                const matchesSearch = client.name.toLowerCase().includes(searchTerm) ||
+                                    client.document.toLowerCase().includes(searchTerm) ||
+                                    client.phone.toLowerCase().includes(searchTerm) ||
+                                    client.email.toLowerCase().includes(searchTerm);
+                
+                const matchesDocumentType = !documentTypeFilterValue || 
+                                            (client.document !== 'N/A' && client.document.charAt(0).toLowerCase() === documentTypeFilterValue);
+                
+                return matchesSearch && matchesDocumentType;
+            });
+            
+            renderClientsTable(filteredClientsData);
+        }
+
+        // Render clients in the table with pagination
+        function renderClientsTable(clientsToRender) {
+            const tableBody = document.getElementById('clientsTableBody');
+            const noClientsMessage = document.getElementById('noClientsMessage');
+            const paginationControls = document.querySelector('.pagination-controls');
+            const prevPageButton = document.getElementById('prevPage');
+            const nextPageButton = document.getElementById('nextPage');
+            const paginationInfo = document.getElementById('paginationInfo');
+
+            if (!tableBody || !noClientsMessage || !paginationControls) return;
+
+            if (clientsToRender.length === 0) {
+                tableBody.innerHTML = '';
+                noClientsMessage.classList.remove('hidden');
+                paginationControls.classList.add('hidden');
+                return;
+            } else {
+                noClientsMessage.classList.add('hidden');
+                paginationControls.classList.remove('hidden');
+            }
+
+            const startIndex = (currentPage - 1) * clientsPerPage;
+            const endIndex = startIndex + clientsPerPage;
+            const paginatedClients = clientsToRender.slice(startIndex, endIndex);
+
+            tableBody.innerHTML = paginatedClients.map(client => {
+                const avatarText = client.name !== 'N/A' ? client.name.charAt(0).toUpperCase() : (client.document !== 'N/A' ? client.document.charAt(0).toUpperCase() : '?');
+
+                return `
+                    <tr>
+                        <td>
+                            <div class="client-name-cell">
+                                <div class="client-avatar-small">${avatarText}</div>
+                                <div>
+                                    <div class="client-info-text">${client.name}</div>
+                                    <div class="client-secondary-info">${client.email !== 'N/A' ? client.email : 'Email no registrado'}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td><div class="client-info-text">${client.document !== 'N/A' ? client.document : 'No registrado'}</div></td>
+                        <td><div class="client-info-text">${client.phone !== 'N/A' ? client.phone : 'No registrado'}</div></td>
+                        <td><div class="client-info-text">${client.email !== 'N/A' ? client.email : 'No registrado'}</div></td>
+                        <td>${new Date(client.lastSaleDate).toLocaleDateString()}</td>
+                        <td>
+                            <div class="action-buttons">
+                                <button class="action-button edit-client-button" data-client-id="${client.id}">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                    </svg>
+                                    Editar
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            // Add event listeners to edit buttons
+            document.querySelectorAll('.edit-client-button').forEach(button => {
+                button.addEventListener('click', (event) => {
+                    const clientId = event.currentTarget.dataset.clientId;
+                    openEditClientModal(clientId);
+                });
+            });
+
+            // Update pagination controls
+            const totalPages = Math.ceil(clientsToRender.length / clientsPerPage);
+            paginationInfo.textContent = `Página ${currentPage} de ${totalPages}`;
+            prevPageButton.disabled = currentPage === 1;
+            nextPageButton.disabled = currentPage === totalPages;
+        }
+
+        // Function to open the edit client modal
+        function openEditClientModal(clientId) {
+            const client = allClientsData.find(c => c.id === clientId);
+            if (client) {
+                document.getElementById('editClientId').value = client.id;
+                document.getElementById('editClientName').value = client.name !== 'N/A' ? client.name : '';
+                document.getElementById('editClientDocument').value = client.document !== 'N/A' ? client.document : '';
+                document.getElementById('editClientPhone').value = client.phone !== 'N/A' ? client.phone : '';
+                document.getElementById('editClientEmail').value = client.email !== 'N/A' ? client.email : '';
+                
+                // Use 'visible' class to show the modal
+                document.getElementById('editClientModal').classList.add('visible');
+            }
+        }
+
+        // Function to handle edit client form submission
+        function handleEditClientSubmit(event) {
+            event.preventDefault();
+            const updatedClient = {
+                id: document.getElementById('editClientId').value,
+                name: document.getElementById('editClientName').value || 'N/A',
+                document: document.getElementById('editClientDocument').value || 'N/A',
+                phone: document.getElementById('editClientPhone').value || 'N/A',
+                email: document.getElementById('editClientEmail').value || 'N/A',
+                // lastSaleDate remains unchanged as it's derived from sales
+                lastSaleDate: allClientsData.find(c => c.id === document.getElementById('editClientId').value).lastSaleDate
+            };
+
+            saveClient(updatedClient);
+            document.getElementById('editClientModal').classList.remove('visible'); // Close modal after saving
+        }
+
+        // Function to export clients to CSV
+        function exportClientsToCSV() {
+            if (filteredClientsData.length === 0) {
+                alert("No hay clientes para exportar.");
+                return;
+            }
+
+            const headers = ["Nombre", "Documento", "Teléfono", "Email", "Última Venta"];
+            const rows = filteredClientsData.map(client => [
+                client.name,
+                client.document,
+                client.phone,
+                client.email,
+                new Date(client.lastSaleDate).toLocaleDateString()
+            ]);
+
+            let csvContent = headers.join(",") + "\n";
+            rows.forEach(row => {
+                csvContent += row.map(field => `"${field.replace(/"/g, '""')}"`).join(",") + "\n";
+            });
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            if (link.download !== undefined) { // feature detection
+                const url = URL.createObjectURL(blob);
+                link.setAttribute("href", url);
+                link.setAttribute("download", "listado_clientes.csv");
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+        }
+    </script>
+</body>
+</html>

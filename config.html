@@ -1,0 +1,2010 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configuraciones - Ciervo Administrativo</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdgNsLEaO/P/2g/f/YQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.1/dist/umd/lucide.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+    <style>
+        /* CSS Variables for Theming */
+        :root {
+            /* Light Mode */
+            --bg-gradient-start: #f8fafc;
+            --bg-gradient-mid: #dbeafe;
+            --bg-gradient-end: #e0e7ff;
+            --text-color: #334155;
+            --glass-bg: rgba(255, 255, 255, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.2);
+            --brand-text-gradient-start: #1e293b;
+            --brand-text-gradient-end: #64748b;
+            --module-title-gradient-start: #1e293b;
+            --module-title-gradient-mid: #059669;
+            --module-title-gradient-end: #047857;
+            --config-container-bg: white;
+            --config-container-border: #e2e8f0;
+            --section-header-text: #1e293b;
+            --section-description-text: #64748b;
+            --general-settings-bg: #f8fafc;
+            --general-settings-text: #64748b;
+            --general-settings-icon: #94a3b8;
+            --general-settings-title: #64748b;
+            --danger-section-bg-start: rgba(254, 242, 242, 0.8);
+            --danger-section-bg-end: rgba(252, 165, 165, 0.1);
+            --danger-section-border: rgba(239, 68, 68, 0.2);
+            --warning-text-color: #64748b;
+            --reset-steps-bg: rgba(249, 250, 251, 1);
+            --step-item-bg: white;
+            --step-item-border: #e2e8f0;
+            --step-title-color: #1e293b;
+            --step-description-color: #64748b;
+            --export-info-bg: rgba(59, 130, 246, 0.1);
+            --export-info-border: rgba(59, 130, 246, 0.2);
+            --export-info-title: #2563eb;
+            --export-info-text: #64748b;
+            --modal-bg: white;
+            --modal-border: #e2e8f0;
+            --form-input-bg: #f8fafc;
+            --form-input-border: #cbd5e1;
+            --form-input-color: #1e293b;
+            --form-label-color: #374151;
+            --inventory-preview-bg: #f8fafc;
+            --inventory-preview-border: #e2e8f0;
+            --inventory-preview-text: #64748b;
+            --inventory-preview-title: #1e293b;
+            --success-message-bg: #f0f9ff;
+            --success-message-border: #0ea5e9;
+            --success-message-title: #0369a1;
+            --success-message-text: #64748b;
+            --success-message-demo-bg: white;
+            --success-message-demo-text: #1e293b;
+            --countdown-text: #94a3b8;
+            --progress-bar-bg: #e2e8f0;
+            --progress-status-text: #64748b;
+            --back-button-bg: rgba(255, 255, 255, 0.5);
+            --back-button-hover-bg: rgba(255, 255, 255, 0.8);
+            --back-button-color: #64748b;
+            --back-button-hover-color: #1e293b;
+            --btn-secondary-bg: #f1f5f9;
+            --btn-secondary-color: #64748b;
+            --btn-secondary-hover-bg: #e2e8f0;
+            --btn-secondary-hover-color: #475569;
+        }
+
+        /* Dark Mode */
+        html.dark {
+            --bg-gradient-start: #1a202c;
+            --bg-gradient-mid: #2d3748;
+            --bg-gradient-end: #4a5568;
+            --text-color: #e2e8f0;
+            --glass-bg: rgba(45, 55, 72, 0.7);
+            --glass-border: rgba(74, 85, 104, 0.2);
+            --brand-text-gradient-start: #e2e8f0;
+            --brand-text-gradient-end: #cbd5e1;
+            --module-title-gradient-start: #e2e8f0;
+            --module-title-gradient-mid: #38a169;
+            --module-title-gradient-end: #2f855a;
+            --config-container-bg: #2d3748;
+            --config-container-border: #4a5568;
+            --section-header-text: #e2e8f0;
+            --section-description-text: #a0aec0;
+            --general-settings-bg: #4a5568;
+            --general-settings-text: #a0aec0;
+            --general-settings-icon: #a0aec0;
+            --general-settings-title: #a0aec0;
+            --danger-section-bg-start: rgba(100, 20, 20, 0.8);
+            --danger-section-bg-end: rgba(150, 30, 30, 0.1);
+            --danger-section-border: rgba(239, 68, 68, 0.4);
+            --warning-text-color: #e2e8f0;
+            --reset-steps-bg: #4a5568;
+            --step-item-bg: #2d3748;
+            --step-item-border: #4a5568;
+            --step-title-color: #e2e8f0;
+            --step-description-color: #a0aec0;
+            --export-info-bg: rgba(59, 130, 246, 0.2);
+            --export-info-border: rgba(59, 130, 246, 0.4);
+            --export-info-title: #63b3ed;
+            --export-info-text: #a0aec0;
+            --modal-bg: #2d3748;
+            --modal-border: #4a5568;
+            --form-input-bg: #4a5568;
+            --form-input-border: #64748b;
+            --form-input-color: #e2e8f0;
+            --form-label-color: #cbd5e1;
+            --inventory-preview-bg: #4a5568;
+            --inventory-preview-border: #64748b;
+            --inventory-preview-text: #a0aec0;
+            --inventory-preview-title: #e2e8f0;
+            --success-message-bg: #2a4365;
+            --success-message-border: #4299e1;
+            --success-message-title: #63b3ed;
+            --success-message-text: #a0aec0;
+            --success-message-demo-bg: #4a5568;
+            --success-message-demo-text: #e2e8f0;
+            --countdown-text: #a0aec0;
+            --progress-bar-bg: #4a5568;
+            --progress-status-text: #a0aec0;
+            --back-button-bg: rgba(45, 55, 72, 0.5);
+            --back-button-hover-bg: rgba(45, 55, 72, 0.8);
+            --back-button-color: #a0aec0;
+            --back-button-hover-color: #e2e8f0;
+            --btn-secondary-bg: #4a5568;
+            --btn-secondary-color: #a0aec0;
+            --btn-secondary-hover-bg: #64748b;
+            --btn-secondary-hover-color: #e2e8f0;
+        }
+
+        /* Base Styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(to bottom right, var(--bg-gradient-start), var(--bg-gradient-mid), var(--bg-gradient-end));
+            min-height: 100vh;
+            color: var(--text-color);
+            line-height: 1.5;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        /* Layout */
+        .glassmorphic-bar {
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            background: var(--glass-bg);
+            backdrop-filter: blur(16px);
+            border-bottom: 1px solid var(--glass-border);
+            transition: background-color 0.3s ease, border-color 0.3s ease;
+        }
+
+        .container {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 0 1.5rem;
+        }
+
+        .top-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem 0;
+        }
+
+        .brand-section {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .brand-icon {
+            position: relative;
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(to bottom right, #10b981, #059669);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.25);
+        }
+
+        .brand-icon::after {
+            content: '';
+            position: absolute;
+            top: -4px;
+            right: -4px;
+            width: 16px;
+            height: 16px;
+            background: #3b82f6;
+            border-radius: 50%;
+            border: 2px solid white;
+        }
+
+        .brand-text h1 {
+            font-size: 1.25rem;
+            font-weight: bold;
+            background: linear-gradient(to right, var(--brand-text-gradient-start), var(--brand-text-gradient-end));
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            transition: background-color 0.3s ease;
+        }
+
+        .brand-text p {
+            font-size: 0.875rem;
+            color: var(--section-description-text);
+            transition: color 0.3s ease;
+        }
+
+        .nav-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .back-button {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            background: var(--back-button-bg);
+            border: none;
+            border-radius: 12px;
+            color: var(--back-button-color);
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            backdrop-filter: blur(8px);
+        }
+
+        .back-button:hover {
+            background: var(--back-button-hover-bg);
+            color: var(--back-button-hover-color);
+            transform: translateX(-2px);
+        }
+
+        .main-content {
+            padding: 2rem 0;
+        }
+
+        /* Module Header */
+        .module-header-section {
+            text-align: center;
+            margin-bottom: 2rem;
+            padding: 2rem 0;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(209, 250, 229, 1);
+            color: #059669;
+            padding: 0.5rem 1rem;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            margin-bottom: 1rem;
+        }
+
+        .module-title {
+            font-size: 2.25rem;
+            font-weight: bold;
+            background: linear-gradient(to right, var(--module-title-gradient-start), var(--module-title-gradient-mid), var(--module-title-gradient-end));
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            margin-bottom: 1rem;
+            transition: background-color 0.3s ease;
+        }
+
+        .module-subtitle {
+            font-size: 1.125rem;
+            color: var(--section-description-text);
+            max-width: 48rem;
+            margin: 0 auto;
+            transition: color 0.3s ease;
+        }
+
+        /* Configuration Sections */
+        .config-container {
+            background: var(--config-container-bg);
+            border-radius: 24px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            border: 1px solid var(--config-container-border);
+            overflow: hidden;
+            transition: background-color 0.3s ease, border-color 0.3s ease;
+        }
+
+        .config-section {
+            padding: 2rem;
+            border-bottom: 1px solid var(--config-container-border);
+            transition: border-color 0.3s ease;
+        }
+
+        .config-section:last-child {
+            border-bottom: none;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .section-icon {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(to bottom right, #d1fae5, #a7f3d0);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #059669;
+            flex-shrink: 0;
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--section-header-text);
+            transition: color 0.3s ease;
+        }
+
+        .section-description {
+            font-size: 0.875rem;
+            color: var(--section-description-text);
+            margin-top: 0.25rem;
+            transition: color 0.3s ease;
+        }
+
+        /* General Settings Specifics */
+        .general-settings-placeholder {
+            background: var(--general-settings-bg);
+            border-radius: 12px;
+            padding: 2rem;
+            text-align: center;
+            color: var(--general-settings-text);
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        .general-settings-placeholder svg {
+            color: var(--general-settings-icon);
+            transition: color 0.3s ease;
+        }
+
+        .general-settings-placeholder h3 {
+            color: var(--general-settings-title);
+            transition: color 0.3s ease;
+        }
+
+        /* Danger Section Specifics */
+        .danger-section {
+            background: linear-gradient(to right, var(--danger-section-bg-start), var(--danger-section-bg-end));
+            border: 1px solid var(--danger-section-border);
+            border-radius: 16px;
+            padding: 2rem;
+            margin-top: 1rem;
+            transition: background-color 0.3s ease, border-color 0.3s ease;
+        }
+
+        .danger-section .section-icon {
+            background: linear-gradient(to bottom right, #fecaca, #fca5a5);
+            color: #dc2626;
+        }
+
+        .reset-warning {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            transition: background-color 0.3s ease, border-color 0.3s ease;
+        }
+
+        .warning-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #dc2626;
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .warning-text {
+            font-size: 0.875rem;
+            color: var(--warning-text-color);
+            line-height: 1.6;
+            transition: color 0.3s ease;
+        }
+
+        .reset-steps {
+            background: var(--reset-steps-bg);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            transition: background-color 0.3s ease;
+        }
+
+        .steps-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--step-title-color);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: color 0.3s ease;
+        }
+
+        .step-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+            padding: 0.75rem;
+            background: var(--step-item-bg);
+            border-radius: 8px;
+            border: 1px solid var(--step-item-border);
+            transition: background-color 0.3s ease, border-color 0.3s ease;
+        }
+
+        .step-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .step-number {
+            width: 24px;
+            height: 24px;
+            background: linear-gradient(to bottom right, #10b981, #059669);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+
+        .step-content {
+            flex: 1;
+        }
+
+        .step-title {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--step-title-color);
+            margin-bottom: 0.25rem;
+            transition: color 0.3s ease;
+        }
+
+        .step-description {
+            font-size: 0.75rem;
+            color: var(--step-description-color);
+            line-height: 1.4;
+            transition: color 0.3s ease;
+        }
+
+        .export-info {
+            background: var(--export-info-bg);
+            border: 1px solid var(--export-info-border);
+            border-radius: 12px;
+            padding: 1rem;
+            margin: 1rem 0;
+            transition: background-color 0.3s ease, border-color 0.3s ease;
+        }
+
+        .info-title {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--export-info-title);
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: color 0.3s ease;
+        }
+
+        .info-text {
+            font-size: 0.75rem;
+            color: var(--export-info-text);
+            line-height: 1.5;
+            transition: color 0.3s ease;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 0.75rem 2rem;
+            border-radius: 12px;
+            font-weight: 500;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            text-decoration: none;
+            justify-content: center;
+            position: relative; /* For spinner positioning */
+        }
+
+        .btn-danger {
+            background: linear-gradient(to right, #ef4444, #dc2626);
+            color: white;
+            box-shadow: 0 4px 14px 0 rgba(239, 68, 68, 0.25);
+        }
+
+        .btn-danger:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 8px 25px 0 rgba(239, 68, 68, 0.35);
+        }
+
+        .btn-primary {
+            background: linear-gradient(to right, #10b981, #059669);
+            color: white;
+            box-shadow: 0 4px 14px 0 rgba(16, 185, 129, 0.25);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 8px 25px 0 rgba(16, 185, 129, 0.35);
+        }
+
+        .btn-secondary {
+            background: var(--btn-secondary-bg);
+            color: var(--btn-secondary-color);
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        .btn-secondary:hover {
+            background: var(--btn-secondary-hover-bg);
+            color: var(--btn-secondary-hover-color);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* Spinner for buttons */
+        .btn.loading {
+            color: transparent !important; /* Hide text */
+            pointer-events: none;
+        }
+
+        .btn.loading::after {
+            content: '';
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        /* Dark mode toggle button */
+        .theme-toggle-button {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1.5rem;
+            color: var(--text-color);
+            transition: color 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.5rem;
+            border-radius: 8px;
+        }
+
+        .theme-toggle-button:hover {
+            background: rgba(0, 0, 0, 0.05);
+        }
+
+        html.dark .theme-toggle-button:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 1rem;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+
+        .modal-overlay.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal-content {
+            background: var(--modal-bg);
+            border-radius: 16px;
+            padding: 2rem;
+            width: 100%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
+            transform: translateY(20px);
+            transition: transform 0.3s ease, background-color 0.3s ease, border-color 0.3s ease;
+        }
+
+        .modal-overlay.visible .modal-content {
+            transform: translateY(0);
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--modal-border);
+            transition: border-color 0.3s ease;
+        }
+
+        .modal-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .modal-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--section-header-text);
+            transition: color 0.3s ease;
+        }
+
+        .modal-subtitle {
+            font-size: 0.875rem;
+            color: var(--section-description-text);
+            margin-top: 0.25rem;
+            transition: color 0.3s ease;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--form-label-color);
+            margin-bottom: 0.5rem;
+            transition: color 0.3s ease;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background: var(--form-input-bg);
+            border: 1px solid var(--form-input-border);
+            border-radius: 12px;
+            color: var(--form-input-color);
+            font-size: 0.875rem;
+            transition: all 0.2s;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #10b981;
+            background: var(--modal-bg);
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+        }
+
+        .form-input.error {
+            border-color: #ef4444;
+            background: rgba(239, 68, 68, 0.05);
+        }
+
+        .form-input.success {
+            border-color: #10b981;
+            background: rgba(16, 185, 129, 0.05);
+        }
+
+        .validation-message {
+            font-size: 0.75rem;
+            margin-top: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .validation-error {
+            color: #ef4444;
+        }
+
+        .validation-success {
+            color: #10b981;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: flex-end;
+            margin-top: 2rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--modal-border);
+            transition: border-color 0.3s ease;
+        }
+
+        .step-indicator {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .step-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #cbd5e1;
+            transition: all 0.3s;
+        }
+
+        .step-dot.active {
+            background: #10b981;
+            transform: scale(1.2);
+        }
+
+        .step-dot.completed {
+            background: #059669;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: var(--progress-bar-bg);
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 1rem 0;
+            transition: background-color 0.3s ease;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(to right, #10b981, #059669);
+            border-radius: 4px;
+            transition: width 0.3s ease;
+            width: 0%;
+        }
+
+        .success-screen {
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .success-icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(to bottom right, #d1fae5, #a7f3d0);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.5rem;
+            color: #059669;
+        }
+
+        .success-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--section-header-text);
+            margin-bottom: 0.75rem;
+            transition: color 0.3s ease;
+        }
+
+        .success-message {
+            font-size: 0.875rem;
+            color: var(--success-message-text);
+            line-height: 1.6;
+            margin-bottom: 2rem;
+            transition: color 0.3s ease;
+        }
+
+        .success-message div {
+            background: var(--success-message-bg);
+            border: 1px solid var(--success-message-border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            text-align: left;
+            transition: background-color 0.3s ease, border-color 0.3s ease;
+        }
+
+        .success-message h4 {
+            color: var(--success-message-title);
+            transition: color 0.3s ease;
+        }
+
+        .success-message p {
+            color: var(--success-message-text);
+            transition: color 0.3s ease;
+        }
+
+        .success-message p strong {
+            color: var(--success-message-demo-text);
+            transition: color 0.3s ease;
+        }
+
+        .success-message p.code-block {
+            font-family: 'Courier New', monospace;
+            background: var(--success-message-demo-bg);
+            padding: 0.75rem;
+            border-radius: 8px;
+            color: var(--success-message-demo-text);
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        .welcome-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .countdown-text {
+            font-size: 0.75rem;
+            color: var(--countdown-text);
+            margin-top: 1rem;
+            transition: color 0.3s ease;
+        }
+
+        /* Inventory Preview */
+        #inventory-preview {
+            background: var(--inventory-preview-bg);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+            text-align: left;
+            transition: background-color 0.3s ease, border-color 0.3s ease;
+        }
+
+        #inventory-preview h4 {
+            color: var(--inventory-preview-title);
+            transition: color 0.3s ease;
+        }
+
+        #inventory-preview p {
+            color: var(--inventory-preview-text);
+            transition: color 0.3s ease;
+        }
+
+        #inventory-preview div[style*="text-align: center"] {
+            color: var(--inventory-preview-text);
+            transition: color 0.3s ease;
+        }
+
+        #inventory-preview div[style*="text-align: center"] svg {
+            color: var(--inventory-preview-text);
+            transition: color 0.3s ease;
+        }
+
+        #inventory-preview div[style*="background: white"] {
+            background: var(--step-item-bg);
+            border: 1px solid var(--step-item-border);
+            transition: background-color 0.3s ease, border-color 0.3s ease;
+        }
+
+        #inventory-preview div[style*="background: white"] div {
+            color: var(--step-title-color);
+            transition: color 0.3s ease;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 767px) {
+            .module-title {
+                font-size: 1.875rem;
+            }
+            
+            .config-section {
+                padding: 1.5rem;
+            }
+            
+            .section-header {
+                flex-direction: column;
+                text-align: center;
+                gap: 0.75rem;
+            }
+            
+            .modal-actions {
+                flex-direction: column;
+            }
+            
+            .welcome-actions {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Top Bar -->
+    <header class="glassmorphic-bar">
+        <div class="container">
+            <div class="top-bar">
+                <!-- Brand Section -->
+                <div class="brand-section">
+                    <div class="brand-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+                            <circle cx="12" cy="12" r="3"/>
+                        </svg>
+                    </div>
+                    <div class="brand-text">
+                        <h1>Ciervo Administrativo</h1>
+                        <p>Sistema de Gestión Empresarial</p>
+                    </div>
+                </div>
+
+                <!-- Navigation Actions -->
+                <nav class="nav-actions">
+                    <button id="theme-toggle" class="theme-toggle-button" aria-label="Alternar modo oscuro/claro">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sun" aria-hidden="true">
+                            <circle cx="12" cy="12" r="4"/>
+                            <path d="M12 2v2"/>
+                            <path d="M12 20v2"/>
+                            <path d="M4.93 4.93l1.41 1.41"/>
+                            <path d="M17.66 17.66l1.41 1.41"/>
+                            <path d="M2 12h2"/>
+                            <path d="M20 12h2"/>
+                            <path d="M4.93 19.07l1.41-1.41"/>
+                            <path d="M17.66 6.34l1.41-1.41"/>
+                        </svg>
+                    </button>
+                    <a href="menu.html" class="back-button">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M15 18l-6-6 6-6"/>
+                        </svg>
+                        Volver al Menú
+                    </a>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container main-content">
+        <!-- Module Header -->
+        <section class="module-header-section">
+            <div class="badge">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                </svg>
+                <span>Configuraciones del Sistema</span>
+            </div>
+            <h2 class="module-title">Panel de Configuración</h2>
+            <p class="module-subtitle">
+                Administre las configuraciones generales y avanzadas del sistema de minimarket.
+            </p>
+        </section>
+
+        <!-- Configuration Container -->
+        <div class="config-container">
+            <!-- General Settings Section -->
+            <section class="config-section">
+                <div class="section-header">
+                    <div class="section-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+                            <circle cx="12" cy="12" r="3"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="section-title">Configuraciones Generales</h3>
+                        <p class="section-description">
+                            Configuraciones básicas del sistema (Próximamente disponibles).
+                        </p>
+                    </div>
+                </div>
+
+                <div class="general-settings-placeholder">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 1rem;" aria-hidden="true">
+                        <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+                        <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                    <h3>Configuraciones Básicas</h3>
+                    <p style="font-size: 0.875rem;">
+                        Las opciones de configuración general estarán disponibles en futuras actualizaciones.<br>
+                        Por ahora, puede utilizar las configuraciones avanzadas para el mantenimiento del sistema.
+                    </p>
+                </div>
+            </section>
+
+            <!-- Advanced Settings Section -->
+            <section class="danger-section">
+                <div class="section-header">
+                    <div class="section-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
+                            <path d="M12 9v4"/>
+                            <path d="M12 17h.01"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="section-title">Configuraciones Avanzadas</h3>
+                        <p class="section-description">
+                            Operaciones de mantenimiento del sistema que requieren permisos de administrador.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="reset-warning">
+                    <div class="warning-title">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
+                            <path d="M12 9v4"/>
+                            <path d="M12 17h.01"/>
+                        </svg>
+                        Advertencia Importante
+                    </div>
+                    <p class="warning-text">
+                        El restablecimiento del sistema eliminará permanentemente todos los datos almacenados, incluyendo:
+                        inventario, ventas, proveedores, compras, usuarios, <strong>clientes</strong> y todas las configuraciones personalizadas.
+                        Esta acción <strong>NO SE PUEDE DESHACER</strong>.
+                    </p>
+                </div>
+
+                <div class="reset-steps">
+                    <div class="steps-title">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M9 11H3l3-3"/>
+                            <path d="M3 8h18"/>
+                            <path d="M15 13h6l-3 3"/>
+                            <path d="M21 16H3"/>
+                        </svg>
+                        Proceso de Restablecimiento
+                    </div>
+                    
+                    <div class="step-item">
+                        <div class="step-number">1</div>
+                        <div class="step-content">
+                            <div class="step-title">Exportación de Respaldo</div>
+                            <div class="step-description">
+                                Se generará automáticamente un archivo PDF con toda la información del inventario actual para su respaldo.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="step-item">
+                        <div class="step-number">2</div>
+                        <div class="step-content">
+                            <div class="step-title">Verificación de Identidad</div>
+                            <div class="step-description">
+                                Debe proporcionar las credenciales de un usuario administrador válido para autorizar el proceso.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="step-item">
+                        <div class="step-number">3</div>
+                        <div class="step-content">
+                            <div class="step-title">Confirmación Final</div>
+                            <div class="step-description">
+                                Se solicitará una confirmación adicional antes de proceder con el restablecimiento completo.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="step-item">
+                        <div class="step-number">4</div>
+                        <div class="step-content">
+                            <div class="step-title">Proceso de Limpieza</div>
+                            <div class="step-description">
+                                El sistema eliminará todos los datos y creará un usuario administrador demo para acceso inicial.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="export-info">
+                    <div class="info-title">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M12 16v-4"/>
+                            <path d="M12 8h.01"/>
+                        </svg>
+                        Información sobre la Exportación
+                    </div>
+                    <p class="info-text">
+                        Antes del restablecimiento, se exportará automáticamente un reporte PDF del inventario actual.
+                        Este archivo incluirá todos los productos registrados con sus precios, stocks y detalles relevantes.
+                        El archivo se descargará automáticamente a su dispositivo para conservar como respaldo.
+                    </p>
+                </div>
+
+                <div style="margin-top: 2rem; text-align: center;">
+                    <button id="start-reset-btn" type="button" class="btn btn-danger" onclick="startSystemReset()">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                            <path d="M3 3v5h5"/>
+                        </svg>
+                        Iniciar Restablecimiento del Sistema
+                    </button>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Reset Modal -->
+    <div class="modal-overlay" id="resetModal" role="dialog" aria-modal="true" aria-labelledby="resetModalTitle">
+        <div class="modal-content">
+            <!-- Step Indicator -->
+            <div class="step-indicator">
+                <div class="step-dot active" id="step-dot-1"></div>
+                <div class="step-dot" id="step-dot-2"></div>
+                <div class="step-dot" id="step-dot-3"></div>
+                <div class="step-dot" id="step-dot-4"></div>
+            </div>
+
+            <!-- Step 1: Export Confirmation -->
+            <div id="step-1" class="reset-step">
+                <div class="modal-header">
+                    <div class="modal-icon" style="background: linear-gradient(to bottom right, #dbeafe, #bfdbfe);">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                            <polyline points="14,2 14,8 20,8"/>
+                            <line x1="16" y1="13" x2="8" y2="13"/>
+                            <line x1="16" y1="17" x2="8" y2="17"/>
+                            <polyline points="10,9 9,9 8,9"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="modal-title" id="resetModalTitle">Paso 1: Exportar Inventario</h3>
+                        <p class="modal-subtitle">Genere un respaldo de su inventario actual.</p>
+                    </div>
+                </div>
+
+                <div style="text-align: center; padding: 1rem 0;">
+                    <p style="color: var(--warning-text-color); margin-bottom: 1.5rem; line-height: 1.6;">
+                        Antes de proceder con el restablecimiento, generaremos un archivo PDF con toda la información
+                        de su inventario actual. Este respaldo incluirá todos los productos registrados.
+                    </p>
+                    
+                    <div id="inventory-preview">
+                        <!-- Inventory data will be loaded here -->
+                    </div>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeResetModal()">Cancelar</button>
+                    <button id="export-continue-btn" type="button" class="btn btn-primary" onclick="exportInventoryAndContinue()">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="7,10 12,15 17,10"/>
+                            <line x1="12" y1="15" x2="12" y2="3"/>
+                        </svg>
+                        Exportar y Continuar
+                    </button>
+                </div>
+            </div>
+
+            <!-- Step 2: Admin Authentication -->
+            <div id="step-2" class="reset-step hidden">
+                <div class="modal-header">
+                    <div class="modal-icon" style="background: linear-gradient(to bottom right, #fef3c7, #fde68a);">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>
+                            <path d="m7 11V7a5 5 0 0 1 10 0v4"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="modal-title">Paso 2: Verificación de Administrador</h3>
+                        <p class="modal-subtitle">Ingrese sus credenciales de administrador.</p>
+                    </div>
+                </div>
+
+                <div style="padding: 1rem 0;">
+                    <p style="color: var(--warning-text-color); margin-bottom: 1.5rem; line-height: 1.6;">
+                        Para proceder con el restablecimiento del sistema, debe verificar su identidad
+                        ingresando las credenciales de un usuario con permisos de administrador.
+                    </p>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="admin-username">Usuario Administrador</label>
+                        <input type="text" id="admin-username" class="form-input" placeholder="Ingrese el usuario administrador" autocomplete="username">
+                        <div class="validation-message" id="admin-username-message" aria-live="polite"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="admin-password">Contraseña</label>
+                        <input type="password" id="admin-password" class="form-input" placeholder="Ingrese la contraseña" autocomplete="current-password">
+                        <div class="validation-message" id="admin-password-message" aria-live="polite"></div>
+                    </div>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="goToStep(1)">Regresar</button>
+                    <button id="verify-admin-btn" type="button" class="btn btn-primary" onclick="verifyAdminCredentials()">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <polyline points="20,6 9,17 4,12"/>
+                        </svg>
+                        Verificar Credenciales
+                    </button>
+                </div>
+            </div>
+
+            <!-- Step 3: Final Confirmation -->
+            <div id="step-3" class="reset-step hidden">
+                <div class="modal-header">
+                    <div class="modal-icon" style="background: linear-gradient(to bottom right, #fecaca, #fca5a5);">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
+                            <path d="M12 9v4"/>
+                            <path d="M12 17h.01"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="modal-title">Paso 3: Confirmación Final</h3>
+                        <p class="modal-subtitle">Última oportunidad para cancelar.</p>
+                    </div>
+                </div>
+
+                <div style="text-align: center; padding: 1rem 0;">
+                    <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 12px; padding: 1.5rem; margin: 1rem 0;">
+                        <h4 style="color: #dc2626; margin-bottom: 0.75rem; font-weight: 600;">
+                            ¿Está completamente seguro?
+                        </h4>
+                        <p style="color: var(--warning-text-color); font-size: 0.875rem; line-height: 1.6;">
+                            Esta acción eliminará permanentemente:
+                        </p>
+                        <ul style="text-align: left; margin: 1rem 0; color: var(--warning-text-color); font-size: 0.875rem; line-height: 1.6; list-style: none; padding-left: 1rem;">
+                            <li>• Todos los productos del inventario</li>
+                            <li>• Historial completo de ventas</li>
+                            <li>• Registro de proveedores</li>
+                            <li>• Historial de compras</li>
+                            <li>• Todos los usuarios registrados</li>
+                            <li>• <strong>Todos los clientes registrados</strong></li>
+                            <li>• Configuraciones personalizadas</li>
+                            <li>• Información de la empresa</li>
+                            <li>• Cuentas por cobrar y pagar</li>
+                        </ul>
+                        <p style="color: #dc2626; font-size: 0.875rem; font-weight: 600;">
+                            Esta acción NO SE PUEDE DESHACER.
+                        </p>
+                    </div>
+
+                    <p style="color: var(--warning-text-color); margin-bottom: 1.5rem;">
+                        Al continuar, el sistema se restablecerá completamente y se creará un usuario administrador demo
+                        con credenciales: <strong>Usuario: Admin</strong> / <strong>Contraseña: Admin123</strong>
+                    </p>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="goToStep(2)">Regresar</button>
+                    <button id="confirm-reset-btn" type="button" class="btn btn-danger" onclick="executeSystemReset()">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                            <path d="M3 3v5h5"/>
+                        </svg>
+                        Confirmar Restablecimiento
+                    </button>
+                </div>
+            </div>
+
+            <!-- Step 4: Processing -->
+            <div id="step-4" class="reset-step hidden">
+                <div class="modal-header">
+                    <div class="modal-icon" style="background: linear-gradient(to bottom right, #d1fae5, #a7f3d0);">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                            <path d="M3 3v5h5"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="modal-title">Paso 4: Procesando</h3>
+                        <p class="modal-subtitle">Restableciendo el sistema...</p>
+                    </div>
+                </div>
+
+                <div style="text-align: center; padding: 2rem 0;">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="reset-progress"></div>
+                    </div>
+                    
+                    <p id="reset-status" style="color: var(--progress-status-text); margin-top: 1rem;">
+                        Iniciando proceso de restablecimiento...
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success Screen Modal -->
+    <div class="modal-overlay" id="successModal" role="dialog" aria-modal="true" aria-labelledby="successModalTitle">
+        <div class="modal-content">
+            <div class="success-screen">
+                <div class="success-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <polyline points="20,6 9,17 4,12"/>
+                    </svg>
+                </div>
+                
+                <h3 class="success-title" id="successModalTitle">¡Sistema Restablecido Exitosamente!</h3>
+                
+                <div class="success-message">
+                    <p>
+                        El sistema ha sido restablecido a su configuración de fábrica. Todos los datos anteriores
+                        han sido eliminados y se ha creado un usuario administrador demo para su acceso inicial.
+                    </p>
+                    
+                    <div>
+                        <h4 style="color: var(--success-message-title); margin-bottom: 0.75rem; font-weight: 600;">
+                            Credenciales de Acceso Demo:
+                        </h4>
+                        <p class="code-block">
+                            <strong>Usuario:</strong> Admin<br>
+                            <strong>Contraseña:</strong> Admin123<br>
+                            <strong>Rol:</strong> Administrador
+                        </p>
+                    </div>
+                    
+                    <p style="color: #059669; font-weight: 600; margin-bottom: 1rem;">
+                        ¡Bienvenido de nuevo! Su sistema está listo para usar.
+                    </p>
+                    
+                    <p style="font-size: 0.875rem; color: var(--success-message-text);">
+                        Ahora puede comenzar a configurar su sistema desde cero, agregar productos,
+                        crear usuarios adicionales y personalizar su experiencia de minimarket.
+                    </p>
+                </div>
+                
+                <div class="welcome-actions">
+                    <button type="button" class="btn btn-primary" onclick="redirectToLogin()" style="padding: 1rem 2rem; font-size: 1rem;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
+                            <polyline points="10,17 15,12 10,7"/>
+                            <line x1="15" y1="12" x2="3" y2="12"/>
+                        </svg>
+                        Iniciar Sesión Ahora
+                    </button>
+                    
+                    <p class="countdown-text">
+                        Esta ventana se cerrará automáticamente en <span id="countdown">30</span> segundos.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let currentStep = 1;
+        let isProcessing = false;
+        let countdownInterval;
+
+        // DOM Elements
+        const resetModal = document.getElementById('resetModal');
+        const successModal = document.getElementById('successModal');
+        const startResetBtn = document.getElementById('start-reset-btn');
+        const exportContinueBtn = document.getElementById('export-continue-btn');
+        const verifyAdminBtn = document.getElementById('verify-admin-btn');
+        const confirmResetBtn = document.getElementById('confirm-reset-btn');
+        const themeToggleButton = document.getElementById('theme-toggle');
+
+        // Initialize system and icons
+        document.addEventListener('DOMContentLoaded', function() {
+            // Ensure Lucide icons are created after the DOM is fully loaded
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            } else {
+                setTimeout(() => {
+                    if (typeof lucide !== 'undefined') {
+                        lucide.createIcons();
+                    }
+                }, 100);
+            }
+            // Apply saved theme preference
+            applyThemePreference();
+            // Initial security check on page load
+            checkAdminAccessOnLoad();
+
+            // Add event listener for theme toggle button
+            themeToggleButton.addEventListener('click', toggleTheme);
+        });
+
+        /**
+         * Applies the saved theme preference from localStorage.
+         */
+        function applyThemePreference() {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'dark') {
+                document.documentElement.classList.add('dark');
+                themeToggleButton.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-moon" aria-hidden="true">
+                        <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
+                    </svg>
+                `;
+            } else {
+                document.documentElement.classList.remove('dark');
+                themeToggleButton.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sun" aria-hidden="true">
+                        <circle cx="12" cy="12" r="4"/>
+                        <path d="M12 2v2"/>
+                        <path d="M12 20v2"/>
+                        <path d="M4.93 4.93l1.41 1.41"/>
+                        <path d="M17.66 17.66l1.41 1.41"/>
+                        <path d="M2 12h2"/>
+                        <path d="M20 12h2"/>
+                        <path d="M4.93 19.07l1.41-1.41"/>
+                        <path d="M17.66 6.34l1.41-1.41"/>
+                    </svg>
+                `;
+            }
+        }
+
+        /**
+         * Toggles between light and dark themes.
+         */
+        function toggleTheme() {
+            if (document.documentElement.classList.contains('dark')) {
+                document.documentElement.classList.remove('dark');
+                localStorage.setItem('theme', 'light');
+            } else {
+                document.documentElement.classList.add('dark');
+                localStorage.setItem('theme', 'dark');
+            }
+            applyThemePreference(); // Update button icon
+        }
+
+        /**
+         * Checks if the current user has administrator privileges.
+         * If not, it alerts the user and redirects to the login page.
+         * @returns {boolean} True if the user is an admin, false otherwise.
+         */
+        function checkAdminAccess() {
+            const currentUser = JSON.parse(sessionStorage.getItem('currentUser') || '{}');
+            if (currentUser.role !== 'Administrador') {
+                alert('⚠️ Acceso Denegado\n\nEsta función requiere permisos de administrador.\nInicie sesión con una cuenta de administrador para acceder a las configuraciones del sistema.');
+                window.location.href = 'index.html';
+                return false;
+            }
+            return true;
+        }
+
+        /**
+         * Performs a security check on page load without immediate redirection,
+         * just logs a warning if the user is not an admin.
+         */
+        function checkAdminAccessOnLoad() {
+            const currentUser = JSON.parse(sessionStorage.getItem('currentUser') || '{}');
+            if (!currentUser.role || currentUser.role !== 'Administrador') {
+                console.warn('Acceso a configuraciones del sistema intentado sin permisos de administrador.');
+                // Optionally, you could disable buttons or show a message on the page
+                // instead of an immediate alert/redirect on DOMContentLoaded.
+            }
+        }
+
+        /**
+         * Initiates the system reset process by showing the first step of the modal.
+         */
+        function startSystemReset() {
+            if (!checkAdminAccess()) return; // Ensure admin access before starting
+
+            currentStep = 1;
+            updateStepIndicator();
+            loadInventoryPreview();
+            resetModal.classList.add('visible'); // Use 'visible' class for transition
+        }
+
+        /**
+         * Closes the reset modal, with a confirmation if a process is ongoing.
+         */
+        function closeResetModal() {
+            if (isProcessing) {
+                if (!confirm('El proceso de restablecimiento está en curso. ¿Está seguro de que desea cancelar?')) {
+                    return;
+                }
+            }
+            resetModal.classList.remove('visible'); // Use 'visible' class for transition
+            resetModalState();
+        }
+
+        /**
+         * Resets the modal to its initial state (Step 1) and clears form inputs/messages.
+         */
+        function resetModalState() {
+            currentStep = 1;
+            isProcessing = false;
+
+            // Hide all steps
+            document.querySelectorAll('.reset-step').forEach(step => step.classList.add('hidden'));
+
+            // Show first step
+            document.getElementById('step-1').classList.remove('hidden');
+            updateStepIndicator();
+
+            // Clear form inputs
+            document.getElementById('admin-username').value = '';
+            document.getElementById('admin-password').value = '';
+
+            // Clear validation messages
+            clearValidationMessages();
+
+            // Ensure buttons are not in loading state
+            removeLoadingState(startResetBtn);
+            removeLoadingState(exportContinueBtn);
+            removeLoadingState(verifyAdminBtn);
+            removeLoadingState(confirmResetBtn);
+        }
+
+        /**
+         * Navigates to a specified step in the reset modal.
+         * @param {number} stepNumber - The step number to navigate to (1-4).
+         */
+        function goToStep(stepNumber) {
+            if (isProcessing) return; // Prevent navigation if a process is running
+
+            // Hide current step
+            document.getElementById(`step-${currentStep}`).classList.add('hidden');
+
+            // Show target step
+            currentStep = stepNumber;
+            document.getElementById(`step-${currentStep}`).classList.remove('hidden');
+            updateStepIndicator();
+        }
+
+        /**
+         * Updates the visual indicators for the current step in the modal.
+         */
+        function updateStepIndicator() {
+            for (let i = 1; i <= 4; i++) {
+                const dot = document.getElementById(`step-dot-${i}`);
+                dot.classList.remove('active', 'completed');
+
+                if (i === currentStep) {
+                    dot.classList.add('active');
+                } else if (i < currentStep) {
+                    dot.classList.add('completed');
+                }
+            }
+        }
+
+        /**
+         * Loads and displays a summary of the current inventory for preview.
+         */
+        function loadInventoryPreview() {
+            const inventory = JSON.parse(localStorage.getItem('ciervo_inventory') || '[]');
+            const preview = document.getElementById('inventory-preview');
+
+            if (inventory.length === 0) {
+                preview.innerHTML = `
+                    <div style="text-align: center; color: var(--inventory-preview-text);">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <rect width="18" height="18" x="3" y="3" rx="2"/>
+                            <circle cx="9" cy="9" r="2"/>
+                            <path d="M21 15c0 1-1 2-2 2h-1l-1-1v-1"/>
+                        </svg>
+                        <p style="font-size: 0.875rem;">No hay productos en el inventario para exportar.</p>
+                    </div>
+                `;
+            } else {
+                const totalProducts = inventory.length;
+                // Use 'price' and 'stock' properties from the inventory.html structure
+                const totalValue = inventory.reduce((sum, item) => sum + (parseFloat(item.price || 0) * parseInt(item.stock || 0)), 0);
+
+                preview.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <h4 style="color: var(--inventory-preview-title); font-weight: 600;">Resumen del Inventario</h4>
+                        <span style="background: #10b981; color: white; padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600;">
+                            ${totalProducts} productos
+                        </span>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                        <div style="text-align: center; padding: 0.75rem; background: var(--step-item-bg); border-radius: 8px; border: 1px solid var(--step-item-border);">
+                            <div style="font-size: 1.25rem; font-weight: 600; color: #10b981;">${totalProducts}</div>
+                            <div style="font-size: 0.75rem; color: var(--step-description-color);">Total Productos</div>
+                        </div>
+                        <div style="text-align: center; padding: 0.75rem; background: var(--step-item-bg); border-radius: 8px; border: 1px solid var(--step-item-border);">
+                            <div style="font-size: 1.25rem; font-weight: 600; color: #059669;">\$${totalValue.toFixed(2)}</div>
+                            <div style="font-size: 0.75rem; color: var(--step-description-color);">Valor Total</div>
+                        </div>
+                    </div>
+                    
+                    <p style="font-size: 0.75rem; color: var(--inventory-preview-text); text-align: center;">
+                        Esta información será incluida en el archivo PDF de respaldo.
+                    </p>
+                `;
+            }
+        }
+
+        /**
+         * Exports the current inventory to a PDF and then proceeds to the next step.
+         */
+        function exportInventoryAndContinue() {
+            addLoadingState(exportContinueBtn);
+            const inventory = JSON.parse(localStorage.getItem('ciervo_inventory') || '[]');
+
+            if (inventory.length > 0) {
+                try {
+                    exportInventoryToPDF(inventory);
+                } catch (error) {
+                    console.error('Error al exportar el inventario:', error);
+                    alert('Error al exportar el inventario. Por favor, intente de nuevo o continúe sin exportación si el problema persiste.');
+                }
+            } else {
+                alert('No hay productos en el inventario para exportar. Continuando con el siguiente paso.');
+            }
+
+            setTimeout(() => {
+                removeLoadingState(exportContinueBtn);
+                goToStep(2);
+            }, 1500); // Simulate export time
+        }
+
+        /**
+         * Generates and downloads a PDF report of the current inventory.
+         * @param {Array} inventory - The array of inventory items.
+         */
+        function exportInventoryToPDF(inventory) {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            // Header
+            doc.setFontSize(20);
+            doc.setTextColor(40);
+            doc.text('Respaldo de Inventario - Ciervo Administrativo', 20, 30);
+
+            doc.setFontSize(12);
+            doc.setTextColor(100);
+            doc.text(`Fecha de exportación: ${new Date().toLocaleString('es-ES')}`, 20, 45);
+            doc.text(`Total de productos: ${inventory.length}`, 20, 55);
+
+            // Prepare table data - CORRECTED PROPERTY NAMES
+            const tableData = inventory.map(item => [
+                item.code || 'N/A',
+                item.name || 'Sin nombre',
+                item.category || 'Sin categoría',
+                `\$${parseFloat(item.price || 0).toFixed(2)}`, // Use 'price' property
+                item.stock || '0',
+                `\$${(parseFloat(item.price || 0) * parseInt(item.stock || 0)).toFixed(2)}` // Use 'price' property
+            ]);
+
+            // Add table
+            doc.autoTable({
+                startY: 70,
+                head: [['Código', 'Producto', 'Categoría', 'Precio', 'Stock', 'Valor Total']],
+                body: tableData,
+                styles: {
+                    fontSize: 9,
+                    cellPadding: 3
+                },
+                headStyles: {
+                    fillColor: [16, 185, 129], // Green
+                    textColor: 255
+                },
+                alternateRowStyles: {
+                    fillColor: [248, 250, 252] // Light gray
+                },
+                margin: { top: 10 }
+            });
+
+            // Footer
+            const finalY = doc.lastAutoTable.finalY + 20;
+            doc.setFontSize(10);
+            doc.setTextColor(150);
+            doc.text('Este documento fue generado automáticamente antes del restablecimiento del sistema.', 20, finalY);
+            doc.text('Ciervo Administrativo - Sistema de Gestión para Minimarket', 20, finalY + 10);
+
+            // Save the PDF
+            doc.save(`Inventario_Respaldo_${new Date().toISOString().split('T')[0]}.pdf`);
+        }
+
+        /**
+         * Verifies the entered administrator credentials against stored user data.
+         */
+        function verifyAdminCredentials() {
+            addLoadingState(verifyAdminBtn);
+            const usernameInput = document.getElementById('admin-username');
+            const passwordInput = document.getElementById('admin-password');
+            const username = usernameInput.value.trim();
+            const password = passwordInput.value;
+
+            clearValidationMessages();
+
+            let isValid = true;
+
+            if (!username) {
+                showValidationError('admin-username', 'El usuario es requerido.');
+                isValid = false;
+            }
+
+            if (!password) {
+                showValidationError('admin-password', 'La contraseña es requerida.');
+                isValid = false;
+            }
+
+            if (!isValid) {
+                removeLoadingState(verifyAdminBtn);
+                return;
+            }
+
+            const users = JSON.parse(localStorage.getItem('users') || '[]');
+            const user = users.find(u => u.username === username);
+
+            if (!user) {
+                showValidationError('admin-username', 'Usuario no encontrado.');
+                isValid = false;
+            } else if (user.password !== password) {
+                showValidationError('admin-password', 'Contraseña incorrecta.');
+                isValid = false;
+            } else if (user.role !== 'Administrador') {
+                showValidationError('admin-username', 'Este usuario no tiene permisos de administrador.');
+                isValid = false;
+            } else if (user.status !== 'active') {
+                showValidationError('admin-username', 'Usuario inactivo. Contacte al soporte.');
+                isValid = false;
+            }
+
+            setTimeout(() => {
+                removeLoadingState(verifyAdminBtn);
+                if (isValid) {
+                    showValidationSuccess('admin-username', 'Usuario verificado.');
+                    showValidationSuccess('admin-password', 'Contraseña correcta.');
+                    goToStep(3);
+                }
+            }, 1500); // Simulate network delay
+        }
+
+        /**
+         * Executes the full system reset process, clearing all data and creating a demo admin.
+         */
+        function executeSystemReset() {
+            isProcessing = true;
+            addLoadingState(confirmResetBtn);
+            goToStep(4); // Move to processing step
+
+            const progressBar = document.getElementById('reset-progress');
+            const statusText = document.getElementById('reset-status');
+
+            const steps = [
+                { text: 'Eliminando inventario...', progress: 15, action: () => {
+                    localStorage.removeItem('ciervo_inventory');
+                    localStorage.removeItem('ciervo_inventory_history');
+                }},
+                { text: 'Limpiando historial de ventas...', progress: 30, action: () => {
+                    localStorage.removeItem('pos_sales');
+                    localStorage.removeItem('pos_cart_backup');
+                }},
+                { text: 'Removiendo proveedores y compras...', progress: 45, action: () => {
+                    localStorage.removeItem('ciervo_suppliers');
+                    localStorage.removeItem('ciervo_purchases');
+                }},
+                { text: 'Eliminando usuarios y registros de acceso...', progress: 60, action: () => {
+                    localStorage.removeItem('users');
+                    localStorage.removeItem('recentUsers');
+                    localStorage.removeItem('loginAttempts');
+                    localStorage.removeItem('loginLockout');
+                }},
+                { text: 'Eliminando información de la empresa...', progress: 70, action: () => {
+                    localStorage.removeItem('companyData');
+                }},
+                { text: 'Eliminando cuentas por cobrar y pagar...', progress: 80, action: () => {
+                    localStorage.removeItem('ciervo_accounts');
+                }},
+                { text: 'Eliminando datos de clientes...', progress: 90, action: () => {
+                    localStorage.removeItem('pos_customers'); // Key identified from listado_clientes.html
+                }},
+                { text: 'Creando usuario administrador demo...', progress: 95, action: createDemoAdminUser },
+                { text: 'Finalizando restablecimiento y limpiando configuraciones...', progress: 100, action: clearOtherSystemData }
+            ];
+
+            let currentStepIndex = 0;
+
+            function executeNextStep() {
+                if (currentStepIndex < steps.length) {
+                    const step = steps[currentStepIndex];
+                    statusText.textContent = step.text;
+                    progressBar.style.width = step.progress + '%';
+
+                    // Execute the action for the current step
+                    step.action();
+
+                    currentStepIndex++;
+                    setTimeout(executeNextStep, 1200); // Simulate processing time
+                } else {
+                    // Process completed
+                    setTimeout(() => {
+                        removeLoadingState(confirmResetBtn);
+                        showSuccessScreen();
+                    }, 1000);
+                }
+            }
+
+            executeNextStep();
+        }
+
+        /**
+         * Creates a default demo administrator user in localStorage.
+         */
+        function createDemoAdminUser() {
+            const demoUser = {
+                id: 1,
+                firstName: "Admin",
+                lastName: "Demo",
+                username: "Admin",
+                password: "Admin123", // In a real app, this would be hashed
+                role: "Administrador",
+                status: "active",
+                email: "admin@demo.com",
+                document: "DEMO-001",
+                createdDate: new Date().toISOString()
+            };
+            localStorage.setItem('users', JSON.stringify([demoUser]));
+        }
+
+        /**
+         * Clears other non-essential system data from localStorage.
+         */
+        function clearOtherSystemData() {
+            localStorage.removeItem('ciervo_advanced_mode');
+            localStorage.removeItem('ciervo_exchange_rates');
+            localStorage.removeItem('ciervo_calculation_history');
+            localStorage.removeItem('ciervo_auto_save');
+            localStorage.removeItem('pos_exchange_rate');
+            localStorage.removeItem('pos_view_mode');
+            localStorage.removeItem('pos_apply_iva');
+            // Add any other localStorage keys that should be cleared on reset
+        }
+
+        /**
+         * Displays the success screen modal after the reset is complete.
+         */
+        function showSuccessScreen() {
+            resetModal.classList.remove('visible');
+            successModal.classList.add('visible');
+            startCountdown();
+        }
+
+        /**
+         * Starts a countdown timer for automatic redirection to the login page.
+         */
+        function startCountdown() {
+            let timeLeft = 30;
+            const countdownElement = document.getElementById('countdown');
+            countdownElement.textContent = timeLeft; // Initialize display
+
+            countdownInterval = setInterval(() => {
+                timeLeft--;
+                countdownElement.textContent = timeLeft;
+
+                if (timeLeft <= 0) {
+                    clearInterval(countdownInterval);
+                    redirectToLogin();
+                }
+            }, 1000);
+        }
+
+        /**
+         * Redirects the user to the login page after clearing session data.
+         */
+        function redirectToLogin() {
+            if (countdownInterval) {
+                clearInterval(countdownInterval);
+            }
+            sessionStorage.clear(); // Clear current user session
+            window.location.href = 'index.html';
+        }
+
+        /**
+         * Displays a validation error message for a given input field.
+         * @param {string} fieldId - The ID of the input field.
+         * @param {string} message - The error message to display.
+         */
+        function showValidationError(fieldId, message) {
+            const field = document.getElementById(fieldId);
+            const messageElement = document.getElementById(fieldId + '-message');
+
+            field.classList.add('error');
+            field.classList.remove('success');
+
+            if (messageElement) {
+                messageElement.textContent = message;
+                messageElement.className = 'validation-message validation-error';
+                messageElement.setAttribute('role', 'alert'); // ARIA live region for accessibility
+            }
+        }
+
+        /**
+         * Displays a validation success message for a given input field.
+         * @param {string} fieldId - The ID of the input field.
+         * @param {string} message - The success message to display.
+         */
+        function showValidationSuccess(fieldId, message) {
+            const field = document.getElementById(fieldId);
+            const messageElement = document.getElementById(fieldId + '-message');
+
+            field.classList.add('success');
+            field.classList.remove('error');
+
+            if (messageElement) {
+                messageElement.textContent = message;
+                messageElement.className = 'validation-message validation-success';
+                messageElement.removeAttribute('role'); // Remove ARIA role if no longer an alert
+            }
+        }
+
+        /**
+         * Clears all validation messages and styles from input fields.
+         */
+        function clearValidationMessages() {
+            const inputs = ['admin-username', 'admin-password'];
+            inputs.forEach(fieldId => {
+                const field = document.getElementById(fieldId);
+                const messageElement = document.getElementById(fieldId + '-message');
+
+                field.classList.remove('error', 'success');
+
+                if (messageElement) {
+                    messageElement.textContent = '';
+                    messageElement.className = 'validation-message';
+                    messageElement.removeAttribute('role');
+                }
+            });
+        }
+
+        /**
+         * Adds a loading state to a button (spinner and disabled).
+         * @param {HTMLElement} button - The button element.
+         */
+        function addLoadingState(button) {
+            button.classList.add('loading');
+            button.disabled = true;
+        }
+
+        /**
+         * Removes the loading state from a button.
+         * @param {HTMLElement} button - The button element.
+         */
+        function removeLoadingState(button) {
+            button.classList.remove('loading');
+            button.disabled = false;
+        }
+
+        /**
+         * Warns the user if they try to leave the page while a reset process is ongoing.
+         */
+        window.addEventListener('beforeunload', function(event) {
+            if (isProcessing) {
+                event.preventDefault();
+                event.returnValue = 'El restablecimiento del sistema está en curso. ¿Está seguro de que desea salir?';
+                return event.returnValue;
+            }
+        });
+
+        /**
+         * Cleans up the countdown interval if the page is unloaded.
+         */
+        window.addEventListener('unload', function() {
+            if (countdownInterval) {
+                clearInterval(countdownInterval);
+            }
+        });
+    </script>
+</body>
+</html>

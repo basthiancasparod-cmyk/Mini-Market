@@ -1,0 +1,2052 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Proveedores - Ciervo Administrativo</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.1/dist/umd/lucide.js"></script>
+    <style>
+        /* Estilos CSS existentes */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(to bottom right, #f8fafc, #dbeafe, #e0e7ff);
+            min-height: 100vh;
+            color: #334155;
+            transition: background-color 0.3s, color 0.3s; /* Added for smooth dark mode transition */
+        }
+
+        /* Dark Mode Styles */
+        body.dark-mode {
+            background: linear-gradient(to bottom right, #1a202c, #2d3748, #4a5568);
+            color: #e2e8f0;
+        }
+
+        .glassmorphic-bar {
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(16px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            transition: background-color 0.3s, border-color 0.3s; /* Added for smooth dark mode transition */
+        }
+
+        .dark-mode .glassmorphic-bar {
+            background: rgba(26, 32, 44, 0.7);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .container {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 0 1.5rem;
+        }
+
+        .top-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem 0;
+        }
+
+        .brand-section {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .brand-icon {
+            position: relative;
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(to bottom right, #10b981, #059669);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.25);
+        }
+
+        .brand-icon::after {
+            content: '';
+            position: absolute;
+            top: -4px;
+            right: -4px;
+            width: 16px;
+            height: 16px;
+            background: #3b82f6;
+            border-radius: 50%;
+            border: 2px solid white;
+        }
+
+        .brand-text h1 {
+            font-size: 1.25rem;
+            font-weight: bold;
+            background: linear-gradient(to right, #1e293b, #64748b);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+        }
+
+        .dark-mode .brand-text h1 {
+            background: linear-gradient(to right, #e2e8f0, #cbd5e1);
+            background-clip: text;
+            -webkit-background-clip: text;
+        }
+
+        .brand-text p {
+            font-size: 0.875rem;
+            color: #64748b;
+        }
+
+        .dark-mode .brand-text p {
+            color: #a0aec0;
+        }
+
+        .nav-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .back-button {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            background: rgba(255, 255, 255, 0.5);
+            border: none;
+            border-radius: 12px;
+            color: #64748b;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            backdrop-filter: blur(8px);
+        }
+
+        .dark-mode .back-button {
+            background: rgba(255, 255, 255, 0.1);
+            color: #cbd5e1;
+        }
+
+        .back-button:hover {
+            background: rgba(255, 255, 255, 0.8);
+            color: #1e293b;
+            transform: translateX(-2px);
+        }
+
+        .dark-mode .back-button:hover {
+            background: rgba(255, 255, 255, 0.2);
+            color: #e2e8f0;
+        }
+
+        .main-content {
+            padding: 2rem 0;
+        }
+
+        .module-header-section {
+            text-align: center;
+            margin-bottom: 2rem;
+            padding: 2rem 0;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(209, 250, 229, 1);
+            color: #059669;
+            padding: 0.5rem 1rem;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            margin-bottom: 1rem;
+        }
+
+        .dark-mode .badge {
+            background: rgba(16, 185, 129, 0.2);
+            color: #81e6d9;
+        }
+
+        .module-title {
+            font-size: 2.25rem;
+            font-weight: bold;
+            background: linear-gradient(to right, #1e293b, #059669, #047857);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            margin-bottom: 1rem;
+        }
+
+        .dark-mode .module-title {
+            background: linear-gradient(to right, #e2e8f0, #81e6d9, #4fd1c5);
+            background-clip: text;
+            -webkit-background-clip: text;
+        }
+
+        .module-subtitle {
+            font-size: 1.125rem;
+            color: #64748b;
+            max-width: 48rem;
+            margin: 0 auto;
+        }
+
+        .dark-mode .module-subtitle {
+            color: #a0aec0;
+        }
+
+        .tab-container {
+            background: white;
+            border-radius: 24px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            border: 1px solid #e2e8f0;
+            overflow: hidden;
+            transition: background-color 0.3s, border-color 0.3s, box-shadow 0.3s; /* Added for smooth dark mode transition */
+        }
+
+        .dark-mode .tab-container {
+            background: #2d3748;
+            border: 1px solid #4a5568;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        .tab-navigation {
+            display: flex;
+            background: #f8fafc;
+            border-bottom: 1px solid #e2e8f0;
+            transition: background-color 0.3s, border-color 0.3s; /* Added for smooth dark mode transition */
+        }
+
+        .dark-mode .tab-navigation {
+            background: #4a5568;
+            border-bottom: 1px solid #64748b;
+        }
+
+        .tab-button {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 1.25rem 1rem;
+            background: none;
+            border: none;
+            color: #64748b;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .dark-mode .tab-button {
+            color: #cbd5e1;
+        }
+
+        .tab-button:hover {
+            background: rgba(16, 185, 129, 0.05);
+            color: #059669;
+        }
+
+        .dark-mode .tab-button:hover {
+            background: rgba(16, 185, 129, 0.2);
+            color: #81e6d9;
+        }
+
+        .tab-button.active {
+            background: white;
+            color: #059669;
+            box-shadow: 0 -2px 0 0 #059669 inset;
+        }
+
+        .dark-mode .tab-button.active {
+            background: #2d3748;
+            color: #81e6d9;
+            box-shadow: 0 -2px 0 0 #81e6d9 inset;
+        }
+
+        .tab-content-area {
+            padding: 2rem;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Suppliers List Styles */
+        .list-header {
+            margin-bottom: 2rem;
+        }
+
+        .search-section {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        @media (min-width: 768px) {
+            .search-section {
+                flex-direction: row;
+                align-items: center;
+                justify-content: space-between;
+            }
+        }
+
+        .search-input-container {
+            position: relative;
+            flex: 1;
+        }
+
+        .search-input-container svg {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #94a3b8;
+        }
+
+        .dark-mode .search-input-container svg {
+            color: #a0aec0;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 0.75rem 1rem 0.75rem 3rem;
+            background: #f8fafc;
+            border: 1px solid #cbd5e1;
+            border-radius: 12px;
+            color: #1e293b;
+            font-size: 0.875rem;
+            transition: all 0.2s; /* Added for smooth dark mode transition */
+        }
+
+        .dark-mode .search-input {
+            background: #4a5568;
+            border: 1px solid #64748b;
+            color: #e2e8f0;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #10b981;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+        }
+
+        .dark-mode .search-input:focus {
+            border-color: #81e6d9;
+            background: #2d3748;
+            box-shadow: 0 0 0 3px rgba(129, 230, 217, 0.2);
+        }
+
+        .filter-controls {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .filter-select {
+            padding: 0.75rem 1rem;
+            background: #f8fafc;
+            border: 1px solid #cbd5e1;
+            border-radius: 12px;
+            color: #1e293b;
+            font-size: 0.875rem;
+            min-width: 150px;
+            transition: all 0.2s; /* Added for smooth dark mode transition */
+        }
+
+        .dark-mode .filter-select {
+            background: #4a5568;
+            border: 1px solid #64748b;
+            color: #e2e8f0;
+        }
+
+        .filter-select:focus {
+            outline: none;
+            border-color: #10b981;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+        }
+
+        .dark-mode .filter-select:focus {
+            border-color: #81e6d9;
+            background: #2d3748;
+            box-shadow: 0 0 0 3px rgba(129, 230, 217, 0.2);
+        }
+
+        .suppliers-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .supplier-card {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            padding: 1.5rem;
+            transition: all 0.3s;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .dark-mode .supplier-card {
+            background: #2d3748;
+            border: 1px solid #4a5568;
+        }
+
+        .supplier-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+            border-color: #10b981;
+        }
+
+        .dark-mode .supplier-card:hover {
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+            border-color: #81e6d9;
+        }
+
+        .supplier-card-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .supplier-avatar {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(to bottom right, #10b981, #059669);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+
+        .supplier-info h4 {
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 0.25rem;
+        }
+
+        .dark-mode .supplier-info h4 {
+            color: #e2e8f0;
+        }
+
+        .supplier-info p {
+            font-size: 0.875rem;
+            color: #64748b;
+        }
+
+        .dark-mode .supplier-info p {
+            color: #a0aec0;
+        }
+
+        .supplier-card-body {
+            margin-bottom: 1rem;
+        }
+
+        .supplier-detail {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+            font-size: 0.875rem;
+            color: #64748b;
+        }
+
+        .dark-mode .supplier-detail {
+            color: #a0aec0;
+        }
+
+        .supplier-card-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .supplier-status {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .status-active .status-dot {
+            background: #10b981;
+        }
+
+        .status-inactive .status-dot {
+            background: #ef4444;
+        }
+
+        .status-pending .status-dot {
+            background: #f59e0b;
+        }
+
+        .status-active {
+            color: #059669;
+        }
+
+        .dark-mode .status-active {
+            color: #81e6d9;
+        }
+
+        .status-inactive {
+            color: #dc2626;
+        }
+
+        .dark-mode .status-inactive {
+            color: #feb2b2;
+        }
+
+        .status-pending {
+            color: #d97706;
+        }
+
+        .dark-mode .status-pending {
+            color: #fbd38d;
+        }
+
+        /* Delete button */
+        .delete-supplier-btn {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: rgba(239, 68, 68, 0.1);
+            border: none;
+            border-radius: 8px;
+            padding: 0.5rem;
+            color: #dc2626;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .dark-mode .delete-supplier-btn {
+            background: rgba(239, 68, 68, 0.2);
+            color: #feb2b2;
+        }
+
+        .delete-supplier-btn:hover {
+            background: rgba(239, 68, 68, 0.2);
+            transform: scale(1.1);
+        }
+
+        .dark-mode .delete-supplier-btn:hover {
+            background: rgba(239, 68, 68, 0.3);
+        }
+
+        /* Registration Form Styles */
+        .registration-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 24px;
+            padding: 2rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            border: 1px solid #e2e8f0;
+            position: relative;
+            overflow: hidden;
+            transition: background-color 0.3s, border-color 0.3s, box-shadow 0.3s; /* Added for smooth dark mode transition */
+        }
+
+        .dark-mode .registration-container {
+            background: #2d3748;
+            border: 1px solid #4a5568;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        .registration-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(to right, #10b981, #059669, #047857);
+        }
+
+        .dark-mode .registration-container::before {
+            background: linear-gradient(to right, #81e6d9, #4fd1c5, #38b2ac);
+        }
+
+        .form-section {
+            margin-bottom: 2rem;
+        }
+
+        .section-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .dark-mode .section-title {
+            color: #e2e8f0;
+        }
+
+        .section-icon {
+            padding: 0.5rem;
+            background: linear-gradient(to bottom right, #d1fae5, #a7f3d0);
+            border-radius: 8px;
+        }
+
+        .dark-mode .section-icon {
+            background: linear-gradient(to bottom right, #4a5568, #64748b);
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+        }
+
+        @media (min-width: 768px) {
+            .form-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group.full-width {
+            grid-column: 1 / -1;
+        }
+
+        .form-label {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #374151;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .dark-mode .form-label {
+            color: #cbd5e1;
+        }
+
+        .required {
+            color: #ef4444;
+        }
+
+        .form-input, .form-select, .form-textarea {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background: #f8fafc;
+            border: 1px solid #cbd5e1;
+            border-radius: 12px;
+            color: #1e293b;
+            font-size: 0.875rem;
+            transition: all 0.2s; /* Added for smooth dark mode transition */
+        }
+
+        .dark-mode .form-input, .dark-mode .form-select, .dark-mode .form-textarea {
+            background: #4a5568;
+            border: 1px solid #64748b;
+            color: #e2e8f0;
+        }
+
+        .form-input:focus, .form-select:focus, .form-textarea:focus {
+            outline: none;
+            border-color: #10b981;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+        }
+
+        .dark-mode .form-input:focus, .dark-mode .form-select:focus, .dark-mode .form-textarea:focus {
+            border-color: #81e6d9;
+            background: #2d3748;
+            box-shadow: 0 0 0 3px rgba(129, 230, 217, 0.2);
+        }
+
+        .form-textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .form-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 1px solid #e2e8f0;
+            transition: border-color 0.3s; /* Added for smooth dark mode transition */
+        }
+
+        .dark-mode .form-actions {
+            border-top: 1px solid #4a5568;
+        }
+
+        @media (min-width: 640px) {
+            .form-actions {
+                flex-direction: row;
+                justify-content: space-between;
+            }
+        }
+
+        .button-group {
+            display: flex;
+            gap: 1rem;
+            flex: 1;
+            justify-content: flex-end;
+        }
+
+        .btn {
+            padding: 0.75rem 2rem;
+            border-radius: 12px;
+            font-weight: 500;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            text-decoration: none;
+        }
+
+        .btn-secondary {
+            background: #f1f5f9;
+            color: #64748b;
+        }
+
+        .dark-mode .btn-secondary {
+            background: #4a5568;
+            color: #e2e8f0;
+        }
+
+        .btn-secondary:hover {
+            background: #e2e8f0;
+            color: #475569;
+        }
+
+        .dark-mode .btn-secondary:hover {
+            background: #64748b;
+            color: #f8fafc;
+        }
+
+        .btn-primary {
+            background: linear-gradient(to right, #10b981, #059669);
+            color: white;
+            box-shadow: 0 4px 14px 0 rgba(16, 185, 129, 0.25);
+        }
+
+        .dark-mode .btn-primary {
+            background: linear-gradient(to right, #81e6d9, #4fd1c5);
+            box-shadow: 0 4px 14px 0 rgba(129, 230, 217, 0.35);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 8px 25px 0 rgba(16, 185, 129, 0.35);
+        }
+
+        .dark-mode .btn-primary:hover {
+            box-shadow: 0 8px 25px 0 rgba(129, 230, 217, 0.45);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: 0 4px 14px 0 rgba(16, 185, 129, 0.25);
+        }
+
+        .validation-message {
+            font-size: 0.75rem;
+            margin-top: 0.25rem;
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .validation-error {
+            color: #ef4444;
+        }
+
+        .dark-mode .validation-error {
+            color: #feb2b2;
+        }
+
+        .validation-success {
+            color: #10b981;
+        }
+
+        .dark-mode .validation-success {
+            color: #81e6d9;
+        }
+
+        .form-info {
+            background: rgba(240, 253, 244, 0.8);
+            border-radius: 12px;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            transition: background-color 0.3s, border-color 0.3s; /* Added for smooth dark mode transition */
+        }
+
+        .dark-mode .form-info {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .info-title {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #065f46;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .dark-mode .info-title {
+            color: #81e6d9;
+        }
+
+        .info-text {
+            font-size: 0.875rem;
+            color: #64748b;
+            line-height: 1.5;
+        }
+
+        .dark-mode .info-text {
+            color: #a0aec0;
+        }
+
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 1rem;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+
+        .modal-overlay.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 16px;
+            padding: 2rem;
+            width: 100%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+            transform: translateY(-20px);
+            transition: transform 0.3s ease, background-color 0.3s; /* Added for smooth dark mode transition */
+        }
+
+        .dark-mode .modal-content {
+            background: #2d3748;
+        }
+
+        .modal-overlay.visible .modal-content {
+            transform: translateY(0);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .modal-header h3 {
+            color: #1e293b;
+        }
+
+        .dark-mode .modal-header h3 {
+            color: #e2e8f0;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #64748b;
+        }
+
+        .dark-mode .modal-close {
+            color: #a0aec0;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .loading {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        .loading::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 20px;
+            height: 20px;
+            border: 2px solid #f3f4f6;
+            border-top: 2px solid #10b981;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        .dark-mode .loading::after {
+            border: 2px solid #a0aec0;
+            border-top: 2px solid #81e6d9;
+        }
+
+        @keyframes spin {
+            0% { transform: translate(-50%, -50%) rotate(0deg); }
+            100% { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+
+        /* Pagination Styles */
+        .pagination-controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 2rem;
+            padding-top: 1rem;
+            border-top: 1px solid #e2e8f0;
+            transition: border-color 0.3s; /* Added for smooth dark mode transition */
+        }
+
+        .dark-mode .pagination-controls {
+            border-top: 1px solid #4a5568;
+        }
+
+        .pagination-button {
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            border: 1px solid #cbd5e1;
+            background: #f8fafc;
+            color: #334155;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .dark-mode .pagination-button {
+            background: #4a5568;
+            border: 1px solid #64748b;
+            color: #e2e8f0;
+        }
+
+        .pagination-button:hover:not(:disabled) {
+            background: #e2e8f0;
+            border-color: #94a3b8;
+        }
+
+        .dark-mode .pagination-button:hover:not(:disabled) {
+            background: #64748b;
+            border-color: #a0aec0;
+        }
+
+        .pagination-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .pagination-button.active {
+            background: #10b981;
+            color: white;
+            border-color: #059669;
+        }
+
+        .dark-mode .pagination-button.active {
+            background: #81e6d9;
+            color: #1a202c;
+            border-color: #4fd1c5;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 767px) {
+            .module-title {
+                font-size: 1.875rem;
+            }
+            
+            .tab-navigation {
+                flex-direction: column;
+            }
+            
+            .filter-controls {
+                flex-direction: column;
+            }
+            
+            .filter-select {
+                min-width: auto;
+            }
+            
+            .suppliers-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .registration-container {
+                padding: 1.5rem;
+                margin: 0 1rem;
+            }
+            
+            .form-grid {
+                gap: 1rem;
+            }
+        }
+
+        /* Dark Mode Toggle Button */
+        .dark-mode-toggle {
+            background: none;
+            border: none;
+            color: inherit; /* Inherit color from parent for better integration */
+            cursor: pointer;
+            font-size: 1.25rem;
+            margin-right: 0.5rem; /* Adjusted margin to fit next to back button */
+            padding: 0.5rem; /* Add padding for easier clicking */
+            border-radius: 8px; /* Slightly rounded corners */
+            transition: background-color 0.2s, color 0.2s;
+        }
+
+        .dark-mode-toggle:hover {
+            background: rgba(255, 255, 255, 0.2); /* Subtle hover effect */
+        }
+
+        .dark-mode .dark-mode-toggle {
+            color: inherit; /* Inherit color from parent */
+        }
+
+        .dark-mode .dark-mode-toggle:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <!-- Top Bar -->
+    <div class="glassmorphic-bar">
+        <div class="container">
+            <div class="top-bar">
+                <!-- Brand Section -->
+                <div class="brand-section">
+                    <div class="brand-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/>
+                            <path d="M15 18H9"/>
+                            <path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/>
+                            <circle cx="17" cy="18" r="2"/>
+                            <circle cx="7" cy="18" r="2"/>
+                        </svg>
+                    </div>
+                    <div class="brand-text">
+                        <h1>Ciervo Administrativo</h1>
+                        <p>Sistema de Gestión Empresarial</p>
+                    </div>
+                </div>
+
+                <!-- Navigation Actions -->
+                <div class="nav-actions">
+                    <button id="darkModeToggle" class="dark-mode-toggle">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sun-icon"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="M4.93 4.93l1.41 1.41"/><path d="M17.66 17.66l1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="M4.93 19.07l1.41-1.41"/><path d="M17.66 6.34l1.41-1.41"/></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="moon-icon hidden"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+                    </button>
+                    <a href="menu.html" class="back-button">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+                        Volver al Menú
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="container main-content">
+        <!-- Module Header -->
+        <div class="module-header-section">
+            <div class="badge">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/>
+                    <path d="M15 18H9"/>
+                    <path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/>
+                    <circle cx="17" cy="18" r="2"/>
+                    <circle cx="7" cy="18" r="2"/>
+                </svg>
+                <span>Gestión de Proveedores</span>
+            </div>
+            <h2 class="module-title">Administración de Proveedores</h2>
+            <p class="module-subtitle">
+                Gestiona proveedores, contactos y relaciones comerciales del sistema empresarial
+            </p>
+        </div>
+
+        <!-- Supplier Management Tabs -->
+        <div class="tab-container">
+            <div class="tab-navigation">
+                <button class="tab-button active" onclick="switchSupplierTab('list')">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/>
+                        <path d="M15 18H9"/>
+                        <path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/>
+                        <circle cx="17" cy="18" r="2"/>
+                        <circle cx="7" cy="18" r="2"/>
+                    </svg>
+                    Lista de Proveedores
+                </button>
+                <button class="tab-button" onclick="switchSupplierTab('register')">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/>
+                        <path d="M15 18H9"/>
+                        <path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/>
+                        <circle cx="17" cy="18" r="2"/>
+                        <circle cx="7" cy="18" r="2"/>
+                        <path d="M12 8v8m-4-4h8"/>
+                    </svg>
+                    Registrar Proveedor
+                </button>
+            </div>
+
+            <!-- Tab Content -->
+            <div class="tab-content-area">
+                <!-- Suppliers List Tab -->
+                <div class="tab-content active" id="suppliers-list-tab">
+                    <div class="suppliers-list-container">
+                        <div class="list-header">
+                            <div class="search-section">
+                                <div class="search-input-container">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <circle cx="11" cy="11" r="8"/>
+                                        <path d="m21 21-4.35-4.35"/>
+                                    </svg>
+                                    <input type="text" placeholder="Buscar proveedores..." class="search-input" id="supplierSearch">
+                                </div>
+                                <div class="filter-controls">
+                                    <select class="filter-select" id="statusFilter">
+                                        <option value="">Todos los estados</option>
+                                        <option value="active">Activo</option>
+                                        <option value="inactive">Inactivo</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="suppliers-grid" id="suppliersGrid">
+                            <!-- Suppliers will be populated here from localStorage -->
+                        </div>
+                        <div class="pagination-controls" id="paginationControls">
+                            <!-- Pagination buttons will be rendered here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Supplier Registration Tab -->
+                <div class="tab-content" id="supplier-register-tab">
+                    <div class="registration-container">
+                        <!-- Info Banner -->
+                        <div class="form-info">
+                            <div class="info-title">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+                                Información Importante
+                            </div>
+                            <p class="info-text">
+                                Complete todos los campos requeridos para registrar un nuevo proveedor. Los proveedores estarán disponibles inmediatamente para realizar compras.
+                            </p>
+                        </div>
+
+                        <form id="registration-form" onsubmit="handleSubmit(event)">
+                            <!-- Basic Information -->
+                            <div class="form-section">
+                                <h3 class="section-title">
+                                    <div class="section-icon">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/>
+                                            <path d="M15 18H9"/>
+                                            <path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/>
+                                            <circle cx="17" cy="18" r="2"/>
+                                            <circle cx="7" cy="18" r="2"/>
+                                        </svg>
+                                    </div>
+                                    Información Básica
+                                </h3>
+                                
+                                <div class="form-grid">
+                                    <div class="form-group">
+                                        <label class="form-label" for="name">
+                                            Nombre del Proveedor <span class="required">*</span>
+                                        </label>
+                                        <input type="text" id="name" name="name" class="form-input" required 
+                                               placeholder="Ingrese el nombre del proveedor" onblur="validateField(this)">
+                                        <div class="validation-message" id="name-message"></div>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="form-label" for="document">
+                                            Documento/RUC <span class="required">*</span>
+                                        </label>
+                                        <input type="text" id="document" name="document" class="form-input" required 
+                                               placeholder="Ej: 20123456789" onblur="validateField(this)">
+                                        <div class="validation-message" id="document-message"></div>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="form-label" for="email">
+                                            Email <span class="required">*</span>
+                                        </label>
+                                        <input type="email" id="email" name="email" class="form-input" required 
+                                               placeholder="proveedor@empresa.com" onblur="validateField(this)">
+                                        <div class="validation-message" id="email-message"></div>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="form-label" for="phone">
+                                            Teléfono <span class="required">*</span>
+                                        </label>
+                                        <input type="tel" id="phone" name="phone" class="form-input" required 
+                                               placeholder="+51 999 888 777" onblur="validateField(this)">
+                                        <div class="validation-message" id="phone-message"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Additional Information -->
+                            <div class="form-section">
+                                <h3 class="section-title">
+                                    <div class="section-icon">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                                            <circle cx="12" cy="10" r="3"/>
+                                        </svg>
+                                    </div>
+                                    Información Adicional
+                                </h3>
+                                
+                                <div class="form-grid">
+                                    <div class="form-group full-width">
+                                        <label class="form-label" for="address">
+                                            Dirección
+                                        </label>
+                                        <textarea id="address" name="address" class="form-textarea" 
+                                                  placeholder="Dirección completa del proveedor"></textarea>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="form-label" for="contactPerson">
+                                            Persona de Contacto
+                                        </label>
+                                        <input type="text" id="contactPerson" name="contactPerson" class="form-input" 
+                                               placeholder="Nombre del contacto principal">
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="form-label" for="status">
+                                            Estado
+                                        </label>
+                                        <select id="status" name="status" class="form-select">
+                                            <option value="active">Activo</option>
+                                            <option value="inactive">Inactivo</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="form-group full-width">
+                                        <label class="form-label" for="notes">
+                                            Notas/Observaciones
+                                        </label>
+                                        <textarea id="notes" name="notes" class="form-textarea" 
+                                                  placeholder="Información adicional sobre el proveedor"></textarea>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Form Actions -->
+                            <div class="form-actions">
+                                <div class="button-group">
+                                    <button type="button" class="btn btn-secondary" onclick="resetForm()">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                                        Limpiar Formulario
+                                    </button>
+                                    <button type="submit" class="btn btn-primary" id="submit-button">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/>
+                                            <path d="M15 18H9"/>
+                                            <path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/>
+                                            <circle cx="17" cy="18" r="2"/>
+                                            <circle cx="7" cy="18" r="2"/>
+                                        </svg>
+                                        Registrar Proveedor
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Edición de Proveedor -->
+    <div class="modal-overlay" id="editSupplierModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Editar Proveedor</h3>
+                <button class="modal-close" onclick="closeEditModal()">&times;</button>
+            </div>
+            
+            <form id="edit-supplier-form" onsubmit="handleEditSubmit(event)">
+                <input type="hidden" id="edit-supplier-id" name="id">
+                
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label class="form-label" for="edit-name">
+                            Nombre del Proveedor <span class="required">*</span>
+                        </label>
+                        <input type="text" id="edit-name" name="name" class="form-input" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="edit-document">
+                            Documento/RUC <span class="required">*</span>
+                        </label>
+                        <input type="text" id="edit-document" name="document" class="form-input" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="edit-email">
+                            Email <span class="required">*</span>
+                        </label>
+                        <input type="email" id="edit-email" name="email" class="form-input" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="edit-phone">
+                            Teléfono <span class="required">*</span>
+                        </label>
+                        <input type="tel" id="edit-phone" name="phone" class="form-input" required>
+                    </div>
+
+                    <div class="form-group full-width">
+                        <label class="form-label" for="edit-address">
+                            Dirección
+                        </label>
+                        <textarea id="edit-address" name="address" class="form-textarea"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="edit-contactPerson">
+                            Persona de Contacto
+                        </label>
+                        <input type="text" id="edit-contactPerson" name="contactPerson" class="form-input">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="edit-status">
+                            Estado
+                        </label>
+                        <select id="edit-status" name="status" class="form-select">
+                            <option value="active">Activo</option>
+                            <option value="inactive">Inactivo</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group full-width">
+                        <label class="form-label" for="edit-notes">
+                            Notas/Observaciones
+                        </label>
+                        <textarea id="edit-notes" name="notes" class="form-textarea"></textarea>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <div class="button-group">
+                        <button type="button" class="btn btn-danger" onclick="showConfirmModal('delete-edit-modal')" style="background: #ef4444; color: white;">
+                            Eliminar Proveedor
+                        </button>
+                        <button type="button" class="btn btn-secondary" onclick="closeEditModal()">
+                            Cancelar
+                        </button>
+                        <button type="submit" class="btn btn-primary">
+                            Guardar Cambios
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Custom Confirmation Modal -->
+    <div class="modal-overlay" id="confirmModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="confirmModalTitle">Confirmar Acción</h3>
+                <button class="modal-close" onclick="closeConfirmModal()">&times;</button>
+            </div>
+            <p id="confirmModalMessage" style="margin-bottom: 1.5rem; color: #334155;"></p>
+            <div class="form-actions" style="border-top: none; padding-top: 0;">
+                <div class="button-group" style="justify-content: flex-end;">
+                    <button type="button" class="btn btn-secondary" onclick="closeConfirmModal()">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="confirmModalConfirmBtn">Confirmar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let formValidation = {
+            name: false,
+            document: false,
+            email: false,
+            phone: false
+        };
+        let editingSupplierId = null;
+        let currentPage = 1;
+        const itemsPerPage = 6; // Number of suppliers per page
+        let filteredSuppliers = []; // Stores the currently filtered suppliers for pagination
+
+        // Initialize Lucide icons
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            } else {
+                setTimeout(() => {
+                    if (typeof lucide !== 'undefined') {
+                        lucide.createIcons();
+                    }
+                }, 100);
+            }
+            
+            // Load suppliers from localStorage
+            filterSuppliers(); // Initial render with all suppliers
+            
+            // Add event listeners for search and filters
+            const searchInput = document.getElementById('supplierSearch');
+            const statusFilter = document.getElementById('statusFilter');
+            
+            if (searchInput) {
+                searchInput.addEventListener('input', () => {
+                    currentPage = 1; // Reset to first page on search
+                    filterSuppliers();
+                });
+            }
+            if (statusFilter) {
+                statusFilter.addEventListener('change', () => {
+                    currentPage = 1; // Reset to first page on filter change
+                    filterSuppliers();
+                });
+            }
+
+            // Add event listeners for form validation on input
+            document.getElementById('name').addEventListener('input', (e) => validateField(e.target));
+            document.getElementById('document').addEventListener('input', (e) => validateField(e.target));
+            document.getElementById('email').addEventListener('input', (e) => validateField(e.target));
+            document.getElementById('phone').addEventListener('input', (e) => validateField(e.target));
+
+            // Initial check for submit button state
+            updateSubmitButton();
+
+            // Initialize dark mode
+            initDarkMode();
+        });
+
+        // Dark Mode Functionality
+        function initDarkMode() {
+            const darkModeToggle = document.getElementById('darkModeToggle');
+            const sunIcon = darkModeToggle.querySelector('.sun-icon');
+            const moonIcon = darkModeToggle.querySelector('.moon-icon');
+            const isDarkMode = localStorage.getItem('darkMode') === 'enabled';
+
+            if (isDarkMode) {
+                document.body.classList.add('dark-mode');
+                sunIcon.classList.add('hidden');
+                moonIcon.classList.remove('hidden');
+            } else {
+                document.body.classList.remove('dark-mode');
+                sunIcon.classList.remove('hidden');
+                moonIcon.classList.add('hidden');
+            }
+
+            darkModeToggle.addEventListener('click', () => {
+                document.body.classList.toggle('dark-mode');
+                const currentMode = document.body.classList.contains('dark-mode');
+                localStorage.setItem('darkMode', currentMode ? 'enabled' : 'disabled');
+
+                if (currentMode) {
+                    sunIcon.classList.add('hidden');
+                    moonIcon.classList.remove('hidden');
+                } else {
+                    sunIcon.classList.remove('hidden');
+                    moonIcon.classList.add('hidden');
+                }
+            });
+        }
+
+        /**
+         * Retrieves suppliers from localStorage.
+         * @returns {Array} An array of supplier objects.
+         */
+        function getSuppliers() {
+            try {
+                const suppliers = localStorage.getItem('ciervo_suppliers');
+                return suppliers ? JSON.parse(suppliers) : [];
+            } catch (e) {
+                console.error("Error al obtener proveedores de localStorage:", e);
+                return [];
+            }
+        }
+
+        /**
+         * Save suppliers to localStorage.
+         * @param {Array} suppliers - The array of supplier objects to save.
+         */
+        function saveSuppliers(suppliers) {
+            try {
+                localStorage.setItem('ciervo_suppliers', JSON.stringify(suppliers));
+            } catch (e) {
+                console.error("Error al guardar proveedores en localStorage:", e);
+                alert("Error al guardar los datos. Es posible que el almacenamiento local esté lleno o deshabilitado.");
+            }
+        }
+
+        /**
+         * Switches between supplier management tabs.
+         * @param {string} tabName - The name of the tab to switch to ('list' or 'register').
+         */
+        function switchSupplierTab(tabName) {
+            document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            document.querySelector(`[onclick="switchSupplierTab('${tabName}')"]`).classList.add('active');
+            document.getElementById(`${tabName === 'list' ? 'suppliers-list' : 'supplier-register'}-tab`).classList.add('active');
+            
+            if (tabName === 'list') {
+                filterSuppliers(); // Re-filter and render suppliers for the list view
+            } else if (tabName === 'register') {
+                softResetForm();
+            }
+        }
+
+        /**
+         * Resets the registration form without confirmation.
+         */
+        function softResetForm() {
+            const form = document.getElementById('registration-form');
+            if (form) {
+                form.reset();
+                Object.keys(formValidation).forEach(key => {
+                    formValidation[key] = false;
+                });
+                document.querySelectorAll('.validation-message').forEach(el => {
+                    el.textContent = '';
+                    el.className = 'validation-message';
+                });
+                updateSubmitButton();
+            }
+        }
+
+        /**
+         * Renders the list of suppliers in the grid based on current page and filters.
+         */
+        function renderSuppliers() {
+            const grid = document.getElementById('suppliersGrid');
+            if (!grid) return;
+            
+            const startIndex = (currentPage - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            const suppliersToRender = filteredSuppliers.slice(startIndex, endIndex);
+
+            if (suppliersToRender.length === 0 && filteredSuppliers.length === 0) {
+                grid.innerHTML = `
+                    <div class="no-suppliers-message" style="grid-column: 1 / -1; text-align: center; padding: 3rem; color: var(--text-color-secondary, #64748b);">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 1rem; color: var(--text-color-tertiary, #94a3b8);">
+                            <path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/>
+                            <path d="M15 18H9"/>
+                            <path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/>
+                            <circle cx="17" cy="18" r="2"/>
+                            <circle cx="7" cy="18" r="2"/>
+                        </svg>
+                        <h3 style="margin-bottom: 0.5rem;">No hay proveedores registrados</h3>
+                        <p>Utilice la pestaña "Registrar Proveedor" para agregar nuevos proveedores al sistema.</p>
+                    </div>
+                `;
+            } else if (suppliersToRender.length === 0 && filteredSuppliers.length > 0) {
+                 grid.innerHTML = `
+                    <div class="no-suppliers-message" style="grid-column: 1 / -1; text-align: center; padding: 3rem; color: var(--text-color-secondary, #64748b);">
+                        <h3 style="margin-bottom: 0.5rem;">No se encontraron proveedores en esta página</h3>
+                        <p>Intente ajustar los filtros o la página.</p>
+                    </div>
+                `;
+            }
+            else {
+                grid.innerHTML = suppliersToRender.map(supplier => `
+                    <div class="supplier-card" onclick="editSupplier(${supplier.id})">
+                        <button class="delete-supplier-btn" onclick="event.stopPropagation(); showConfirmModal('delete-list', ${supplier.id})">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M3 6h18"/>
+                                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
+                                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+                            </svg>
+                        </button>
+                        <div class="supplier-card-header">
+                            <div class="supplier-avatar">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/>
+                                    <path d="M15 18H9"/>
+                                    <path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/>
+                                    <circle cx="17" cy="18" r="2"/>
+                                    <circle cx="7" cy="18" r="2"/>
+                                </svg>
+                            </div>
+                            <div class="supplier-info">
+                                <h4>${escapeHTML(supplier.name)}</h4>
+                                <p>${escapeHTML(supplier.document || 'Sin documento')}</p>
+                            </div>
+                        </div>
+                        <div class="supplier-card-body">
+                            <div class="supplier-detail">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+                                </svg>
+                                ${escapeHTML(supplier.phone || 'No especificado')}
+                            </div>
+                            <div class="supplier-detail">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect width="20" height="16" x="2" y="4" rx="2"/>
+                                    <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
+                                </svg>
+                                ${escapeHTML(supplier.email || 'No especificado')}
+                            </div>
+                            <div class="supplier-detail">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/>
+                                    <path d="M15 18H9"/>
+                                    <path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/>
+                                    <circle cx="17" cy="18" r="2"/>
+                                    <circle cx="7" cy="18" r="2"/>
+                                </svg>
+                                ${escapeHTML(supplier.contactPerson || 'No especificado')}
+                            </div>
+                        </div>
+                        <div class="supplier-card-footer">
+                            <div class="supplier-status status-${supplier.status || 'active'}">
+                                <div class="status-dot"></div>
+                                <span>${supplier.status === 'active' ? 'Activo' : 'Inactivo'}</span>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+            renderPaginationControls();
+        }
+
+        /**
+         * Filters the list of suppliers based on search term and status.
+         * Updates the `filteredSuppliers` global array and re-renders the list.
+         */
+        function filterSuppliers() {
+            const searchTerm = document.getElementById('supplierSearch').value.toLowerCase();
+            const statusFilter = document.getElementById('statusFilter').value;
+            
+            const allSuppliers = getSuppliers();
+            filteredSuppliers = allSuppliers.filter(supplier => {
+                const matchesSearch = supplier.name.toLowerCase().includes(searchTerm) ||
+                                    (supplier.document && supplier.document.toLowerCase().includes(searchTerm)) ||
+                                    (supplier.email && supplier.email.toLowerCase().includes(searchTerm)) ||
+                                    (supplier.phone && supplier.phone.toLowerCase().includes(searchTerm));
+                const matchesStatus = !statusFilter || supplier.status === statusFilter;
+                
+                return matchesSearch && matchesStatus;
+            });
+            
+            renderSuppliers();
+        }
+
+        /**
+         * Renders the pagination controls (buttons for pages).
+         */
+        function renderPaginationControls() {
+            const paginationControls = document.getElementById('paginationControls');
+            if (!paginationControls) return;
+
+            const totalPages = Math.ceil(filteredSuppliers.length / itemsPerPage);
+            paginationControls.innerHTML = '';
+
+            if (totalPages > 1) {
+                const prevButton = document.createElement('button');
+                prevButton.className = 'pagination-button';
+                prevButton.textContent = 'Anterior';
+                prevButton.disabled = currentPage === 1;
+                prevButton.onclick = () => {
+                    currentPage--;
+                    renderSuppliers();
+                };
+                paginationControls.appendChild(prevButton);
+
+                for (let i = 1; i <= totalPages; i++) {
+                    const pageButton = document.createElement('button');
+                    pageButton.className = `pagination-button ${i === currentPage ? 'active' : ''}`;
+                    pageButton.textContent = i;
+                    pageButton.onclick = () => {
+                        currentPage = i;
+                        renderSuppliers();
+                    };
+                    paginationControls.appendChild(pageButton);
+                }
+
+                const nextButton = document.createElement('button');
+                nextButton.className = 'pagination-button';
+                nextButton.textContent = 'Siguiente';
+                nextButton.disabled = currentPage === totalPages;
+                nextButton.onclick = () => {
+                    currentPage++;
+                    renderSuppliers();
+                };
+                paginationControls.appendChild(nextButton);
+            }
+        }
+
+        /**
+         * Validates a form field and updates its validation message.
+         * @param {HTMLInputElement|HTMLSelectElement|HTMLTextAreaElement} field - The input field to validate.
+         */
+        function validateField(field) {
+            const value = field.value.trim();
+            const fieldName = field.name;
+            const messageElement = document.getElementById(`${fieldName}-message`);
+            
+            let isValid = false;
+            let message = '';
+            
+            switch (fieldName) {
+                case 'name':
+                    isValid = value.length >= 2;
+                    message = isValid ? '✓ Válido' : '⚠ Mínimo 2 caracteres';
+                    break;
+                    
+                case 'document':
+                    isValid = value.length >= 8 && /^\d+$/.test(value);
+                    message = isValid ? '✓ Documento válido' : '⚠ Mínimo 8 dígitos numéricos';
+                    break;
+                    
+                case 'email':
+                    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                    isValid = emailRegex.test(value);
+                    message = isValid ? '✓ Email válido' : '⚠ Formato de email inválido';
+                    break;
+                    
+                case 'phone':
+                    const phoneRegex = /^[\+]?[(]?[0-9]{3}[)]?[-\s\.]?[0-9]{3}[-\s\.]?[0-9]{4,6}$/;
+                    isValid = phoneRegex.test(value) && value.length >= 7;
+                    message = isValid ? '✓ Teléfono válido' : '⚠ Formato de teléfono inválido (mín. 7 dígitos)';
+                    break;
+                default:
+                    isValid = true; // No specific validation for other fields
+            }
+            
+            formValidation[fieldName] = isValid;
+            
+            if (messageElement) {
+                messageElement.textContent = message;
+                messageElement.className = `validation-message ${isValid ? 'validation-success' : 'validation-error'}`;
+            }
+            
+            updateSubmitButton();
+        }
+
+        /**
+         * Updates the disabled state of the submit button based on form validation.
+         */
+        function updateSubmitButton() {
+            const submitButton = document.getElementById('submit-button');
+            if (!submitButton) return;
+
+            const requiredFields = ['name', 'document', 'email', 'phone'];
+            const allValid = requiredFields.every(field => formValidation[field]);
+            
+            submitButton.disabled = !allValid;
+        }
+
+        /**
+         * Resets the registration form after user confirmation.
+         */
+        function resetForm() {
+            showConfirmModal('reset-form');
+        }
+
+        /**
+         * Handles the submission of the new supplier registration form.
+         * @param {Event} event - The form submission event.
+         */
+        function handleSubmit(event) {
+            event.preventDefault();
+            
+            const submitButton = document.getElementById('submit-button');
+            const form = document.getElementById('registration-form');
+            
+            // Re-validate all fields before final submission
+            const fieldsToValidate = ['name', 'document', 'email', 'phone'];
+            fieldsToValidate.forEach(fieldName => {
+                const field = document.getElementById(fieldName);
+                if (field) validateField(field);
+            });
+
+            if (!Object.values(formValidation).every(isValid => isValid)) {
+                alert('Por favor, corrija los errores en el formulario antes de enviar.');
+                return;
+            }
+
+            submitButton.classList.add('loading');
+            submitButton.disabled = true;
+            
+            const formData = new FormData(form);
+            const supplierData = {
+                id: Date.now(), // Unique ID based on timestamp
+                name: formData.get('name'),
+                document: formData.get('document'),
+                email: formData.get('email'),
+                phone: formData.get('phone'),
+                address: formData.get('address'),
+                contactPerson: formData.get('contactPerson'),
+                status: formData.get('status'),
+                notes: formData.get('notes'),
+                createdDate: new Date().toISOString(),
+                totalPurchases: 0 // Initialize total purchases
+            };
+            
+            const suppliers = getSuppliers();
+            suppliers.push(supplierData);
+            saveSuppliers(suppliers);
+            
+            setTimeout(() => {
+                submitButton.classList.remove('loading');
+                submitButton.disabled = false;
+                
+                alert(`✅ Proveedor "${supplierData.name}" registrado exitosamente!`);
+                
+                softResetForm(); // Use soft reset after successful submission
+                switchSupplierTab('list');
+                
+            }, 1000); // Simulate network delay
+        }
+
+        /**
+         * Opens the edit modal and populates it with supplier data.
+         * @param {number} supplierId - The ID of the supplier to edit.
+         */
+        function editSupplier(supplierId) {
+            const suppliers = getSuppliers();
+            const supplier = suppliers.find(s => s.id === supplierId);
+            
+            if (!supplier) {
+                alert('Proveedor no encontrado.');
+                return;
+            }
+            
+            document.getElementById('edit-supplier-id').value = supplier.id;
+            document.getElementById('edit-name').value = supplier.name;
+            document.getElementById('edit-document').value = supplier.document || '';
+            document.getElementById('edit-email').value = supplier.email || '';
+            document.getElementById('edit-phone').value = supplier.phone || '';
+            document.getElementById('edit-address').value = supplier.address || '';
+            document.getElementById('edit-contactPerson').value = supplier.contactPerson || '';
+            document.getElementById('edit-status').value = supplier.status || 'active';
+            document.getElementById('edit-notes').value = supplier.notes || '';
+            
+            document.getElementById('editSupplierModal').classList.add('visible');
+            editingSupplierId = supplierId;
+        }
+
+        /**
+         * Closes the edit supplier modal.
+         */
+        function closeEditModal() {
+            document.getElementById('editSupplierModal').classList.remove('visible');
+            editingSupplierId = null;
+        }
+
+        /**
+         * Handles the submission of the edit supplier form.
+         * @param {Event} event - The form submission event.
+         */
+        function handleEditSubmit(event) {
+            event.preventDefault();
+            
+            const form = event.target;
+            const formData = new FormData(form);
+            const supplierData = {
+                id: parseInt(formData.get('id')),
+                name: formData.get('name'),
+                document: formData.get('document'),
+                email: formData.get('email'),
+                phone: formData.get('phone'),
+                address: formData.get('address'),
+                contactPerson: formData.get('contactPerson'),
+                status: formData.get('status'),
+                notes: formData.get('notes')
+            };
+            
+            const suppliers = getSuppliers();
+            const supplierIndex = suppliers.findIndex(s => s.id === supplierData.id);
+            
+            if (supplierIndex !== -1) {
+                // Preserve original creation date and total purchases
+                supplierData.createdDate = suppliers[supplierIndex].createdDate;
+                supplierData.totalPurchases = suppliers[supplierIndex].totalPurchases;
+                
+                suppliers[supplierIndex] = supplierData;
+                saveSuppliers(suppliers);
+                
+                filterSuppliers(); // Re-filter and render to update the list
+                closeEditModal();
+                alert('✅ Proveedor actualizado exitosamente!');
+            } else {
+                alert('Error: Proveedor no encontrado para actualizar.');
+            }
+        }
+
+        /**
+         * Shows the custom confirmation modal.
+         * @param {string} actionType - Type of action to confirm ('delete-edit-modal', 'delete-list', 'reset-form').
+         * @param {number} [id] - Optional ID of the item being acted upon.
+         */
+        function showConfirmModal(actionType, id = null) {
+            const confirmModal = document.getElementById('confirmModal');
+            const confirmModalTitle = document.getElementById('confirmModalTitle');
+            const confirmModalMessage = document.getElementById('confirmModalMessage');
+            const confirmModalConfirmBtn = document.getElementById('confirmModalConfirmBtn');
+
+            let title = '';
+            let message = '';
+            let confirmAction = () => {};
+
+            switch (actionType) {
+                case 'delete-edit-modal':
+                    title = 'Eliminar Proveedor';
+                    message = '¿Está seguro de que desea eliminar este proveedor? Esta acción no se puede deshacer.';
+                    confirmAction = () => {
+                        deleteSupplier(); // Calls the delete function for the currently edited supplier
+                        closeConfirmModal();
+                    };
+                    break;
+                case 'delete-list':
+                    title = 'Eliminar Proveedor';
+                    message = '¿Está seguro de que desea eliminar este proveedor de la lista? Esta acción no se puede deshacer.';
+                    confirmAction = () => {
+                        deleteSupplierFromList(id); // Calls the delete function for the specific supplier ID
+                        closeConfirmModal();
+                    };
+                    break;
+                case 'reset-form':
+                    title = 'Limpiar Formulario';
+                    message = '¿Está seguro de que desea limpiar todos los campos del formulario de registro?';
+                    confirmAction = () => {
+                        softResetForm(); // Calls the soft reset function
+                        closeConfirmModal();
+                    };
+                    break;
+                default:
+                    title = 'Confirmar';
+                    message = '¿Está seguro de realizar esta acción?';
+                    confirmAction = () => closeConfirmModal();
+            }
+
+            confirmModalTitle.textContent = title;
+            confirmModalMessage.textContent = message;
+            confirmModalConfirmBtn.onclick = confirmAction;
+
+            confirmModal.classList.add('visible');
+            // If delete from edit modal, hide edit modal temporarily
+            if (actionType === 'delete-edit-modal') {
+                document.getElementById('editSupplierModal').classList.remove('visible');
+            }
+        }
+
+        /**
+         * Closes the custom confirmation modal.
+         */
+        function closeConfirmModal() {
+            document.getElementById('confirmModal').classList.remove('visible');
+            // If delete from edit modal, show edit modal again if it was open
+            if (editingSupplierId !== null) {
+                document.getElementById('editSupplierModal').classList.add('visible');
+            }
+        }
+
+        /**
+         * Deletes a supplier from the system. This function is called from the edit modal.
+         */
+        function deleteSupplier() {
+            if (!editingSupplierId) return;
+
+            const suppliers = getSuppliers();
+            const updatedSuppliers = suppliers.filter(supplier => supplier.id !== editingSupplierId);
+            saveSuppliers(updatedSuppliers);
+            
+            filterSuppliers(); // Re-filter and render to update the list
+            closeEditModal();
+            alert('✅ Proveedor eliminado exitosamente!');
+        }
+
+        /**
+         * Deletes a supplier directly from the list view.
+         * @param {number} supplierId - The ID of the supplier to delete.
+         */
+        function deleteSupplierFromList(supplierId) {
+            const suppliers = getSuppliers();
+            const updatedSuppliers = suppliers.filter(supplier => supplier.id !== supplierId);
+            saveSuppliers(updatedSuppliers);
+            
+            filterSuppliers(); // Re-filter and render to update the list
+            alert('✅ Proveedor eliminado exitosamente!');
+        }
+
+        /**
+         * Helper function to escape HTML to prevent XSS.
+         * @param {string} str - The string to escape.
+         * @returns {string} The escaped string.
+         */
+        function escapeHTML(str) {
+            const div = document.createElement('div');
+            div.appendChild(document.createTextNode(str));
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>

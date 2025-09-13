@@ -1,0 +1,2585 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resumen de Ventas - Mini Market POS</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(to bottom right, #f8fafc, #dbeafe, #e0e7ff);
+            min-height: 100vh;
+            color: #334155;
+            overflow-x: hidden;
+            transition: background 0.3s ease;
+        }
+
+        body.dark-mode {
+            background: linear-gradient(to bottom right, #0f172a, #1e293b, #334155);
+            color: #cbd5e1;
+        }
+
+        /* Header */
+        .header {
+            position: sticky;
+            top: 0;
+            z-index: 40;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(16px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 0.5rem 0;
+            transition: all 0.3s ease;
+        }
+
+        .dark-mode .header {
+            background: rgba(15, 23, 42, 0.95);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .brand-icon {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(to bottom right, #3b82f6, #9333ea);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 6px 10px -3px rgba(59, 130, 246, 0.25);
+        }
+
+        .brand-text h1 {
+            font-size: 1rem;
+            font-weight: bold;
+            background: linear-gradient(to right, #1e293b, #64748b);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+        }
+
+        .dark-mode .brand-text h1 {
+            background: linear-gradient(to right, #e2e8f0, #cbd5e1);
+            background-clip: text;
+            -webkit-background-clip: text;
+        }
+
+        .brand-text p {
+            font-size: 0.7rem;
+            color: #64748b;
+        }
+
+        .dark-mode .brand-text p {
+            color: #94a3b8;
+        }
+
+        .header-btn {
+            display: flex;
+            align-items: center;
+            gap: 0.375rem;
+            padding: 0.375rem 0.625rem;
+            background: rgba(255, 255, 255, 0.6);
+            border: none;
+            border-radius: 6px;
+            color: #64748b;
+            cursor: pointer;
+            transition: all 0.2s;
+            backdrop-filter: blur(8px);
+            font-size: 0.8rem;
+        }
+
+         .dark-mode .header-btn {
+            background: rgba(15, 23, 42, 0.6);
+            color: #94a3b8;
+        }
+
+        .header-btn:hover {
+            background: rgba(255, 255, 255, 0.9);
+            color: #1e293b;
+        }
+
+        .dark-mode .header-btn:hover {
+            background: rgba(15, 23, 42, 0.9);
+            color: #e2e8f0;
+        }
+
+        .header-btn.primary {
+            background: transparent;
+            color: gray;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        /* Dashboard Cards */
+        .dashboard {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 1rem;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .metric-card {
+            background: white;
+            border-radius: 14px;
+            padding: 1.25rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e2e8f0;
+            transition: all 0.2s;
+        }
+
+        .dark-mode .metric-card {
+            background: #1e293b;
+            border-color: #334155;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        .metric-header {
+            display: flex;
+            align-items: center;
+            justify-content: between;
+            margin-bottom: 0.75rem;
+        }
+
+        .metric-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            margin-right: 0.75rem;
+        }
+
+        .metric-title {
+            font-size: 0.85rem;
+            color: #64748b;
+            font-weight: 500;
+        }
+
+        .dark-mode .metric-title {
+            color: #94a3b8;
+        }
+
+        .metric-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #1e293b;
+            margin-bottom: 0.25rem;
+        }
+
+        .dark-mode .metric-value {
+            color: #e2e8f0;
+        }
+
+        .metric-change {
+            font-size: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .metric-change.positive {
+            color: #059669;
+        }
+
+        .metric-change.negative {
+            color: #dc2626;
+        }
+
+        /* Charts Section */
+        .charts-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .chart-card {
+            background: white;
+            border-radius: 14px;
+            padding: 1.25rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e2e8f0;
+            transition: all 0.2s;
+        }
+
+        .dark-mode .chart-card {
+            background: #1e293b;
+            border-color: #334155;
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .chart-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        .dark-mode .chart-title {
+            color: #e2e8f0;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 250px;
+        }
+
+        /* Search and Filters */
+        .search-section {
+            background: white;
+            border-radius: 14px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e2e8f0;
+            margin-bottom: 1.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .dark-mode .search-section {
+            background: #1e293b;
+            border-color: #334155;
+        }
+
+        .search-header {
+            background: linear-gradient(to right, #f8fafc, #f1f5f9);
+            padding: 1rem;
+            border-bottom: 1px solid #e2e8f0;
+            border-radius: 14px 14px 0 0;
+            transition: all 0.3s ease;
+        }
+
+        .dark-mode .search-header {
+            background: linear-gradient(to right, #0f172a, #1e293b);
+            border-color: #334155;
+        }
+
+        .search-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .dark-mode .search-title {
+            color: #e2e8f0;
+        }
+
+        .search-container {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 0.75rem;
+            align-items: end;
+        }
+
+        .search-field {
+            position: relative;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 0.75rem 1rem 0.75rem 2.75rem;
+            background: white;
+            border: 1px solid #cbd5e1;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+
+        .dark-mode .search-input {
+            background: #0f172a;
+            border-color: #334155;
+            color: #cbd5e1;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #64748b;
+        }
+
+        .dark-mode .search-icon {
+            color: #94a3b8;
+        }
+
+        .search-btn {
+            padding: 0.75rem 1.5rem;
+            background: linear-gradient(to bottom right, #3b82f6, #6366f1);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 600;
+            box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.25);
+        }
+
+        .search-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 8px 15px -3px rgba(59, 130, 246, 0.25);
+        }
+
+        .filters-container {
+            padding: 1rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .filter-label {
+            font-size: 0.8rem;
+            color: #64748b;
+            font-weight: 500;
+        }
+
+        .dark-mode .filter-label {
+            color: #94a3b8;
+        }
+
+        .date-input, .select-input, .number-input {
+            padding: 0.5rem;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            background: white;
+        }
+
+        .dark-mode .date-input, 
+        .dark-mode .select-input, 
+        .dark-mode .number-input {
+            background: #0f172a;
+            border-color: #334155;
+            color: #cbd5e1;
+        }
+
+        .quick-filters {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .quick-filter-btn {
+            padding: 0.375rem 0.75rem;
+            background: white;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            color: #64748b;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .dark-mode .quick-filter-btn {
+            background: #0f172a;
+            border-color: #334155;
+            color: #94a3b8;
+        }
+
+        .quick-filter-btn.active {
+            background: linear-gradient(to bottom right, #dbeafe, #bfdbfe);
+            border-color: #3b82f6;
+            color: #1d4ed8;
+        }
+
+        .dark-mode .quick-filter-btn.active {
+            background: linear-gradient(to bottom right, #1e3a8a, #1e40af);
+            color: #dbeafe;
+        }
+
+        .quick-filter-btn:hover {
+            background: #f1f5f9;
+        }
+
+        .dark-mode .quick-filter-btn:hover {
+            background: #334155;
+        }
+
+        .clear-btn {
+            padding: 0.5rem 1rem;
+            background: #f1f5f9;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            color: #64748b;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+
+        .dark-mode .clear-btn {
+            background: #334155;
+            border-color: #475569;
+            color: #94a3b8;
+        }
+
+        /* Advanced filters */
+        .advanced-filters {
+            display: none;
+            padding: 1rem;
+            border-top: 1px solid #e2e8f0;
+            background: #f8fafc;
+        }
+
+        .dark-mode .advanced-filters {
+            border-color: #334155;
+            background: #0f172a;
+        }
+
+        .advanced-filters.show {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        .toggle-filters {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem;
+            color: #64748b;
+            cursor: pointer;
+            font-size: 0.8rem;
+            justify-content: center;
+            background: #f1f5f9;
+            border-radius: 6px;
+        }
+
+        .dark-mode .toggle-filters {
+            color: #94a3b8;
+            background: #334155;
+        }
+
+        /* Results Section */
+        .results-section {
+            background: white;
+            border-radius: 14px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e2e8f0;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .dark-mode .results-section {
+            background: #1e293b;
+            border-color: #334155;
+        }
+
+        .results-header {
+            background: linear-gradient(to right, #f8fafc, #f1f5f9);
+            padding: 1rem;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+
+        .dark-mode .results-header {
+            background: linear-gradient(to right, #0f172a, #1e293b);
+            border-color: #334155;
+        }
+
+        .results-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #1e293b;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .dark-mode .results-title {
+            color: #e2e8f0;
+        }
+
+        .results-count {
+            background: #3b82f6;
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 9999px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+
+        .export-btn {
+            padding: 0.5rem 1rem;
+            background: #059669;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .results-container {
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .sale-item {
+            border-bottom: 1px solid #f1f5f9;
+            transition: all 0.2s;
+        }
+
+        .dark-mode .sale-item {
+            border-color: #334155;
+        }
+
+        .sale-item:hover {
+            background: #f8fafc;
+        }
+
+        .dark-mode .sale-item:hover {
+            background: #0f172a;
+        }
+
+        .sale-summary {
+            padding: 1rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .sale-id {
+            font-family: monospace;
+            font-weight: 600;
+            color: #3730a3;
+            background: #e0e7ff;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            min-width: 70px;
+            text-align: center;
+        }
+
+        .dark-mode .sale-id {
+            color: #c7d2fe;
+            background: #3730a3;
+        }
+
+        .sale-info {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr auto;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .sale-customer {
+            font-weight: 600;
+            color: #1e293b;
+            font-size: 0.9rem;
+        }
+
+        .dark-mode .sale-customer {
+            color: #e2e8f0;
+        }
+
+        .sale-customer.anonymous {
+            color: #64748b;
+            font-style: italic;
+        }
+
+        .dark-mode .sale-customer.anonymous {
+            color: #94a3b8;
+        }
+
+        .sale-date {
+            color: #64748b;
+            font-size: 0.85rem;
+        }
+
+        .dark-mode .sale-date {
+            color: #94a3b8;
+        }
+
+        .sale-payment {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.8rem;
+        }
+
+        .payment-method {
+            padding: 0.25rem 0.5rem;
+            background: #f1f5f9;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            color: #64748b;
+        }
+
+        .dark-mode .payment-method {
+            background: #334155;
+            color: #94a3b8;
+        }
+
+        .sale-total {
+            font-weight: bold;
+            color: #059669;
+            font-size: 0.9rem;
+            text-align: right;
+            min-width: 100px;
+        }
+
+        .sale-total.both-currencies {
+            display: flex;
+            flex-direction: column;
+            gap: 0.125rem;
+        }
+
+        .sale-total-secondary {
+            font-size: 0.75rem;
+            color: #64748b;
+            font-weight: normal;
+        }
+
+        .dark-mode .sale-total-secondary {
+            color: #94a3b8;
+        }
+
+        .sale-tags {
+            display: flex;
+            gap: 0.25rem;
+            margin-top: 0.25rem;
+        }
+
+        .sale-tag {
+            font-size: 0.7rem;
+            padding: 0.125rem 0.375rem;
+            border-radius: 4px;
+            background: #e0e7ff;
+            color: #3730a3;
+        }
+
+        .dark-mode .sale-tag {
+            background: #3730a3;
+            color: #c7d2fe;
+        }
+
+        .sale-tag.high-value {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .dark-mode .sale-tag.high-value {
+            background: #92400e;
+            color: #fef3c7;
+        }
+
+        .sale-tag.foreign {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .dark-mode .sale-tag.foreign {
+            background: #065f46;
+            color: #d1fae5;
+        }
+
+        .expand-icon {
+            color: #64748b;
+            transition: transform 0.2s;
+        }
+
+        .dark-mode .expand-icon {
+            color: #94a3b8;
+        }
+
+        .sale-item.expanded .expand-icon {
+            transform: rotate(180deg);
+        }
+
+        .sale-details {
+            display: none;
+            background: #f8fafc;
+            padding: 0 1rem 1rem 1rem;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .dark-mode .sale-details {
+            background: #0f172a;
+            border-color: #334155;
+        }
+
+        .sale-item.expanded .sale-details {
+            display: block;
+        }
+
+        .details-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .customer-details, .sale-summary-details {
+            background: white;
+            border-radius: 8px;
+            padding: 0.75rem;
+            border: 1px solid #e2e8f0;
+        }
+
+        .dark-mode .customer-details,
+        .dark-mode .sale-summary-details {
+            background: #1e293b;
+            border-color: #334155;
+        }
+
+        .detail-section-title {
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .dark-mode .detail-section-title {
+            color: #e2e8f0;
+        }
+
+        .detail-item {
+            display: flex;
+            justify-content: between;
+            margin-bottom: 0.25rem;
+            font-size: 0.8rem;
+        }
+
+        .detail-label {
+            color: #64748b;
+        }
+
+        .dark-mode .detail-label {
+            color: #94a3b8;
+        }
+
+        .detail-value {
+            color: #1e293b;
+            font-weight: 500;
+        }
+
+        .dark-mode .detail-value {
+            color: #e2e8f0;
+        }
+
+        .products-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 0.75rem;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid #e2e8f0;
+        }
+
+        .dark-mode .products-table {
+            background: #1e293b;
+            border-color: #334155;
+        }
+
+        .products-table th {
+            background: #f8fafc;
+            padding: 0.75rem;
+            text-align: left;
+            font-weight: 600;
+            color: #374151;
+            font-size: 0.8rem;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .dark-mode .products-table th {
+            background: #0f172a;
+            color: #cbd5e1;
+            border-color: #334155;
+        }
+
+        .products-table td {
+            padding: 0.75rem;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 0.8rem;
+        }
+
+        .dark-mode .products-table td {
+            border-color: #334155;
+        }
+
+        .product-name {
+            font-weight: 500;
+            color: #1e293b;
+        }
+
+        .dark-mode .product-name {
+            color: #e2e8f0;
+        }
+
+        .product-details-cell {
+            color: #64748b;
+            font-size: 0.75rem;
+        }
+
+        .dark-mode .product-details-cell {
+            color: #94a3b8;
+        }
+
+        .amount-cell {
+            text-align: right;
+            font-weight: 500;
+        }
+
+        .profit-positive {
+            color: #059669;
+        }
+
+        .profit-negative {
+            color: #dc2626;
+        }
+
+        /* Pagination */
+        .pagination {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            padding: 1rem;
+            background: #f8fafc;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .dark-mode .pagination {
+            background: #0f172a;
+            border-color: #334155;
+        }
+
+        .pagination-info {
+            color: #64748b;
+            font-size: 0.8rem;
+        }
+
+        .dark-mode .pagination-info {
+            color: #94a3b8;
+        }
+
+        .pagination-controls {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .page-btn {
+            padding: 0.5rem 0.75rem;
+            border: 1px solid #cbd5e1;
+            background: white;
+            color: #64748b;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.2s;
+        }
+
+        .dark-mode .page-btn {
+            background: #1e293b;
+            border-color: #334155;
+            color: #94a3b8;
+        }
+
+        .page-btn:hover:not(:disabled) {
+            background: #f1f5f9;
+        }
+
+        .dark-mode .page-btn:hover:not(:disabled) {
+            background: #334155;
+        }
+
+        .page-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .page-btn.active {
+            background: #3b82f6;
+            color: white;
+            border-color: #3b82f6;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: #64748b;
+        }
+
+        .dark-mode .empty-state {
+            color: #94a3b8;
+        }
+
+        .empty-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            opacity: 0.3;
+        }
+
+        .empty-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: #374151;
+        }
+
+        .dark-mode .empty-title {
+            color: #cbd5e1;
+        }
+
+        .empty-description {
+            font-size: 0.9rem;
+        }
+
+        /* Timeline */
+        .timeline-section {
+            margin-top: 1rem;
+            background: white;
+            border-radius: 8px;
+            padding: 1rem;
+            border: 1px solid #e2e8f0;
+        }
+
+        .dark-mode .timeline-section {
+            background: #1e293b;
+            border-color: #334155;
+        }
+
+        .timeline-title {
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 0.75rem;
+            font-size: 0.9rem;
+        }
+
+        .dark-mode .timeline-title {
+            color: #e2e8f0;
+        }
+
+        .timeline-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.5rem 0;
+            border-left: 2px solid #e2e8f0;
+            padding-left: 1rem;
+            margin-left: 0.5rem;
+            position: relative;
+        }
+
+        .dark-mode .timeline-item {
+            border-color: #334155;
+        }
+
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: -5px;
+            top: 50%;
+            width: 8px;
+            height: 8px;
+            background: #3b82f6;
+            border-radius: 50%;
+            transform: translateY(-50%);
+        }
+
+        .timeline-date {
+            font-size: 0.75rem;
+            color: #64748b;
+            min-width: 80px;
+        }
+
+        .dark-mode .timeline-date {
+            color: #94a3b8;
+        }
+
+        .timeline-amount {
+            font-weight: 500;
+            color: #059669;
+            font-size: 0.8rem;
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1f2937;
+            color: white;
+            padding: 0.75rem 1.25rem;
+            border-radius: 8px;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 0.9rem;
+        }
+
+        .toast.show {
+            opacity: 1;
+        }
+
+        /* Theme Toggle */
+        .theme-toggle {
+            background: none;
+            border: none;
+            color: #64748b;
+            cursor: pointer;
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.5rem;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+        }
+
+        .theme-toggle:hover {
+            background: #f1f5f9;
+        }
+
+        .dark-mode .theme-toggle {
+            color: #94a3b8;
+        }
+
+        .dark-mode .theme-toggle:hover {
+            background: #334155;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .metrics-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .charts-section {
+                grid-template-columns: 1fr;
+            }
+            
+            .search-container {
+                grid-template-columns: 1fr;
+                gap: 0.5rem;
+            }
+            
+            .filters-container {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .sale-info {
+                grid-template-columns: 1fr;
+                gap: 0.5rem;
+            }
+            
+            .details-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .pagination {
+                flex-direction: column;
+                gap: 1rem;
+            }
+        }
+
+	.back-button {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            background: rgba(255, 255, 255, 0.5);
+            border: none;
+            border-radius: 12px;
+            color: #64748b;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            backdrop-filter: blur(8px);
+        }
+
+        .dark-mode .back-button {
+            background: rgba(255, 255, 255, 0.1);
+            color: #cbd5e1;
+        }
+
+        .back-button:hover {
+            background: rgba(255, 255, 255, 0.8);
+            color: #1e293b;
+            transform: translateX(-2px);
+        }
+
+        .dark-mode .back-button:hover {
+            background: rgba(255, 255, 255, 0.2);
+            color: #e2e8f0;
+        }
+
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <div class="header-content">
+            <div class="brand">
+                <div class="brand-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 3v18h18"/>
+                        <path d="M7 16l4-4 4 4 6-6"/>
+                    </svg>
+                </div>
+                <div class="brand-text">
+                    <h1>Resumen de Ventas</h1>
+                    <p>Análisis y Reportes</p>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button class="theme-toggle" id="themeToggle">
+                    <i class="fas fa-moon"></i>
+                </button>
+                    <a href="menu.html" class="back-button">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+                        Volver al Menú
+                    </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div class="toast" id="toast"></div>
+
+    <!-- Dashboard -->
+    <div class="dashboard">
+        <!-- Metrics Grid -->
+        <div class="metrics-grid" id="metricsGrid">
+            <!-- Metrics will be loaded here -->
+        </div>
+
+        <!-- Charts Section -->
+        <div class="charts-section">
+            <div class="chart-card">
+                <div class="chart-header">
+                    <h3 class="chart-title">Ventas por Día (Últimos 7 días)</h3>
+                </div>
+                <div class="chart-container">
+                    <canvas id="salesChart"></canvas>
+                </div>
+            </div>
+            <div class="chart-card">
+                <div class="chart-header">
+                    <h3 class="chart-title">Distribución por Método de Pago</h3>
+                </div>
+                <div class="chart-container">
+                    <canvas id="paymentChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Search Section -->
+        <div class="search-section">
+            <div class="search-header">
+                <div class="search-title">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8"/>
+                        <path d="m21 21-4.35-4.35"/>
+                    </svg>
+                    Búsqueda Inteligente
+                </div>
+                <div class="search-container">
+                    <div class="search-field">
+                        <input type="text" class="search-input" id="searchInput" 
+                               placeholder="ID de venta, nombre del cliente, documento, producto o fecha (YYYY-MM-DD)...">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="11" cy="11" r="8"/>
+                            <path d="m21 21-4.35-4.35"/>
+                        </svg>
+                    </div>
+                    <button class="search-btn" onclick="performSearch()">Buscar</button>
+                </div>
+            </div>
+            
+            <div class="filters-container">
+                <div class="filter-group">
+                    <label class="filter-label">Fecha Desde</label>
+                    <input type="date" class="date-input" id="dateFrom">
+                </div>
+                
+                <div class="filter-group">
+                    <label class="filter-label">Fecha Hasta</label>
+                    <input type="date" class="date-input" id="dateTo">
+                </div>
+                
+                <div class="filter-group">
+                    <label class="filter-label">Método de Pago</label>
+                    <select class="select-input" id="paymentFilter">
+                        <option value="">Todos</option>
+                        <option value="ves-cash">Efectivo VES</option>
+                        <option value="ves-pos">Punto de Venta</option>
+                        <option value="ves-mobile">Pago Móvil</option>
+                        <option value="usd-cash">Efectivo USD</option>
+                        <option value="usd-zelle">Zelle</option>
+                        <option value="combined">Combinado USD/VES</option>
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label class="filter-label">Moneda Principal</label>
+                    <select class="select-input" id="currencyFilter">
+                        <option value="">Todas</option>
+                        <option value="VES">VES</option>
+                        <option value="USD">USD</option>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label">Monto Mínimo (VES)</label>
+                    <input type="number" class="number-input" id="amountMin" placeholder="Mínimo" step="0.01">
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label">Monto Máximo (VES)</label>
+                    <input type="number" class="number-input" id="amountMax" placeholder="Máximo" step="0.01">
+                </div>
+                
+                <div class="filter-group">
+                    <label class="filter-label">Filtros Rápidos</label>
+                    <div class="quick-filters">
+                        <button class="quick-filter-btn active" onclick="setQuickFilter('all')">Todo</button>
+                        <button class="quick-filter-btn" onclick="setQuickFilter('today')">Hoy</button>
+                        <button class="quick-filter-btn" onclick="setQuickFilter('week')">Semana</button>
+                        <button class="quick-filter-btn" onclick="setQuickFilter('month')">Mes</button>
+                        <button class="quick-filter-btn" onclick="setQuickFilter('last7')">Últimos 7 días</button>
+                        <button class="quick-filter-btn" onclick="setQuickFilter('lastMonth')">Mes anterior</button>
+                    </div>
+                </div>
+                
+                <button class="clear-btn" onclick="clearFilters()">Limpiar Filtros</button>
+            </div>
+
+            <div class="toggle-filters" onclick="toggleAdvancedFilters()">
+                <span id="toggleFiltersText">Mostrar filtros avanzados</span>
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" id="toggleFiltersIcon">
+                    <path d="m6 9 6 6 6-6"/>
+                </svg>
+            </div>
+
+            <div class="advanced-filters" id="advancedFilters">
+                <div class="filter-group">
+                    <label class="filter-label">Categoría de Producto</label>
+                    <select class="select-input" id="categoryFilter">
+                        <option value="">Todas</option>
+                        <option value="Frutas y Hortalizas">Frutas y Hortalizas</option>
+                        <option value="Charcutería">Charcutería</option>
+                        <option value="Electrónicos">Electrónicos</option>
+                        <!-- Add more categories as needed based on your inventory -->
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label">Producto Específico</label>
+                    <input type="text" class="search-input" id="productFilter" placeholder="Nombre de producto">
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label">Cliente</label>
+                    <input type="text" class="search-input" id="customerFilter" placeholder="Nombre del cliente">
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label">Etiquetas</label>
+                    <select class="select-input" id="tagFilter">
+                        <option value="">Todas</option>
+                        <option value="high-value">Alto Valor</option>
+                        <option value="foreign">Moneda Extranjera</option>
+                        <option value="combined-payment">Pago Combinado</option>
+                        <!-- Add more tags as needed -->
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results Section -->
+        <div class="results-section">
+            <div class="results-header">
+                <div class="results-title">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <path d="m14,2 6,6"/>
+                        <path d="M16 13H8"/>
+                        <path d="M16 17H8"/>
+                        <path d="M10 9H8"/>
+                    </svg>
+                    Resultados
+                    <span class="results-count" id="resultsCount">0</span>
+                </div>
+                <button class="export-btn" onclick="exportToPDF()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <path d="m14,2 6,6"/>
+                        <path d="M16 13H8"/>
+                        <path d="M16 17H8"/>
+                    </svg>
+                    Exportar PDF
+                </button>
+            </div>
+            
+            <div class="results-container" id="resultsContainer">
+                <!-- Results will be loaded here -->
+            </div>
+            
+            <div class="pagination" id="pagination">
+                <!-- Pagination will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let allSales = [];
+        let filteredSales = [];
+        let currentPage = 1;
+        let itemsPerPage = 10;
+        let currentFilters = {
+            search: '',
+            dateFrom: '',
+            dateTo: '',
+            paymentMethod: '',
+            currency: '',
+            amountMin: '',
+            amountMax: '',
+            category: '',
+            product: '',
+            customer: '',
+            tag: '',
+            quickFilter: 'all'
+        };
+
+        // Initialize application
+        document.addEventListener('DOMContentLoaded', function() {
+            loadSales();
+            loadMetrics();
+            loadCharts();
+            initializeDateInputs();
+            setupEventListeners();
+            setupThemeToggle();
+        });
+
+        function setupEventListeners() {
+            // Search input
+            document.getElementById('searchInput').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    performSearch();
+                }
+            });
+
+            // Filter inputs
+            document.getElementById('dateFrom').addEventListener('change', applyFilters);
+            document.getElementById('dateTo').addEventListener('change', applyFilters);
+            document.getElementById('paymentFilter').addEventListener('change', applyFilters);
+            document.getElementById('currencyFilter').addEventListener('change', applyFilters);
+            document.getElementById('amountMin').addEventListener('change', applyFilters);
+            document.getElementById('amountMax').addEventListener('change', applyFilters);
+            document.getElementById('categoryFilter').addEventListener('change', applyFilters);
+            document.getElementById('productFilter').addEventListener('change', applyFilters);
+            document.getElementById('customerFilter').addEventListener('change', applyFilters);
+            document.getElementById('tagFilter').addEventListener('change', applyFilters);
+        }
+
+        function setupThemeToggle() {
+            const themeToggle = document.getElementById('themeToggle');
+            const icon = themeToggle.querySelector('i');
+            
+            // Check for saved theme preference or respect OS preference
+            const savedTheme = localStorage.getItem('theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            
+            if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+                document.body.classList.add('dark-mode');
+                icon.classList.remove('fa-moon');
+                icon.classList.add('fa-sun');
+            } else {
+                document.body.classList.remove('dark-mode');
+                icon.classList.remove('fa-sun');
+                icon.classList.add('fa-moon');
+            }
+            
+            themeToggle.addEventListener('click', () => {
+                document.body.classList.toggle('dark-mode');
+                if (document.body.classList.contains('dark-mode')) {
+                    icon.classList.remove('fa-moon');
+                    icon.classList.add('fa-sun');
+                    localStorage.setItem('theme', 'dark');
+                } else {
+                    icon.classList.remove('fa-sun');
+                    icon.classList.add('fa-moon');
+                    localStorage.setItem('theme', 'light');
+                }
+            });
+        }
+
+        function toggleAdvancedFilters() {
+            const advancedFilters = document.getElementById('advancedFilters');
+            const toggleText = document.getElementById('toggleFiltersText');
+            const toggleIcon = document.getElementById('toggleFiltersIcon');
+            
+            advancedFilters.classList.toggle('show');
+            
+            if (advancedFilters.classList.contains('show')) {
+                toggleText.textContent = 'Ocultar filtros avanzados';
+                toggleIcon.style.transform = 'rotate(180deg)';
+            } else {
+                toggleText.textContent = 'Mostrar filtros avanzados';
+                toggleIcon.style.transform = 'rotate(0deg)';
+            }
+        }
+
+        function initializeDateInputs() {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('dateTo').value = today;
+        }
+
+        function loadSales() {
+            try {
+                const storedSales = localStorage.getItem('pos_sales');
+                if (storedSales) {
+                    allSales = JSON.parse(storedSales);
+                } else {
+                    // ANTES: Aquí se creaban los datos de ejemplo.
+                    // AHORA: Simplemente se crea un arreglo vacío.
+                    allSales = [];
+                }
+            } catch (e) {
+                console.error('Error loading sales data from localStorage:', e);
+                // Si hay un error, también se inicia con un arreglo vacío.
+                allSales = [];
+            }
+            
+            // Sort by timestamp (most recent first)
+            allSales.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+            applyFilters();
+        }
+
+        function loadMetrics() {
+            const today = new Date();
+            const yesterday = new Date(today);
+            yesterday.setDate(yesterday.getDate() - 1);
+            
+            const startOfToday = new Date(today.setHours(0, 0, 0, 0));
+            const startOfYesterday = new Date(yesterday.setHours(0, 0, 0, 0));
+            const startOfWeek = new Date(today);
+            startOfWeek.setDate(today.getDate() - 7);
+            const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+
+            // Calculate metrics
+            const todaySales = allSales.filter(sale => new Date(sale.timestamp) >= startOfToday);
+            const yesterdaySales = allSales.filter(sale => 
+                new Date(sale.timestamp) >= startOfYesterday && new Date(sale.timestamp) < startOfToday
+            );
+            const weekSales = allSales.filter(sale => new Date(sale.timestamp) >= startOfWeek);
+            const monthSales = allSales.filter(sale => new Date(sale.timestamp) >= startOfMonth);
+
+            // Calculate totals in VES and USD, considering combined payments
+            let todayTotalVES = 0;
+            let todayTotalUSD = 0;
+            let yesterdayTotalVES = 0;
+            let yesterdayTotalUSD = 0;
+            let weekTotalVES = 0;
+            let weekTotalUSD = 0;
+            let monthTotalVES = 0;
+            let monthTotalUSD = 0;
+
+            todaySales.forEach(sale => {
+                if (sale.paymentMethod === 'combined' && sale.combinedPayment) {
+                    todayTotalVES += sale.combinedPayment.paidVes;
+                    todayTotalUSD += sale.combinedPayment.paidUsd;
+                } else if (sale.currency === 'VES') {
+                    todayTotalVES += sale.totals.total;
+                } else if (sale.currency === 'USD') {
+                    todayTotalUSD += sale.totals.total;
+                }
+            });
+
+            yesterdaySales.forEach(sale => {
+                if (sale.paymentMethod === 'combined' && sale.combinedPayment) {
+                    yesterdayTotalVES += sale.combinedPayment.paidVes;
+                    yesterdayTotalUSD += sale.combinedPayment.paidUsd;
+                } else if (sale.currency === 'VES') {
+                    yesterdayTotalVES += sale.totals.total;
+                } else if (sale.currency === 'USD') {
+                    yesterdayTotalUSD += sale.totals.total;
+                }
+            });
+
+            weekSales.forEach(sale => {
+                if (sale.paymentMethod === 'combined' && sale.combinedPayment) {
+                    weekTotalVES += sale.combinedPayment.paidVes;
+                    weekTotalUSD += sale.combinedPayment.paidUsd;
+                } else if (sale.currency === 'VES') {
+                    weekTotalVES += sale.totals.total;
+                } else if (sale.currency === 'USD') {
+                    weekTotalUSD += sale.totals.total;
+                }
+            });
+
+            monthSales.forEach(sale => {
+                if (sale.paymentMethod === 'combined' && sale.combinedPayment) {
+                    monthTotalVES += sale.combinedPayment.paidVes;
+                    monthTotalUSD += sale.combinedPayment.paidUsd;
+                } else if (sale.currency === 'VES') {
+                    monthTotalVES += sale.totals.total;
+                } else if (sale.currency === 'USD') {
+                    monthTotalUSD += sale.totals.total;
+                }
+            });
+
+            // Calculate changes
+            const dailyChangeVES = yesterdayTotalVES > 0 ? ((todayTotalVES - yesterdayTotalVES) / yesterdayTotalVES * 100) : 0;
+            const dailyChangeUSD = yesterdayTotalUSD > 0 ? ((todayTotalUSD - yesterdayTotalUSD) / yesterdayTotalUSD * 100) : 0;
+            const transactionsChange = yesterdaySales.length > 0 ? ((todaySales.length - yesterdaySales.length) / yesterdaySales.length * 100) : 0;
+
+            // Get most sold products
+            const productSales = {};
+            weekSales.forEach(sale => {
+                sale.items.forEach(item => {
+                    const productName = item.product.name;
+                    productSales[productName] = (productSales[productName] || 0) + item.quantity;
+                });
+            });
+
+            const topProduct = Object.entries(productSales).sort((a, b) => b[1] - a[1])[0];
+
+            const metrics = [
+                {
+                    title: 'Ventas de Hoy (VES)',
+                    value: formatCurrency(todayTotalVES),
+                    change: dailyChangeVES,
+                    icon: '💰',
+                    color: 'linear-gradient(135deg, #059669, #14b8a6)'
+                },
+                {
+                    title: 'Ventas de Hoy (USD)',
+                    value: formatCurrency(todayTotalUSD, 'USD'),
+                    change: dailyChangeUSD,
+                    icon: '💵',
+                    color: 'linear-gradient(135deg, #3b82f6, #6366f1)'
+                },
+                {
+                    title: 'Transacciones Hoy',
+                    value: todaySales.length,
+                    change: transactionsChange,
+                    icon: '📊',
+                    color: 'linear-gradient(135deg, #8b5cf6, #a855f7)'
+                },
+                {
+                    title: 'Ventas de la Semana (VES)',
+                    value: formatCurrency(weekTotalVES),
+                    change: 0, // Not calculating weekly change for simplicity
+                    icon: '📈',
+                    color: 'linear-gradient(135deg, #f59e0b, #fbbf24)'
+                },
+                {
+                    title: 'Ventas de la Semana (USD)',
+                    value: formatCurrency(weekTotalUSD, 'USD'),
+                    change: 0,
+                    icon: '💸',
+                    color: 'linear-gradient(135deg, #ef4444, #f87171)'
+                },
+                {
+                    title: 'Ventas del Mes (VES)',
+                    value: formatCurrency(monthTotalVES),
+                    change: 0,
+                    icon: '🗓️',
+                    color: 'linear-gradient(135deg, #10b981, #34d399)'
+                },
+                {
+                    title: 'Ventas del Mes (USD)',
+                    value: formatCurrency(monthTotalUSD, 'USD'),
+                    change: 0,
+                    icon: '🏦',
+                    color: 'linear-gradient(135deg, #6366f1, #818cf8)'
+                },
+                {
+                    title: 'Producto Más Vendido',
+                    value: topProduct ? topProduct[0] : 'N/A',
+                    change: 0,
+                    icon: '🏆',
+                    color: 'linear-gradient(135deg, #ec4899, #f472b6)',
+                    subtitle: topProduct ? `${topProduct[1]} unidades` : ''
+                }
+            ];
+
+            renderMetrics(metrics);
+        }
+
+        function loadCharts() {
+            // Sales by day chart (last 7 days)
+            const salesByDay = calculateSalesByDay();
+            renderSalesChart(salesByDay);
+            
+            // Payment methods chart
+            const paymentMethods = calculatePaymentMethods();
+            renderPaymentChart(paymentMethods);
+        }
+
+        function calculateSalesByDay() {
+            const result = {};
+            const today = new Date();
+            
+            // Initialize last 7 days with 0 sales
+            for (let i = 6; i >= 0; i--) {
+                const date = new Date(today);
+                date.setDate(today.getDate() - i);
+                const dateString = date.toISOString().split('T')[0];
+                result[dateString] = { ves: 0, usd: 0 };
+            }
+            
+            // Calculate sales for each day (using actual paid amounts for combined payments)
+            allSales.forEach(sale => {
+                const saleDate = new Date(sale.timestamp).toISOString().split('T')[0];
+                if (result.hasOwnProperty(saleDate)) {
+                    if (sale.paymentMethod === 'combined' && sale.combinedPayment) {
+                        result[saleDate].ves += sale.combinedPayment.paidVes;
+                        result[saleDate].usd += sale.combinedPayment.paidUsd;
+                    } else if (sale.currency === 'VES') {
+                        result[saleDate].ves += sale.totals.total;
+                    } else if (sale.currency === 'USD') {
+                        result[saleDate].usd += sale.totals.total;
+                    }
+                }
+            });
+            
+            return result;
+        }
+
+        function calculatePaymentMethods() {
+            const result = {};
+            
+            allSales.forEach(sale => {
+                const method = getPaymentMethodName(sale.paymentMethod);
+                if (!result[method]) {
+                    result[method] = { ves: 0, usd: 0 };
+                }
+
+                if (sale.paymentMethod === 'combined' && sale.combinedPayment) {
+                    result[method].ves += sale.combinedPayment.paidVes;
+                    result[method].usd += sale.combinedPayment.paidUsd;
+                } else if (sale.currency === 'VES') {
+                    result[method].ves += sale.totals.total;
+                } else if (sale.currency === 'USD') {
+                    result[method].usd += sale.totals.total;
+                }
+            });
+            
+            return result;
+        }
+
+        function renderSalesChart(salesData) {
+            const ctx = document.getElementById('salesChart').getContext('2d');
+            if (window.salesChartInstance) {
+                window.salesChartInstance.destroy();
+            }
+
+            const labels = Object.keys(salesData).map(date => {
+                const d = new Date(date);
+                return d.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric' });
+            });
+
+            const vesData = Object.values(salesData).map(data => data.ves);
+
+            window.salesChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Ventas por Día (Bs.)',
+                            data: vesData,
+                            backgroundColor: 'rgba(59, 130, 246, 0.5)',
+                            borderColor: 'rgb(59, 130, 246)',
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return 'Bs. ' + formatCurrency(value);
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.y !== null) {
+                                        label += 'Bs. ' + formatCurrency(context.parsed.y);
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderPaymentChart(paymentData) {
+            const ctx = document.getElementById('paymentChart').getContext('2d');
+            if (window.paymentChartInstance) {
+                window.paymentChartInstance.destroy();
+            }
+
+            const labels = Object.keys(paymentData);
+            const data = labels.map(label => paymentData[label].ves); // Usando solo VES para simplificar
+
+            window.paymentChartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Monto Total (Bs.)',
+                        data: data,
+                        backgroundColor: [
+                            'rgba(59, 130, 246, 0.7)',
+                            'rgba(16, 185, 129, 0.7)',
+                            'rgba(245, 158, 11, 0.7)',
+                            'rgba(239, 68, 68, 0.7)',
+                            'rgba(139, 92, 246, 0.7)',
+                            'rgba(236, 72, 153, 0.7)'
+                        ],
+                        borderColor: '#ffffff',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed !== null) {
+                                        label += 'Bs. ' + formatCurrency(context.parsed);
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderMetrics(metrics) {
+            const container = document.getElementById('metricsGrid');
+            container.innerHTML = metrics.map(metric => `
+                <div class="metric-card">
+                    <div class="metric-header">
+                        <div class="metric-icon" style="background: ${metric.color}; color: white;">
+                            ${metric.icon}
+                        </div>
+                        <div style="flex: 1;">
+                            <div class="metric-title">${metric.title}</div>
+                        </div>
+                    </div>
+                    <div class="metric-value">${metric.value}</div>
+                    ${metric.subtitle ? `<div style="font-size: 0.75rem; color: #64748b; margin-bottom: 0.5rem;">${metric.subtitle}</div>` : ''}
+                    ${metric.change !== 0 ? `
+                        <div class="metric-change ${metric.change > 0 ? 'positive' : 'negative'}">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                ${metric.change > 0 ? '<path d="m18 15-6-6-6 6"/>' : '<path d="m6 9 6 6 6-6"/>'}
+                            </svg>
+                            ${Math.abs(metric.change).toFixed(1)}% vs ayer
+                        </div>
+                    ` : ''}
+                </div>
+            `).join('');
+        }
+
+        function performSearch() {
+            currentFilters.search = document.getElementById('searchInput').value.trim();
+            currentPage = 1;
+            applyFilters();
+        }
+
+        function setQuickFilter(filter) {
+            // Update button states
+            document.querySelectorAll('.quick-filter-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+
+            currentFilters.quickFilter = filter;
+            currentPage = 1;
+
+            const today = new Date();
+            const dateFrom = document.getElementById('dateFrom');
+            const dateTo = document.getElementById('dateTo');
+
+            switch(filter) {
+                case 'today':
+                    dateFrom.value = today.toISOString().split('T')[0];
+                    dateTo.value = today.toISOString().split('T')[0];
+                    break;
+                case 'week':
+                    const weekAgo = new Date(today);
+                    weekAgo.setDate(today.getDate() - 7);
+                    dateFrom.value = weekAgo.toISOString().split('T')[0];
+                    dateTo.value = today.toISOString().split('T')[0];
+                    break;
+                case 'month':
+                    const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+                    dateFrom.value = monthStart.toISOString().split('T')[0];
+                    dateTo.value = today.toISOString().split('T')[0];
+                    break;
+                case 'last7':
+                    const sevenDaysAgo = new Date(today);
+                    sevenDaysAgo.setDate(today.getDate() - 7);
+                    dateFrom.value = sevenDaysAgo.toISOString().split('T')[0];
+                    dateTo.value = today.toISOString().split('T')[0];
+                    break;
+                case 'lastMonth':
+                    const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+                    const lastMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
+                    dateFrom.value = lastMonth.toISOString().split('T')[0];
+                    dateTo.value = lastMonthEnd.toISOString().split('T')[0];
+                    break;
+                case 'all':
+                    dateFrom.value = '';
+                    dateTo.value = '';
+                    break;
+            }
+
+            applyFilters();
+        }
+
+        function clearFilters() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('dateFrom').value = '';
+            document.getElementById('dateTo').value = '';
+            document.getElementById('paymentFilter').value = '';
+            document.getElementById('currencyFilter').value = '';
+            document.getElementById('amountMin').value = '';
+            document.getElementById('amountMax').value = '';
+            document.getElementById('categoryFilter').value = '';
+            document.getElementById('productFilter').value = '';
+            document.getElementById('customerFilter').value = '';
+            document.getElementById('tagFilter').value = '';
+            
+            document.querySelectorAll('.quick-filter-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelector('.quick-filter-btn').classList.add('active');
+            
+            currentFilters = {
+                search: '',
+                dateFrom: '',
+                dateTo: '',
+                paymentMethod: '',
+                currency: '',
+                amountMin: '',
+                amountMax: '',
+                category: '',
+                product: '',
+                customer: '',
+                tag: '',
+                quickFilter: 'all'
+            };
+            currentPage = 1;
+            applyFilters();
+        }
+
+        function applyFilters() {
+            // Update filters from inputs
+            currentFilters.search = document.getElementById('searchInput').value.trim().toLowerCase();
+            currentFilters.dateFrom = document.getElementById('dateFrom').value;
+            currentFilters.dateTo = document.getElementById('dateTo').value;
+            currentFilters.paymentMethod = document.getElementById('paymentFilter').value;
+            currentFilters.currency = document.getElementById('currencyFilter').value;
+            currentFilters.amountMin = parseFloat(document.getElementById('amountMin').value);
+            currentFilters.amountMax = parseFloat(document.getElementById('amountMax').value);
+            currentFilters.category = document.getElementById('categoryFilter').value;
+            currentFilters.product = document.getElementById('productFilter').value.trim().toLowerCase();
+            currentFilters.customer = document.getElementById('customerFilter').value.trim().toLowerCase();
+            currentFilters.tag = document.getElementById('tagFilter').value;
+
+            filteredSales = allSales.filter(sale => {
+                const saleDate = new Date(sale.timestamp);
+                const saleDateOnly = new Date(saleDate.getFullYear(), saleDate.getMonth(), saleDate.getDate());
+
+                // Date range filter
+                if (currentFilters.dateFrom) {
+                    const fromDate = new Date(currentFilters.dateFrom);
+                    const fromDateOnly = new Date(fromDate.getFullYear(), fromDate.getMonth(), fromDate.getDate());
+                    if (saleDateOnly < fromDateOnly) return false;
+                }
+                if (currentFilters.dateTo) {
+                    const toDate = new Date(currentFilters.dateTo);
+                    const toDateOnly = new Date(toDate.getFullYear(), toDate.getMonth(), toDate.getDate());
+                    if (saleDateOnly > toDateOnly) return false;
+                }
+
+                // Payment method filter
+                if (currentFilters.paymentMethod && sale.paymentMethod !== currentFilters.paymentMethod) {
+                    return false;
+                }
+
+                // Currency filter
+                if (currentFilters.currency) {
+                    if (sale.paymentMethod === 'combined' && sale.combinedPayment) {
+                        if (currentFilters.currency === 'VES' && sale.combinedPayment.paidVes === 0) return false;
+                        if (currentFilters.currency === 'USD' && sale.combinedPayment.paidUsd === 0) return false;
+                    } else if (sale.currency !== currentFilters.currency) {
+                        return false;
+                    }
+                }
+                
+                // Amount range filter (VES)
+                let saleTotalInVESForFilter;
+                if (sale.paymentMethod === 'combined' && sale.combinedPayment) {
+                    saleTotalInVESForFilter = sale.combinedPayment.paidVes + (sale.combinedPayment.paidUsd * sale.exchangeRate);
+                } else {
+                    saleTotalInVESForFilter = sale.currency === 'VES' ? sale.totals.total : sale.totals.total * sale.exchangeRate;
+                }
+
+                if (!isNaN(currentFilters.amountMin) && saleTotalInVESForFilter < currentFilters.amountMin) {
+                    return false;
+                }
+                if (!isNaN(currentFilters.amountMax) && saleTotalInVESForFilter > currentFilters.amountMax) {
+                    return false;
+                }
+
+                // Advanced: Category filter
+                if (currentFilters.category && !sale.items.some(item => item.product.category === currentFilters.category)) {
+                    return false;
+                }
+
+                // Advanced: Product filter
+                if (currentFilters.product && !sale.items.some(item => item.product.name.toLowerCase().includes(currentFilters.product))) {
+                    return false;
+                }
+
+                // Advanced: Customer filter
+                if (currentFilters.customer) {
+                    if (!sale.customer || !sale.customer.name.toLowerCase().includes(currentFilters.customer)) {
+                        return false;
+                    }
+                }
+
+                // Advanced: Tag filter
+                if (currentFilters.tag) {
+                    const totalInUSD = sale.currency === 'USD' ? sale.totals.total : sale.totals.total / sale.exchangeRate;
+                    if (currentFilters.tag === 'high-value' && totalInUSD <= 50) return false;
+                    if (currentFilters.tag === 'foreign' && !(sale.currency === 'USD' || (sale.paymentMethod === 'combined' && sale.combinedPayment && sale.combinedPayment.paidUsd > 0))) return false;
+                    if (currentFilters.tag === 'combined-payment' && sale.paymentMethod !== 'combined') return false;
+                }
+
+                // General search filter
+                if (currentFilters.search) {
+                    const saleDateString = saleDate.toISOString().split('T')[0];
+                    const matchesId = sale.id.toLowerCase().includes(currentFilters.search);
+                    const matchesCustomer = sale.customer && (sale.customer.name.toLowerCase().includes(currentFilters.search) || sale.customer.document.toLowerCase().includes(currentFilters.search));
+                    const matchesProduct = sale.items.some(item => item.product.name.toLowerCase().includes(currentFilters.search) || item.product.code.toLowerCase().includes(currentFilters.search));
+                    const matchesDate = saleDateString.includes(currentFilters.search);
+
+                    if (!matchesId && !matchesCustomer && !matchesProduct && !matchesDate) {
+                        return false;
+                    }
+                }
+
+                return true;
+            });
+
+            currentPage = 1;
+            renderResults();
+        }                                                
+
+        function renderResults() {
+            const container = document.getElementById('resultsContainer');
+            const resultsCount = document.getElementById('resultsCount');
+            
+            resultsCount.textContent = filteredSales.length;
+
+            if (filteredSales.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">🔍</div>
+                        <div class="empty-title">No se encontraron resultados</div>
+                        <div class="empty-description">Intenta ajustar los filtros de búsqueda o verificar los criterios</div>
+                    </div>
+                `;
+                renderPagination();
+                return;
+            }
+
+            // Calculate pagination
+            const startIndex = (currentPage - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            const paginatedSales = filteredSales.slice(startIndex, endIndex);
+
+            container.innerHTML = paginatedSales.map(sale => {
+                const saleDate = new Date(sale.timestamp);
+                const formattedDate = saleDate.toLocaleDateString('es-VE', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+
+                const customerName = sale.customer ? sale.customer.name : 'Cliente Anónimo';
+                const paymentMethodName = getPaymentMethodName(sale.paymentMethod);
+                
+                // Determine tags for this sale
+                const tags = [];
+                // Assuming high value is > $50 USD equivalent
+                const totalInUSD = sale.currency === 'USD' ? sale.totals.total : sale.totals.total / sale.exchangeRate;
+                if (totalInUSD > 50) tags.push({text: 'Alto Valor', class: 'high-value'});
+                if (sale.currency === 'USD' || (sale.paymentMethod === 'combined' && sale.combinedPayment && sale.combinedPayment.paidUsd > 0)) tags.push({text: 'USD', class: 'foreign'});
+                if (sale.paymentMethod === 'combined') tags.push({text: 'Combinado', class: 'combined-payment'}); 
+                // Example for 'Regular' tag (based on sample data)
+                if (sale.customer && sale.customer.document === 'V12345678') tags.push({text: 'Regular', class: 'regular'});
+
+                let displayTotalVES = 0;
+                let displayTotalUSD = 0;
+
+                if (sale.paymentMethod === 'combined' && sale.combinedPayment) {
+                    displayTotalVES = sale.combinedPayment.paidVes;
+                    displayTotalUSD = sale.combinedPayment.paidUsd;
+                } else if (sale.currency === 'VES') {
+                    displayTotalVES = sale.totals.total;
+                    displayTotalUSD = sale.totals.total / sale.exchangeRate;
+                } else if (sale.currency === 'USD') {
+                    displayTotalVES = sale.totals.total * sale.exchangeRate;
+                    displayTotalUSD = sale.totals.total;
+                }
+
+                return `
+                    <div class="sale-item" id="sale-${sale.id}">
+                        <div class="sale-summary" onclick="toggleSaleDetails('${sale.id}')">
+                            <div class="sale-id">${sale.id}</div>
+                            <div class="sale-info">
+                                <div>
+                                    <div class="sale-customer ${!sale.customer ? 'anonymous' : ''}">${customerName}</div>
+                                    ${tags.length > 0 ? `
+                                        <div class="sale-tags">
+                                            ${tags.map(tag => `<span class="sale-tag ${tag.class}">${tag.text}</span>`).join('')}
+                                        </div>
+                                    ` : ''}
+                                </div>
+                                <div class="sale-date">${formattedDate}</div>
+                                <div class="sale-payment">
+                                    <span class="payment-method">${paymentMethodName}</span>
+                                    <span>${sale.currency}</span>
+                                </div>
+                                <div class="sale-total both-currencies">
+                                    <span>Bs. ${formatCurrency(displayTotalVES)}</span>
+                                    <span class="sale-total-secondary">$ ${formatCurrency(displayTotalUSD, 'USD')}</span>
+                                </div>
+                            </div>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="expand-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="m6 9 6 6 6-6"/>
+                            </svg>
+                        </div>
+                        <div class="sale-details">
+                            ${renderSaleDetails(sale)}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            renderPagination();
+        }
+
+        function renderSaleDetails(sale) {
+            const customer = sale.customer;
+            const totals = sale.totals;
+            const exchangeRate = sale.exchangeRate;
+
+            // Calculate total in USD for display based on the sale's main currency and total
+            const totalInUSD = sale.currency === 'USD' ? totals.total : totals.total / exchangeRate;
+            const subtotalInUSD = sale.currency === 'USD' ? totals.subtotal : totals.subtotal / exchangeRate;
+            const discountInUSD = sale.currency === 'USD' ? totals.discount : totals.discount / exchangeRate;
+            const ivaInUSD = sale.currency === 'USD' ? totals.iva : totals.iva / exchangeRate;
+
+            // Check if customer has multiple purchases
+            const customerSales = customer ? allSales.filter(s => 
+                s.customer && s.customer.document === customer.document
+            ) : [];
+
+            return `
+                <div class="details-grid">
+                    <div class="customer-details">
+                        <div class="detail-section-title">Información del Cliente</div>
+                        ${customer ? `
+                            <div class="detail-item">
+                                <span class="detail-label">Nombre:</span>
+                                <span class="detail-value">${customer.name}</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Documento:</span>
+                                <span class="detail-value">${customer.document}</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Teléfono:</span>
+                                <span class="detail-value">${customer.phone || 'N/A'}</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Email:</span>
+                                <span class="detail-value">${customer.email || 'N/A'}</span>
+                            </div>
+                        ` : `
+                            <div class="detail-item">
+                                <span class="detail-label">Cliente:</span>
+                                <span class="detail-value">Anónimo</span>
+                            </div>
+                        `}
+                    </div>
+                    
+                    <div class="sale-summary-details">
+                        <div class="detail-section-title">Resumen de Venta</div>
+                        <div class="detail-item">
+                            <span class="detail-label">Subtotal:</span>
+                            <span class="detail-value">Bs. ${formatCurrency(totals.subtotal)} ($ ${formatCurrency(subtotalInUSD, 'USD')})</span>
+                        </div>
+                        ${totals.discount > 0 ? `
+                            <div class="detail-item">
+                                <span class="detail-label">Descuento:</span>
+                                <span class="detail-value">Bs. ${formatCurrency(totals.discount)} ($ ${formatCurrency(discountInUSD, 'USD')})</span>
+                            </div>
+                        ` : ''}
+                        ${sale.ivaApplied ? `
+                            <div class="detail-item">
+                                <span class="detail-label">IVA (16%):</span>
+                                <span class="detail-value">Bs. ${formatCurrency(totals.iva)} ($ ${formatCurrency(ivaInUSD, 'USD')})</span>
+                            </div>
+                        ` : ''}
+                        <div class="detail-item">
+                            <span class="detail-label">Total:</span>
+                            <span class="detail-value">Bs. ${formatCurrency(totals.total)} ($ ${formatCurrency(totalInUSD, 'USD')})</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Tasa de Cambio:</span>
+                            <span class="detail-value">${exchangeRate.toFixed(2)} Bs/$</span>
+                        </div>
+                        ${sale.paymentMethod === 'ves-mobile' && sale.paymentDetails && sale.paymentDetails.reference ? `
+                            <div class="detail-item">
+                                <span class="detail-label">Referencia Pago Móvil:</span>
+                                <span class="detail-value">${sale.paymentDetails.reference}</span>
+                            </div>
+                        ` : ''}
+                        ${sale.paymentMethod === 'usd-cash' && sale.paymentDetails ? `
+                            <div class="detail-item">
+                                <span class="detail-label">Monto Recibido USD:</span>
+                                <span class="detail-value">$ ${formatCurrency(sale.paymentDetails.paidUsd || 0, 'USD')}</span>
+                            </div>
+                            ${sale.paymentDetails.changeUsd > 0 ? `
+                                <div class="detail-item">
+                                    <span class="detail-label">Vuelto USD:</span>
+                                    <span class="detail-value">$ ${formatCurrency(sale.paymentDetails.changeUsd || 0, 'USD')}</span>
+                                </div>
+                            ` : ''}
+                             ${sale.paymentDetails.changeVes > 0 ? `
+                                <div class="detail-item">
+                                    <span class="detail-label">Vuelto VES:</span>
+                                    <span class="detail-value">Bs. ${formatCurrency(sale.paymentDetails.changeVes || 0)}</span>
+                                </div>
+                            ` : ''}
+                        ` : ''}
+                        ${sale.paymentMethod === 'combined' && sale.combinedPayment ? `
+                            <div class="detail-item">
+                                <span class="detail-label">Pagado USD:</span>
+                                <span class="detail-value">$ ${formatCurrency(sale.combinedPayment.paidUsd, 'USD')}</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Pagado VES:</span>
+                                <span class="detail-value">Bs. ${formatCurrency(sale.combinedPayment.paidVes)}</span>
+                            </div>
+                            ${(sale.combinedPayment.changeUsd && sale.combinedPayment.changeUsd > 0.01) || (sale.combinedPayment.changeVes && sale.combinedPayment.changeVes > 0.01) ? `
+                                <div class="detail-item">
+                                    <span class="detail-label">Cambio USD:</span>
+                                    <span class="detail-value">$ ${formatCurrency(sale.combinedPayment.changeUsd || 0, 'USD')}</span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Cambio VES:</span>
+                                    <span class="detail-value">Bs. ${formatCurrency(sale.combinedPayment.changeVes || 0)}</span>
+                                </div>
+                            ` : ''}
+                        ` : ''}
+                        ${sale.notes ? `
+                            <div class="detail-item">
+                                <span class="detail-label">Notas:</span>
+                                <span class="detail-value">${sale.notes}</span>
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+                
+                <table class="products-table">
+                    <thead>
+                        <tr>
+                            <th>Producto</th>
+                            <th>Cantidad</th>
+                            <th>Precio Unitario</th>
+                            <th>Costo Unitario</th>
+                            <th>Subtotal</th>
+                            <th>Ganancia</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${sale.items.map(item => {
+                            // item.unitPrice is the price in item.currency (which is the currency it was sold in POS)
+                            // item.product.cost is the cost in USD (as per POS logic)
+
+                            let unitPriceUSD, unitPriceVES;
+                            let unitCostUSD, unitCostVES;
+                            let subtotalUSD, subtotalVES;
+                            let profitUSD, profitVES;
+
+                            // Calculate unit price in USD and VES
+                            if (item.currency === 'USD') {
+                                unitPriceUSD = item.unitPrice;
+                                unitPriceVES = item.unitPrice * exchangeRate;
+                            } else { // item.currency === 'VES'
+                                unitPriceVES = item.unitPrice;
+                                unitPriceUSD = item.unitPrice / exchangeRate;
+                            }
+
+                            // Calculate unit cost in USD and VES (assuming product.cost is always in USD)
+                            unitCostUSD = item.product.cost || 0;
+                            unitCostVES = unitCostUSD * exchangeRate;
+
+                            // Calculate subtotal in USD and VES
+                            subtotalUSD = unitPriceUSD * item.quantity;
+                            subtotalVES = unitPriceVES * item.quantity;
+
+                            // Calculate profit in USD and VES
+                            profitUSD = (unitPriceUSD - unitCostUSD) * item.quantity;
+                            profitVES = (unitPriceVES - unitCostVES) * item.quantity;
+                            
+                            return `
+                                <tr>
+                                    <td>
+                                        <div class="product-name">${item.product.name}</div>
+                                        <div class="product-details-cell">
+                                            ${item.product.brand || 'N/A'} | ${item.product.code || 'N/A'} | ${getCategoryName(item.product.category)}
+                                        </div>
+                                    </td>
+                                    <td>${item.quantity} ${item.unit || 'unidades'}</td>
+                                    <td class="amount-cell">Bs. ${formatCurrency(unitPriceVES)} ($ ${formatCurrency(unitPriceUSD, 'USD')})</td>
+                                    <td class="amount-cell">Bs. ${formatCurrency(unitCostVES)} ($ ${formatCurrency(unitCostUSD, 'USD')})</td>
+                                    <td class="amount-cell">Bs. ${formatCurrency(subtotalVES)} ($ ${formatCurrency(subtotalUSD, 'USD')})</td>
+                                    <td class="amount-cell ${profitUSD >= 0 ? 'profit-positive' : 'profit-negative'}">
+                                        Bs. ${formatCurrency(profitVES)} ($ ${formatCurrency(profitUSD, 'USD')})
+                                    </td>
+                                </tr>
+                            `;
+                        }).join('')}
+                    </tbody>
+                </table>
+                
+                ${customerSales.length > 1 && customer ? `
+                    <div class="timeline-section">
+                        <div class="timeline-title">Historial de Compras del Cliente (${customerSales.length} transacciones)</div>
+                        ${customerSales.slice(0, 5).map(s => {
+                            let saleTotalInVES = 0;
+                            let saleTotalInUSD = 0;
+                            if (s.paymentMethod === 'combined' && s.combinedPayment) {
+                                saleTotalInVES = s.combinedPayment.paidVes;
+                                saleTotalInUSD = s.combinedPayment.paidUsd;
+                            } else if (s.currency === 'VES') {
+                                saleTotalInVES = s.totals.total;
+                                saleTotalInUSD = s.totals.total / s.exchangeRate;
+                            } else if (s.currency === 'USD') {
+                                saleTotalInVES = s.totals.total * s.exchangeRate;
+                                saleTotalInUSD = s.totals.total;
+                            }
+
+                            return `
+                                <div class="timeline-item">
+                                    <div class="timeline-date">${new Date(s.timestamp).toLocaleDateString('es-VE')}</div>
+                                    <div class="timeline-amount">
+                                        Bs. ${formatCurrency(saleTotalInVES)} ($ ${formatCurrency(saleTotalInUSD, 'USD')})
+                                    </div>
+                                    <div style="font-size: 0.75rem; color: #64748b;">
+                                        ${s.id} - ${s.items.length} producto${s.items.length > 1 ? 's' : ''}
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                        ${customerSales.length > 5 ? `
+                            <div style="text-align: center; margin-top: 0.5rem; font-size: 0.75rem; color: #64748b;">
+                                Y ${customerSales.length - 5} compra${customerSales.length - 5 > 1 ? 's' : ''} más...
+                            </div>
+                        ` : ''}
+                    </div>
+                ` : ''}
+            `;
+        }
+
+        function renderPagination() {
+            const pagination = document.getElementById('pagination');
+            const totalPages = Math.ceil(filteredSales.length / itemsPerPage);
+            
+            if (totalPages <= 1) {
+                pagination.innerHTML = '';
+                return;
+            }
+
+            const startItem = (currentPage - 1) * itemsPerPage + 1;
+            const endItem = Math.min(currentPage * itemsPerPage, filteredSales.length);
+
+            pagination.innerHTML = `
+                <div class="pagination-info">
+                    Mostrando ${startItem}-${endItem} de ${filteredSales.length} resultados
+                </div>
+                <div class="pagination-controls">
+                    <button class="page-btn" onclick="changePage(1)" ${currentPage === 1 ? 'disabled' : ''}>
+                        ««
+                    </button>
+                    <button class="page-btn" onclick="changePage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>
+                        ‹
+                    </button>
+                    ${getPaginationButtons(currentPage, totalPages)}
+                    <button class="page-btn" onclick="changePage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>
+                        ›
+                    </button>
+                    <button class="page-btn" onclick="changePage(${totalPages})" ${currentPage === totalPages ? 'disabled' : ''}>
+                        »»
+                    </button>
+                </div>
+            `;
+        }
+
+        function getPaginationButtons(current, total) {
+            let buttons = '';
+            const range = 2; // Show 2 pages before and after current
+            
+            for (let i = Math.max(1, current - range); i <= Math.min(total, current + range); i++) {
+                buttons += `
+                    <button class="page-btn ${i === current ? 'active' : ''}" onclick="changePage(${i})">
+                        ${i}
+                    </button>
+                `;
+            }
+            
+            return buttons;
+        }
+
+        function changePage(page) {
+            currentPage = page;
+            renderResults();
+        }
+
+        function toggleSaleDetails(saleId) {
+            const saleItem = document.getElementById(`sale-${saleId}`);
+            saleItem.classList.toggle('expanded');
+        }
+
+        function getPaymentMethodName(methodId) {
+            const methods = {
+                'ves-cash': 'Efectivo VES',
+                'ves-pos': 'Punto de Venta',
+                'ves-mobile': 'Pago Móvil',
+                'usd-cash': 'Efectivo USD',
+                'usd-zelle': 'Zelle',
+                'combined': 'Combinado USD/VES'
+            };
+            return methods[methodId] || methodId;
+        }
+
+        function getCategoryName(categoryId) {
+            const categories = {
+                'Frutas y Hortalizas': 'Frutas y Hortalizas',
+                'Charcutería': 'Charcutería',
+                'Electrónicos': 'Electrónicos',
+                // Add more categories as needed
+            };
+            return categories[categoryId] || categoryId;
+        }
+
+        function exportToPDF() {
+            if (filteredSales.length === 0) {
+                showToast('No hay datos para exportar');
+                return;
+            }
+
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            // Header
+            doc.setFontSize(20);
+            doc.text('Reporte de Ventas', 20, 20);
+            doc.setFontSize(12);
+            doc.text(`Generado: ${new Date().toLocaleString('es-VE')}`, 20, 30);
+            doc.text(`Total de registros: ${filteredSales.length}`, 20, 37);
+            
+            // Summary
+            let totalAmountVES = 0;
+            let totalAmountUSD = 0;
+
+            filteredSales.forEach(sale => {
+                if (sale.paymentMethod === 'combined' && sale.combinedPayment) {
+                    totalAmountVES += sale.combinedPayment.paidVes;
+                    totalAmountUSD += sale.combinedPayment.paidUsd;
+                } else if (sale.currency === 'VES') {
+                    totalAmountVES += sale.totals.total;
+                } else if (sale.currency === 'USD') {
+                    totalAmountUSD += sale.totals.total;
+                }
+            });
+
+            const totalTransactions = filteredSales.length;
+            
+            doc.text(`Total en Ventas (VES): Bs. ${formatCurrency(totalAmountVES)}`, 20, 50);
+            doc.text(`Total en Ventas (USD): $ ${formatCurrency(totalAmountUSD, 'USD')}`, 20, 57);
+            doc.text(`Transacciones: ${totalTransactions}`, 20, 64);
+            
+            // Sales list
+            let yPosition = 80;
+            doc.setFontSize(14);
+            doc.text('Detalle de Ventas:', 20, yPosition);
+            yPosition += 10;
+            
+            doc.setFontSize(10);
+            filteredSales.forEach((sale, index) => {
+                if (yPosition > 270) { // Check if new page is needed
+                    doc.addPage();
+                    yPosition = 20;
+                }
+                
+                const saleDate = new Date(sale.timestamp).toLocaleDateString('es-VE');
+                const customerName = sale.customer ? sale.customer.name : 'Anónimo';
+                
+                let displayTotalVES = 0;
+                let displayTotalUSD = 0;
+
+                if (sale.paymentMethod === 'combined' && sale.combinedPayment) {
+                    displayTotalVES = sale.combinedPayment.paidVes;
+                    displayTotalUSD = sale.combinedPayment.paidUsd;
+                } else if (sale.currency === 'VES') {
+                    displayTotalVES = sale.totals.total;
+                    displayTotalUSD = sale.totals.total / sale.exchangeRate;
+                } else if (sale.currency === 'USD') {
+                    displayTotalVES = sale.totals.total * sale.exchangeRate;
+                    displayTotalUSD = sale.totals.total;
+                }
+
+                doc.text(`${sale.id} | ${saleDate} | ${customerName} | Bs. ${formatCurrency(displayTotalVES)} ($ ${formatCurrency(displayTotalUSD, 'USD')})`, 20, yPosition);
+                yPosition += 7;
+            });
+            
+            doc.save(`reporte-ventas-${new Date().toISOString().split('T')[0]}.pdf`);
+            showToast('Reporte exportado exitosamente');
+        }
+
+        function formatCurrency(amount, currency = 'VES') {
+            if (currency === 'USD') {
+                return new Intl.NumberFormat('en-US', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                }).format(amount);
+            } else {
+                return new Intl.NumberFormat('es-VE', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                }).format(amount);
+            }
+        }
+
+        function showToast(message, type = 'info') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = 'toast show';
+            
+            if (type === 'success') {
+                toast.style.background = '#059669';
+            } else if (type === 'error') {
+                toast.style.background = '#dc2626';
+            } else {
+                toast.style.background = '#1f2937'; // Default info color
+            }
+            
+            setTimeout(() => {
+                toast.className = 'toast';
+            }, 3000);
+        }
+
+        function goToPOS() {
+            // Redirección directa sin confirmación ni mensajes
+            window.location.href = 'mini_market_pos.html'; // Changed to mini_market_pos.html
+        }
+
+    </script>
+</body>
+</html>

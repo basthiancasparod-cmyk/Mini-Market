@@ -1,0 +1,1925 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Empresa - Ciervo Administrativo</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.1/dist/umd/lucide.js"></script>
+    <style>
+        /* Base Styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(to bottom right, #f8fafc, #dbeafe, #e0e7ff);
+            min-height: 100vh;
+            color: #334155;
+            transition: background-color 0.3s, color 0.3s; /* Added for smooth transition */
+        }
+
+        /* Dark Mode Styles */
+        body.dark-mode {
+            background: linear-gradient(to bottom right, #1a202c, #2d3748, #4a5568);
+            color: #e2e8f0;
+        }
+
+        .glassmorphic-bar {
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(16px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            transition: background-color 0.3s, border-color 0.3s; /* Added for smooth transition */
+        }
+
+        body.dark-mode .glassmorphic-bar {
+            background: rgba(26, 32, 44, 0.7);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .container {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 0 1.5rem;
+        }
+
+        .top-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem 0;
+        }
+
+        .brand-section {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .brand-icon {
+            position: relative;
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(to bottom right, #3b82f6, #9333ea);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.25);
+        }
+
+        body.dark-mode .brand-icon {
+            box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.4);
+        }
+
+        .brand-icon::after {
+            content: '';
+            position: absolute;
+            top: -4px;
+            right: -4px;
+            width: 16px;
+            height: 16px;
+            background: #10b981;
+            border-radius: 50%;
+            border: 2px solid white;
+        }
+
+        .brand-text h1 {
+            font-size: 1.25rem;
+            font-weight: bold;
+            background: linear-gradient(to right, #1e293b, #64748b);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+        }
+
+        body.dark-mode .brand-text h1 {
+            background: linear-gradient(to right, #e2e8f0, #a0aec0);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+        }
+
+        .brand-text p {
+            font-size: 0.875rem;
+            color: #64748b;
+        }
+
+        body.dark-mode .brand-text p {
+            color: #a0aec0;
+        }
+
+        .nav-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .back-button {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            background: rgba(255, 255, 255, 0.5);
+            border: none;
+            border-radius: 12px;
+            color: #64748b;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            backdrop-filter: blur(8px);
+        }
+
+        body.dark-mode .back-button {
+            background: rgba(26, 32, 44, 0.5);
+            color: #a0aec0;
+        }
+
+        .back-button:hover {
+            background: rgba(255, 255, 255, 0.8);
+            color: #1e293b;
+            transform: translateX(-2px);
+        }
+
+        body.dark-mode .back-button:hover {
+            background: rgba(26, 32, 44, 0.8);
+            color: #e2e8f0;
+        }
+
+        /* Theme Toggle Button */
+        .icon-button.theme-toggle {
+            padding: 0.75rem;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            backdrop-filter: blur(8px);
+            background: rgba(255, 255, 255, 0.5);
+            color: #64748b;
+        }
+
+        body.dark-mode .icon-button.theme-toggle {
+            background: rgba(26, 32, 44, 0.5);
+            color: #a0aec0;
+        }
+
+        .icon-button.theme-toggle:hover {
+            background: rgba(255, 255, 255, 0.8);
+        }
+
+        body.dark-mode .icon-button.theme-toggle:hover {
+            background: rgba(26, 32, 44, 0.8);
+        }
+
+        .main-content {
+            padding: 2rem 0;
+        }
+
+        .module-header-section {
+            text-align: center;
+            margin-bottom: 2rem;
+            padding: 2rem 0;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(219, 234, 254, 1);
+            color: #1d4ed8;
+            padding: 0.5rem 1rem;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            margin-bottom: 1rem;
+        }
+
+        body.dark-mode .badge {
+            background: rgba(59, 130, 246, 0.3);
+            color: #93c5fd;
+        }
+
+        .module-title {
+            font-size: 2.25rem;
+            font-weight: bold;
+            background: linear-gradient(to right, #1e293b, #1e40af, #7c3aed);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            margin-bottom: 1rem;
+        }
+
+        body.dark-mode .module-title {
+            background: linear-gradient(to right, #e2e8f0, #93c5fd, #c4b5fd);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+        }
+
+        .module-subtitle {
+            font-size: 1.125rem;
+            color: #64748b;
+            max-width: 48rem;
+            margin: 0 auto;
+        }
+
+        body.dark-mode .module-subtitle {
+            color: #a0aec0;
+        }
+
+        /* Tab Styles */
+        .tab-container {
+            background: white;
+            border-radius: 24px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            border: 1px solid #e2e8f0;
+            overflow: hidden;
+        }
+
+        body.dark-mode .tab-container {
+            background: #2d3748;
+            border: 1px solid #4a5568;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        .tab-navigation {
+            display: flex;
+            background: #f8fafc;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        body.dark-mode .tab-navigation {
+            background: #1a202c;
+            border-bottom: 1px solid #4a5568;
+        }
+
+        .tab-button {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 1.25rem 1rem;
+            background: none;
+            border: none;
+            color: #64748b;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        body.dark-mode .tab-button {
+            color: #a0aec0;
+        }
+
+        .tab-button:hover {
+            background: rgba(59, 130, 246, 0.05);
+            color: #3b82f6;
+        }
+
+        body.dark-mode .tab-button:hover {
+            background: rgba(59, 130, 246, 0.1);
+            color: #93c5fd;
+        }
+
+        .tab-button.active {
+            background: white;
+            color: #3b82f6;
+            box-shadow: 0 -2px 0 0 #3b82f6 inset;
+        }
+
+        body.dark-mode .tab-button.active {
+            background: #2d3748;
+            color: #93c5fd;
+            box-shadow: 0 -2px 0 0 #93c5fd inset;
+        }
+
+        .tab-content-area {
+            padding: 2rem;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Company Info Form Styles */
+        .company-container {
+            max-width: 800px;
+            margin: 0 auto;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .company-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(to right, #3b82f6, #9333ea, #06b6d4);
+        }
+
+        .form-section {
+            margin-bottom: 2rem;
+        }
+
+        .section-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        body.dark-mode .section-title {
+            color: #e2e8f0;
+        }
+
+        .section-icon {
+            padding: 0.5rem;
+            background: linear-gradient(to bottom right, #dbeafe, #e0e7ff);
+            border-radius: 8px;
+        }
+
+        body.dark-mode .section-icon {
+            background: linear-gradient(to bottom right, #4a5568, #2d3748);
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+        }
+
+        @media (min-width: 768px) {
+            .form-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group.full-width {
+            grid-column: 1 / -1;
+        }
+
+        .form-label {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #374151;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        body.dark-mode .form-label {
+            color: #e2e8f0;
+        }
+
+        .required {
+            color: #ef4444;
+        }
+
+        .form-input, .form-select, .form-textarea {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background: #f8fafc;
+            border: 1px solid #cbd5e1;
+            border-radius: 12px;
+            color: #1e293b;
+            font-size: 0.875rem;
+            transition: all 0.2s;
+        }
+
+        body.dark-mode .form-input, body.dark-mode .form-select, body.dark-mode .form-textarea {
+            background: #1a202c;
+            border: 1px solid #4a5568;
+            color: #e2e8f0;
+        }
+
+        .form-input:focus, .form-select:focus, .form-textarea:focus {
+            outline: none;
+            border-color: #3b82f6;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        body.dark-mode .form-input:focus, body.dark-mode .form-select:focus, body.dark-mode .form-textarea:focus {
+            border-color: #93c5fd;
+            background: #2d3748;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+        }
+
+        .form-input.is-invalid, .form-select.is-invalid, .form-textarea.is-invalid {
+            border-color: #ef4444;
+        }
+
+        .form-input.is-valid, .form-select.is-valid, .form-textarea.is-valid {
+            border-color: #10b981;
+        }
+
+        .form-textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        /* Logo Upload */
+        .logo-upload-section {
+            text-align: center;
+            padding: 2rem;
+            border: 2px dashed #cbd5e1;
+            border-radius: 16px;
+            background: #f8fafc;
+            transition: all 0.3s;
+        }
+
+        body.dark-mode .logo-upload-section {
+            border: 2px dashed #4a5568;
+            background: #1a202c;
+        }
+
+        .logo-upload-section.dragover {
+            border-color: #3b82f6;
+            background: rgba(59, 130, 246, 0.05);
+        }
+
+        body.dark-mode .logo-upload-section.dragover {
+            border-color: #93c5fd;
+            background: rgba(59, 130, 246, 0.1);
+        }
+
+        .logo-preview {
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 1rem;
+            border-radius: 16px;
+            background: white;
+            border: 2px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        body.dark-mode .logo-preview {
+            background: #2d3748;
+            border: 2px solid #4a5568;
+        }
+
+        .logo-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .logo-placeholder {
+            color: #94a3b8;
+            font-size: 2rem;
+        }
+
+        body.dark-mode .logo-placeholder {
+            color: #a0aec0;
+        }
+
+        .upload-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            background: linear-gradient(to right, #3b82f6, #6366f1);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .upload-button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 8px 25px 0 rgba(59, 130, 246, 0.35);
+        }
+
+        .upload-info {
+            margin-top: 0.5rem;
+            font-size: 0.75rem;
+            color: #64748b;
+        }
+
+        body.dark-mode .upload-info {
+            color: #a0aec0;
+        }
+
+        /* Info Banner */
+        .form-info {
+            background: rgba(239, 246, 255, 0.8);
+            border-radius: 12px;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            border: 1px solid rgba(59, 130, 246, 0.2);
+        }
+
+        body.dark-mode .form-info {
+            background: rgba(59, 130, 246, 0.2);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+
+        .info-title {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #1e40af;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        body.dark-mode .info-title {
+            color: #93c5fd;
+        }
+
+        .info-text {
+            font-size: 0.875rem;
+            color: #64748b;
+            line-height: 1.5;
+        }
+
+        body.dark-mode .info-text {
+            color: #a0aec0;
+        }
+
+        /* Form Actions */
+        .form-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        body.dark-mode .form-actions {
+            border-top: 1px solid #4a5568;
+        }
+
+        @media (min-width: 640px) {
+            .form-actions {
+                flex-direction: row;
+                justify-content: space-between;
+            }
+        }
+
+        .button-group {
+            display: flex;
+            gap: 1rem;
+            flex: 1;
+            justify-content: flex-end;
+        }
+
+        .btn {
+            padding: 0.75rem 2rem;
+            border-radius: 12px;
+            font-weight: 500;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            text-decoration: none;
+        }
+
+        .btn-secondary {
+            background: #f1f5f9;
+            color: #64748b;
+        }
+
+        body.dark-mode .btn-secondary {
+            background: #4a5568;
+            color: #e2e8f0;
+        }
+
+        .btn-secondary:hover {
+            background: #e2e8f0;
+            color: #475569;
+        }
+
+        body.dark-mode .btn-secondary:hover {
+            background: #64748b;
+            color: #f8fafc;
+        }
+
+        .btn-primary {
+            background: linear-gradient(to right, #3b82f6, #6366f1);
+            color: white;
+            box-shadow: 0 4px 14px 0 rgba(59, 130, 246, 0.25);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 8px 25px 0 rgba(59, 130, 246, 0.35);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: 0 4px 14px 0 rgba(59, 130, 246, 0.25);
+        }
+
+        /* Validation Messages */
+        .validation-message {
+            font-size: 0.75rem;
+            margin-top: 0.25rem;
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            min-height: 1.25rem; /* To prevent layout shift */
+        }
+
+        .validation-error {
+            color: #ef4444;
+        }
+
+        .validation-success {
+            color: #10b981;
+        }
+
+        /* Company Preview Card */
+        .preview-card {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        body.dark-mode .preview-card {
+            background: #2d3748;
+            border: 1px solid #4a5568;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+        }
+
+        .preview-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        body.dark-mode .preview-header {
+            border-bottom: 1px solid #4a5568;
+        }
+
+        .preview-logo {
+            width: 80px;
+            height: 80px;
+            border-radius: 12px;
+            background: #f8fafc;
+            border: 2px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        body.dark-mode .preview-logo {
+            background: #1a202c;
+            border: 2px solid #4a5568;
+        }
+
+        .preview-logo img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .preview-company-info h3 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 0.25rem;
+        }
+
+        body.dark-mode .preview-company-info h3 {
+            color: #e2e8f0;
+        }
+
+        .preview-company-info p {
+            color: #64748b;
+            font-size: 0.875rem;
+        }
+
+        body.dark-mode .preview-company-info p {
+            color: #a0aec0;
+        }
+
+        .preview-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        .preview-detail {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .preview-label {
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.025em;
+        }
+
+        body.dark-mode .preview-label {
+            color: #a0aec0;
+        }
+
+        .preview-value {
+            font-size: 0.875rem;
+            color: #1e293b;
+            font-weight: 500;
+        }
+
+        body.dark-mode .preview-value {
+            color: #e2e8f0;
+        }
+
+        /* Utility Classes */
+        .hidden {
+            display: none;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .loading {
+            position: relative;
+            pointer-events: none;
+            opacity: 0.8;
+        }
+
+        .loading::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            border-top: 2px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: translate(-50%, -50%) rotate(0deg); }
+            100% { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+
+        /* Toast Notification */
+        #toast-notification {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #333;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        #toast-notification.show {
+            opacity: 1;
+        }
+
+        #toast-notification.success {
+            background-color: #10b981;
+        }
+
+        #toast-notification.error {
+            background-color: #ef4444;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 767px) {
+            .module-title {
+                font-size: 1.875rem;
+            }
+            
+            .tab-navigation {
+                flex-direction: column;
+            }
+            
+            .company-container {
+                padding: 1.5rem;
+                margin: 0 1rem;
+            }
+            
+            .form-grid {
+                gap: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Top Bar -->
+    <div class="glassmorphic-bar">
+        <div class="container">
+            <div class="top-bar">
+                <!-- Brand Section -->
+                <div class="brand-section">
+                    <div class="brand-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg>
+                    </div>
+                    <div class="brand-text">
+                        <h1>Ciervo Administrativo</h1>
+                        <p>Sistema de Gestión Empresarial</p>
+                    </div>
+                </div>
+
+                <!-- Navigation Actions -->
+                <div class="nav-actions">
+                    <!-- Theme Toggle Button -->
+                    <button class="icon-button theme-toggle" onclick="toggleDarkMode()">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sun-icon">
+                            <circle cx="12" cy="12" r="4"/>
+                            <path d="M12 2v2"/>
+                            <path d="M12 20v2"/>
+                            <path d="M22 12h-2"/>
+                            <path d="M4 12H2"/>
+                            <path d="M19.78 4.22l-1.42 1.42"/>
+                            <path d="M6.44 17.56l-1.42 1.42"/>
+                            <path d="M4.22 4.22l1.42 1.42"/>
+                            <path d="M17.56 6.44l1.42-1.42"/>
+                        </svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="moon-icon" style="display: none;">
+                            <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
+                        </svg>
+                    </button>
+                    <a href="menu.html" class="back-button">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+                        Volver al Menú
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="container main-content">
+        <!-- Module Header -->
+        <div class="module-header-section">
+            <div class="badge">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/>
+                    <path d="M6 12H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h2"/>
+                    <path d="M18 9h2a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2h-2"/>
+                    <path d="M10 6h4"/>
+                    <path d="M10 10h4"/>
+                    <path d="M10 14h4"/>
+                    <path d="M10 18h4"/>
+                </svg>
+                <span>Gestión de Empresa</span>
+            </div>
+            <h2 class="module-title">Configuración Empresarial</h2>
+            <p class="module-subtitle">
+                Configure la información de su empresa para personalizar facturas, reportes y documentos del sistema
+            </p>
+        </div>
+
+        <!-- Company Management Tabs -->
+        <div class="tab-container">
+            <div class="tab-navigation">
+                <button class="tab-button active" data-tab="config">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/>
+                        <path d="M6 12H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h2"/>
+                        <path d="M18 9h2a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2h-2"/>
+                        <path d="M10 6h4"/>
+                        <path d="M10 10h4"/>
+                        <path d="M10 14h4"/>
+                        <path d="M10 18h4"/>
+                    </svg>
+                    Información Empresarial
+                </button>
+                <button class="tab-button" data-tab="preview">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                        <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                    Vista Previa
+                </button>
+            </div>
+
+            <!-- Tab Content -->
+            <div class="tab-content-area">
+                <!-- Company Configuration Tab -->
+                <div class="tab-content active" id="config-tab">
+                    <div class="company-container">
+                        <!-- Info Banner -->
+                        <div class="form-info">
+                            <div class="info-title">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+                                Información Importante
+                            </div>
+                            <p class="info-text">
+                                Esta información será utilizada en facturas, notas de entrega y otros documentos oficiales del sistema. Asegúrese de proporcionar datos precisos y actualizados.
+                            </p>
+                        </div>
+
+                        <form id="company-form">
+                            <!-- Logo Section -->
+                            <div class="form-section">
+                                <h3 class="section-title">
+                                    <div class="section-icon">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+                                    </div>
+                                    Logo de la Empresa
+                                </h3>
+                                
+                                <div class="logo-upload-section" id="logoUploadArea">
+                                    <div class="logo-preview" id="logoPreview">
+                                        <div class="logo-placeholder">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                                <rect width="18" height="18" x="3" y="3" rx="2"/>
+                                                <circle cx="9" cy="9" r="2"/>
+                                                <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
+                                            </svg>
+                                        </div>
+                                    </div>
+                                    <button type="button" class="upload-button" id="uploadLogoButton">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                            <polyline points="7,10 12,15 17,10"/>
+                                            <line x1="12" y1="15" x2="12" y2="3"/>
+                                        </svg>
+                                        Subir Logo
+                                    </button>
+                                    <input type="file" id="logoInput" class="file-input" accept="image/*">
+                                    <div class="upload-info">
+                                        Formatos soportados: JPG, PNG, SVG (Max. 2MB)
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Basic Information -->
+                            <div class="form-section">
+                                <h3 class="section-title">
+                                    <div class="section-icon">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg>
+                                    </div>
+                                    Información Básica
+                                </h3>
+                                
+                                <div class="form-grid">
+                                    <div class="form-group full-width">
+                                        <label class="form-label" for="companyName">
+                                            Nombre de la Empresa <span class="required">*</span>
+                                        </label>
+                                        <input type="text" id="companyName" name="companyName" class="form-input" required 
+                                               placeholder="Nombre completo de la empresa" data-validation="text" data-min-length="2">
+                                        <div class="validation-message" id="companyName-message" aria-live="polite"></div>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="form-label" for="tradeName">
+                                            Nombre Comercial
+                                        </label>
+                                        <input type="text" id="tradeName" name="tradeName" class="form-input" 
+                                               placeholder="Nombre comercial o marca">
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="form-label" for="rif">
+                                            RIF/Documento <span class="required">*</span>
+                                        </label>
+                                        <input type="text" id="rif" name="rif" class="form-input" required 
+                                               placeholder="J-12345678-9" data-validation="rif">
+                                        <div class="validation-message" id="rif-message" aria-live="polite"></div>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="form-label" for="industry">
+                                            Sector/Industria
+                                        </label>
+                                        <select id="industry" name="industry" class="form-select">
+                                            <option value="">Seleccione una opción</option>
+                                            <option value="retail">Comercio al Detal (Mini Market)</option>
+                                            <option value="wholesale">Comercio al Mayor</option>
+                                            <option value="restaurant">Restaurante/Comida</option>
+                                            <option value="services">Servicios</option>
+                                            <option value="manufacturing">Manufactura</option>
+                                            <option value="technology">Tecnología</option>
+                                            <option value="healthcare">Salud</option>
+                                            <option value="education">Educación</option>
+                                            <option value="other">Otro</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="form-label" for="establishedDate">
+                                            Fecha de Fundación
+                                        </label>
+                                        <input type="date" id="establishedDate" name="establishedDate" class="form-input">
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="form-label" for="legalStructure">
+                                            Estructura Legal
+                                        </label>
+                                        <select id="legalStructure" name="legalStructure" class="form-select">
+                                            <option value="">Seleccione una opción</option>
+                                            <option value="empresa_unipersonal">Empresa Unipersonal</option>
+                                            <option value="sociedad_anonima">Sociedad Anónima (S.A.)</option>
+                                            <option value="sociedad_responsabilidad_limitada">Sociedad de Responsabilidad Limitada (S.R.L.)</option>
+                                            <option value="cooperativa">Cooperativa</option>
+                                            <option value="fundacion">Fundación</option>
+                                            <option value="asociacion_civil">Asociación Civil</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Contact Information -->
+                            <div class="form-section">
+                                <h3 class="section-title">
+                                    <div class="section-icon">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                                    </div>
+                                    Información de Contacto
+                                </h3>
+                                
+                                <div class="form-grid">
+                                    <div class="form-group">
+                                        <label class="form-label" for="phone">
+                                            Teléfono Principal <span class="required">*</span>
+                                        </label>
+                                        <input type="tel" id="phone" name="phone" class="form-input" required 
+                                               placeholder="+58 414 123 4567" data-validation="phone">
+                                        <div class="validation-message" id="phone-message" aria-live="polite"></div>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="form-label" for="alternatePhone">
+                                            Teléfono Alternativo
+                                        </label>
+                                        <input type="tel" id="alternatePhone" name="alternatePhone" class="form-input" 
+                                               placeholder="+58 212 123 4567" data-validation="phone" data-optional="true">
+                                        <div class="validation-message" id="alternatePhone-message" aria-live="polite"></div>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="form-label" for="email">
+                                            Email <span class="required">*</span>
+                                        </label>
+                                        <input type="email" id="email" name="email" class="form-input" required 
+                                               placeholder="info@empresa.com" data-validation="email">
+                                        <div class="validation-message" id="email-message" aria-live="polite"></div>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="form-label" for="website">
+                                            Sitio Web
+                                        </label>
+                                        <input type="url" id="website" name="website" class="form-input" 
+                                               placeholder="https://www.empresa.com" data-validation="url" data-optional="true">
+                                        <div class="validation-message" id="website-message" aria-live="polite"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Address Information -->
+                            <div class="form-section">
+                                <h3 class="section-title">
+                                    <div class="section-icon">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+                                    </div>
+                                    Dirección
+                                </h3>
+                                
+                                <div class="form-grid">
+                                    <div class="form-group full-width">
+                                        <label class="form-label" for="address">
+                                            Dirección Completa <span class="required">*</span>
+                                        </label>
+                                        <textarea id="address" name="address" class="form-textarea" required 
+                                                  placeholder="Calle, Número, Edificio, Local, etc." data-validation="text" data-min-length="10"></textarea>
+                                        <div class="validation-message" id="address-message" aria-live="polite"></div>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="form-label" for="city">
+                                            Ciudad <span class="required">*</span>
+                                        </label>
+                                        <input type="text" id="city" name="city" class="form-input" required 
+                                               placeholder="Caracas" data-validation="text" data-min-length="2">
+                                        <div class="validation-message" id="city-message" aria-live="polite"></div>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="form-label" for="state">
+                                            Estado <span class="required">*</span>
+                                        </label>
+                                        <select id="state" name="state" class="form-select" required data-validation="select">
+                                            <option value="">Seleccione un estado</option>
+                                            <option value="amazonas">Amazonas</option>
+                                            <option value="anzoategui">Anzoátegui</option>
+                                            <option value="apure">Apure</option>
+                                            <option value="aragua">Aragua</option>
+                                            <option value="barinas">Barinas</option>
+                                            <option value="bolivar">Bolívar</option>
+                                            <option value="carabobo">Carabobo</option>
+                                            <option value="cojedes">Cojedes</option>
+                                            <option value="delta_amacuro">Delta Amacuro</option>
+                                            <option value="distrito_capital">Distrito Capital</option>
+                                            <option value="falcon">Falcón</option>
+                                            <option value="guarico">Guárico</option>
+                                            <option value="lara">Lara</option>
+                                            <option value="merida">Mérida</option>
+                                            <option value="miranda">Miranda</option>
+                                            <option value="monagas">Monagas</option>
+                                            <option value="nueva_esparta">Nueva Esparta</option>
+                                            <option value="portuguesa">Portuguesa</option>
+                                            <option value="sucre">Sucre</option>
+                                            <option value="tachira">Táchira</option>
+                                            <option value="trujillo">Trujillo</option>
+                                            <option value="vargas">Vargas</option>
+                                            <option value="yaracuy">Yaracuy</option>
+                                            <option value="zulia">Zulia</option>
+                                        </select>
+                                        <div class="validation-message" id="state-message" aria-live="polite"></div>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="form-label" for="postalCode">
+                                            Código Postal
+                                        </label>
+                                        <input type="text" id="postalCode" name="postalCode" class="form-input" 
+                                               placeholder="1010" data-validation="postalCode" data-optional="true">
+                                        <div class="validation-message" id="postalCode-message" aria-live="polite"></div>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="form-label" for="country">
+                                            País
+                                        </label>
+                                        <input type="text" id="country" name="country" class="form-input" 
+                                               value="Venezuela" readonly>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Tax Information -->
+                            <div class="form-section">
+                                <h3 class="section-title">
+                                    <div class="section-icon">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1v6m0 0 4-4m-4 4L8 3m8 8a2 2 0 0 0-4 0c0 1.02-.1 2.51-.26 4"/><path d="M10 15H9a4 4 0 0 0-4 4v1a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-1a4 4 0 0 0-4-4h-1"/></svg>
+                                    </div>
+                                    Información Fiscal
+                                </h3>
+                                
+                                <div class="form-grid">
+                                    <div class="form-group">
+                                        <label class="form-label" for="taxRegime">
+                                            Régimen Fiscal
+                                        </label>
+                                        <select id="taxRegime" name="taxRegime" class="form-select">
+                                            <option value="">Seleccione una opción</option>
+                                            <option value="ordinary">Régimen Ordinario</option>
+                                            <option value="simplified">Régimen Simplificado</option>
+                                            <option value="small_taxpayer">Pequeño Contribuyente</option>
+                                            <option value="exonerated">Exonerado</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="form-label" for="vatRate">
+                                            IVA Aplicable (%)
+                                        </label>
+                                        <input type="number" id="vatRate" name="vatRate" class="form-input" 
+                                               min="0" max="100" step="0.01" placeholder="16.00" value="16.00">
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="form-label" for="retentionAgent">
+                                            Agente de Retención
+                                        </label>
+                                        <select id="retentionAgent" name="retentionAgent" class="form-select">
+                                            <option value="no">No</option>
+                                            <option value="iva">IVA</option>
+                                            <option value="islr">ISLR</option>
+                                            <option value="both">Ambos</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="form-label" for="fiscalResponsible">
+                                            Representante Fiscal
+                                        </label>
+                                        <input type="text" id="fiscalResponsible" name="fiscalResponsible" class="form-input" 
+                                               placeholder="Nombre del representante fiscal">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Banking Information -->
+                            <div class="form-section">
+                                <h3 class="section-title">
+                                    <div class="section-icon">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+                                    </div>
+                                    Información Bancaria
+                                </h3>
+                                
+                                <div class="form-grid">
+                                    <div class="form-group">
+                                        <label class="form-label" for="bankName">
+                                            Banco Principal
+                                        </label>
+                                        <input type="text" id="bankName" name="bankName" class="form-input" 
+                                               placeholder="Nombre del banco">
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="form-label" for="accountNumber">
+                                            Número de Cuenta
+                                        </label>
+                                        <input type="text" id="accountNumber" name="accountNumber" class="form-input" 
+                                               placeholder="0000-0000-0000-0000">
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="form-label" for="accountType">
+                                            Tipo de Cuenta
+                                        </label>
+                                        <select id="accountType" name="accountType" class="form-select">
+                                            <option value="">Seleccione una opción</option>
+                                            <option value="corriente">Corriente</option>
+                                            <option value="ahorro">Ahorro</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="form-label" for="swiftCode">
+                                            Código SWIFT/BIC
+                                        </label>
+                                        <input type="text" id="swiftCode" name="swiftCode" class="form-input" 
+                                               placeholder="Para transferencias internacionales">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Additional Settings -->
+                            <div class="form-section">
+                                <h3 class="section-title">
+                                    <div class="section-icon">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+                                    </div>
+                                    Configuraciones Adicionales
+                                </h3>
+                                
+                                <div class="form-grid">
+                                    <div class="form-group">
+                                        <label class="form-label" for="currency">
+                                            Moneda Principal
+                                        </label>
+                                        <select id="currency" name="currency" class="form-select">
+                                            <option value="VES" selected>Bolívar Soberano (VES)</option>
+                                            <option value="USD">Dólar Americano (USD)</option>
+                                            <option value="EUR">Euro (EUR)</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="form-label" for="timezone">
+                                            Zona Horaria
+                                        </label>
+                                        <select id="timezone" name="timezone" class="form-select">
+                                            <option value="America/Caracas" selected>Venezuela (UTC-4)</option>
+                                            <option value="America/New_York">Nueva York (UTC-5/-4)</option>
+                                            <option value="Europe/Madrid">Madrid (UTC+1/+2)</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="form-label" for="invoicePrefix">
+                                            Prefijo de Facturas
+                                        </label>
+                                        <input type="text" id="invoicePrefix" name="invoicePrefix" class="form-input" 
+                                               placeholder="FAC-" maxlength="10" value="FAC-">
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="form-label" for="receiptPrefix">
+                                            Prefijo de Recibos
+                                        </label>
+                                        <input type="text" id="receiptPrefix" name="receiptPrefix" class="form-input" 
+                                               placeholder="REC-" maxlength="10" value="REC-">
+                                    </div>
+
+                                    <div class="form-group full-width">
+                                        <label class="form-label" for="description">
+                                            Descripción de la Empresa
+                                        </label>
+                                        <textarea id="description" name="description" class="form-textarea" 
+                                                  placeholder="Breve descripción de la actividad empresarial..."></textarea>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Form Actions -->
+                            <div class="form-actions">
+                                <div class="button-group">
+                                    <button type="button" class="btn btn-secondary" id="resetFormButton">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                                        Limpiar Formulario
+                                    </button>
+                                    <button type="submit" class="btn btn-primary" id="submit-button">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+                                        Guardar Información
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Company Preview Tab -->
+                <div class="tab-content" id="preview-tab">
+                    <div class="company-container">
+                        <div class="preview-card" id="previewCard">
+                            <div class="preview-header">
+                                <div class="preview-logo" id="previewLogo">
+                                    <div class="logo-placeholder">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                            <rect width="18" height="18" x="3" y="3" rx="2"/>
+                                            <circle cx="9" cy="9" r="2"/>
+                                            <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
+                                        </svg>
+                                    </div>
+                                </div>
+                                <div class="preview-company-info">
+                                    <h3 id="previewCompanyName">Nombre de la Empresa</h3>
+                                    <p id="previewTradeName">Nombre Comercial</p>
+                                </div>
+                            </div>
+                            
+                            <div class="preview-details">
+                                <div class="preview-detail">
+                                    <span class="preview-label">RIF/Documento</span>
+                                    <span class="preview-value" id="previewRif">J-00000000-0</span>
+                                </div>
+                                <div class="preview-detail">
+                                    <span class="preview-label">Teléfono</span>
+                                    <span class="preview-value" id="previewPhone">+58 000 000 0000</span>
+                                </div>
+                                <div class="preview-detail">
+                                    <span class="preview-label">Email</span>
+                                    <span class="preview-value" id="previewEmail">info@empresa.com</span>
+                                </div>
+                                <div class="preview-detail">
+                                    <span class="preview-label">Dirección</span>
+                                    <span class="preview-value" id="previewAddress">Dirección de la empresa</span>
+                                </div>
+                                <div class="preview-detail">
+                                    <span class="preview-label">Ciudad/Estado</span>
+                                    <span class="preview-value" id="previewLocation">Ciudad, Estado</span>
+                                </div>
+                                <div class="preview-detail">
+                                    <span class="preview-label">Sector</span>
+                                    <span class="preview-value" id="previewIndustry">Industria</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-info">
+                            <div class="info-title">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                Vista Previa de Documentos
+                            </div>
+                            <p class="info-text">
+                                Esta información aparecerá en sus facturas, notas de entrega y otros documentos oficiales. Puede actualizar estos datos en cualquier momento desde la pestaña "Información Empresarial".
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast-notification" class="hidden" role="alert" aria-live="assertive">
+        <span id="toast-icon"></span>
+        <span id="toast-message"></span>
+    </div>
+
+    <script>
+        // --- Global State Management ---
+        const appState = {
+            companyData: {},
+            validation: {
+                companyName: false,
+                rif: false,
+                phone: false,
+                email: false,
+                address: false,
+                city: false,
+                state: false,
+                // Optional fields that also have validation rules
+                alternatePhone: true, // Optional, so true by default if empty
+                website: true,
+                postalCode: true
+            },
+            currentLogo: null,
+        };
+
+        // --- Utility Functions ---
+
+        /**
+         * Displays a toast notification.
+         * @param {string} message - The message to display.
+         * @param {string} type - 'success' or 'error'.
+         * @param {number} duration - Duration in milliseconds.
+         */
+        function showToast(message, type = 'success', duration = 3000) {
+            const toast = document.getElementById('toast-notification');
+            const toastMessage = document.getElementById('toast-message');
+            const toastIcon = document.getElementById('toast-icon');
+
+            toastMessage.textContent = message;
+            toast.className = `show ${type}`; // Reset classes and add show/type
+            toastIcon.innerHTML = type === 'success' 
+                ? '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14 9 11"/></svg>'
+                : '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>';
+
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, duration);
+        }
+
+        function getStateName(stateCode) {
+            const states = {
+                'amazonas': 'Amazonas', 'anzoategui': 'Anzoátegui', 'apure': 'Apure', 'aragua': 'Aragua',
+                'barinas': 'Barinas', 'bolivar': 'Bolívar', 'carabobo': 'Carabobo', 'cojedes': 'Cojedes',
+                'delta_amacuro': 'Delta Amacuro', 'distrito_capital': 'Distrito Capital', 'falcon': 'Falcón',
+                'guarico': 'Guárico', 'lara': 'Lara', 'merida': 'Mérida', 'miranda': 'Miranda',
+                'monagas': 'Monagas', 'nueva_esparta': 'Nueva Esparta', 'portuguesa': 'Portuguesa',
+                'sucre': 'Sucre', 'tachira': 'Táchira', 'trujillo': 'Trujillo', 'vargas': 'Vargas',
+                'yaracuy': 'Yaracuy', 'zulia': 'Zulia'
+            };
+            return states[stateCode] || stateCode;
+        }
+
+        function getIndustryName(industryCode) {
+            const industries = {
+                'retail': 'Comercio al Detal (Mini Market)', 'wholesale': 'Comercio al Mayor',
+                'restaurant': 'Restaurante/Comida', 'services': 'Servicios', 'manufacturing': 'Manufactura',
+                'technology': 'Tecnología', 'healthcare': 'Salud', 'education': 'Educación', 'other': 'Otro'
+            };
+            return industries[industryCode] || industryCode;
+        }
+
+        // --- Form Validation Logic ---
+
+        const validationRules = {
+            text: {
+                validate: (value, minLength) => value.length >= minLength,
+                message: (minLength) => `Mínimo ${minLength} caracteres.`,
+                defaultMinLength: 2
+            },
+            rif: {
+                validate: (value) => /^[VEJPG]-?\d{8}-?\d$/i.test(value),
+                message: () => 'Formato: J-12345678-9'
+            },
+            phone: {
+                validate: (value) => /^[\+]?[\d\s\-\(\)]{10,}$/.test(value),
+                message: () => 'Formato de teléfono inválido.'
+            },
+            email: {
+                validate: (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value),
+                message: () => 'Formato de email inválido.'
+            },
+            url: {
+                validate: (value) => /^(https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|www\.[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|https?:\/\/[a-zA-Z0-9]+\.[^\s]{2,}|[a-zA-Z0-9]+\.[^\s]{2,})$/i.test(value),
+                message: () => 'Formato de URL inválido.'
+            },
+            select: {
+                validate: (value) => value !== '',
+                message: () => 'Seleccione una opción.'
+            },
+            postalCode: {
+                validate: (value) => /^\d{4,5}$/.test(value) || value === '', // Allow empty or 4-5 digits
+                message: () => 'Código postal inválido (4-5 dígitos).'
+            }
+        };
+
+        /**
+         * Validates a single input field based on its data-validation attribute.
+         * Updates UI and appState.validation.
+         * @param {HTMLElement} inputElement - The input, select, or textarea element.
+         * @returns {boolean} - True if valid, false otherwise.
+         */
+        function validateInput(inputElement) {
+            const fieldName = inputElement.name;
+            const value = inputElement.value.trim();
+            const validationType = inputElement.dataset.validation;
+            const isRequired = inputElement.required;
+            const isOptional = inputElement.dataset.optional === 'true';
+            const messageElement = document.getElementById(`${fieldName}-message`);
+
+            let isValid = true;
+            let message = '';
+
+            // Handle optional fields first
+            if (isOptional && value === '') {
+                isValid = true;
+                message = '';
+            } else if (isRequired && value === '') {
+                isValid = false;
+                message = 'Este campo es requerido.';
+            } else if (validationType && validationRules[validationType]) {
+                const rule = validationRules[validationType];
+                const minLength = inputElement.dataset.minLength ? parseInt(inputElement.dataset.minLength) : rule.defaultMinLength;
+                
+                isValid = rule.validate(value, minLength);
+                message = isValid ? '' : rule.message(minLength);
+            }
+
+            // Update UI classes
+            inputElement.classList.remove('is-valid', 'is-invalid');
+            if (messageElement) {
+                messageElement.textContent = message;
+                messageElement.classList.remove('validation-success', 'validation-error');
+            }
+
+            if (value !== '' || isRequired) { // Only apply validation classes if there's a value or it's required
+                if (isValid) {
+                    inputElement.classList.add('is-valid');
+                    if (messageElement) messageElement.classList.add('validation-success');
+                } else {
+                    inputElement.classList.add('is-invalid');
+                    if (messageElement) messageElement.classList.add('validation-error');
+                }
+            }
+
+            // Update global validation state
+            appState.validation[fieldName] = isValid;
+            updateSubmitButtonState();
+            return isValid;
+        }
+
+        /**
+         * Checks all required fields and updates the submit button's disabled state.
+         */
+        function updateSubmitButtonState() {
+            const submitButton = document.getElementById('submit-button');
+            const allFieldsValid = Object.values(appState.validation).every(isValid => isValid);
+            submitButton.disabled = !allFieldsValid;
+        }
+
+        // --- Logo Upload Logic ---
+
+        function setupLogoUpload() {
+            const uploadArea = document.getElementById('logoUploadArea');
+            const logoInput = document.getElementById('logoInput');
+            const uploadButton = document.getElementById('uploadLogoButton');
+
+            uploadButton.addEventListener('click', () => logoInput.click());
+            logoInput.addEventListener('change', (e) => handleLogoFile(e.target.files[0]));
+
+            // Drag and drop events
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                uploadArea.addEventListener(eventName, (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }, false);
+            });
+
+            uploadArea.addEventListener('dragenter', () => uploadArea.classList.add('dragover'), false);
+            uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'), false);
+            uploadArea.addEventListener('drop', (e) => {
+                uploadArea.classList.remove('dragover');
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    handleLogoFile(files[0]);
+                }
+            }, false);
+        }
+
+        function handleLogoFile(file) {
+            if (!file) return;
+
+            if (!file.type.startsWith('image/')) {
+                showToast('Por favor seleccione un archivo de imagen válido.', 'error');
+                return;
+            }
+            if (file.size > 2 * 1024 * 1024) { // 2MB
+                showToast('El archivo es demasiado grande. El tamaño máximo es 2MB.', 'error');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                appState.currentLogo = e.target.result;
+                renderPreview(); // Update preview immediately
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // --- Data Loading and Form Population ---
+
+        function loadCompanyData() {
+            const savedData = localStorage.getItem('companyData');
+            if (savedData) {
+                try {
+                    appState.companyData = JSON.parse(savedData);
+                    populateForm(appState.companyData);
+                } catch (error) {
+                    console.error('Error loading company data:', error);
+                    showToast('Error al cargar los datos de la empresa.', 'error');
+                }
+            }
+        }
+
+        function populateForm(data) {
+            const form = document.getElementById('company-form');
+            Object.keys(data).forEach(key => {
+                const element = form.elements[key]; // Use form.elements for easier access
+                if (element) {
+                    if (element.type === 'radio' || element.type === 'checkbox') {
+                        element.checked = (element.value === data[key]);
+                    } else {
+                        element.value = data[key];
+                    }
+                }
+            });
+
+            // Handle logo separately
+            if (data.logo) {
+                appState.currentLogo = data.logo;
+            } else {
+                appState.currentLogo = null;
+            }
+
+            // Manually trigger validation for all fields after populating
+            const formInputs = form.querySelectorAll('[data-validation]');
+            formInputs.forEach(input => validateInput(input));
+
+            renderPreview(); // Initial render of preview
+        }
+
+        // --- Preview Rendering ---
+
+        function renderPreview() {
+            const data = appState.companyData;
+            const previewLogoEl = document.getElementById('previewLogo');
+
+            // Update logo
+            if (appState.currentLogo) {
+                previewLogoEl.innerHTML = `<img src="${appState.currentLogo}" alt="Logo de la empresa">`;
+            } else {
+                previewLogoEl.innerHTML = `
+                    <div class="logo-placeholder">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <rect width="18" height="18" x="3" y="3" rx="2"/>
+                            <circle cx="9" cy="9" r="2"/>
+                            <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
+                        </svg>
+                    </div>
+                `;
+            }
+
+            // Update text content
+            document.getElementById('previewCompanyName').textContent = data.companyName || 'Nombre de la Empresa';
+            document.getElementById('previewTradeName').textContent = data.tradeName || 'Nombre Comercial';
+            document.getElementById('previewRif').textContent = data.rif || 'J-00000000-0';
+            document.getElementById('previewPhone').textContent = data.phone || '+58 000 000 0000';
+            document.getElementById('previewEmail').textContent = data.email || 'info@empresa.com';
+            document.getElementById('previewAddress').textContent = data.address || 'Dirección de la empresa';
+
+            const city = data.city || 'Ciudad';
+            const state = data.state ? getStateName(data.state) : 'Estado';
+            document.getElementById('previewLocation').textContent = `${city}, ${state}`;
+
+            const industry = data.industry ? getIndustryName(data.industry) : 'Industria';
+            document.getElementById('previewIndustry').textContent = industry;
+        }
+
+        // --- Event Handlers ---
+
+        function handleTabSwitch(event) {
+            const tabName = event.currentTarget.dataset.tab;
+            document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+
+            event.currentTarget.classList.add('active');
+            document.getElementById(`${tabName}-tab`).classList.add('active');
+
+            if (tabName === 'preview') {
+                renderPreview();
+            }
+        }
+
+        function handleFormInput(event) {
+            const input = event.target;
+            // Update appState.companyData immediately for live preview
+            appState.companyData[input.name] = input.value;
+            validateInput(input); // Validate on input
+            renderPreview(); // Update preview on every input
+        }
+
+        function handleFormBlur(event) {
+            validateInput(event.target); // Validate on blur
+        }
+
+        function handleFormSubmit(event) {
+            event.preventDefault();
+
+            const form = event.target;
+            const submitButton = document.getElementById('submit-button');
+
+            // Re-validate all fields on submit
+            let allFormFieldsValid = true;
+            form.querySelectorAll('[data-validation]').forEach(input => {
+                if (!validateInput(input)) {
+                    allFormFieldsValid = false;
+                }
+            });
+
+            if (!allFormFieldsValid) {
+                showToast('Por favor, corrija los errores en el formulario.', 'error');
+                return;
+            }
+
+            submitButton.classList.add('loading');
+            submitButton.disabled = true;
+
+            // Collect final form data
+            const formData = new FormData(form);
+            const companyInfo = {};
+            for (let [key, value] of formData.entries()) {
+                companyInfo[key] = value;
+            }
+
+            companyInfo.logo = appState.currentLogo;
+            companyInfo.lastUpdated = new Date().toISOString();
+            appState.companyData = companyInfo; // Update global state with final data
+
+            localStorage.setItem('companyData', JSON.stringify(companyInfo));
+
+            setTimeout(() => {
+                submitButton.classList.remove('loading');
+                submitButton.disabled = false;
+                showToast('✅ Información empresarial guardada exitosamente!', 'success');
+                document.querySelector('[data-tab="preview"]').click(); // Switch to preview tab
+            }, 1500);
+        }
+
+        function handleResetForm() {
+            if (confirm('¿Está seguro de que desea limpiar todos los campos?')) {
+                const form = document.getElementById('company-form');
+                form.reset(); // Resets form elements to their initial values
+
+                // Clear validation states and messages
+                Object.keys(appState.validation).forEach(key => {
+                    appState.validation[key] = true; // Set to true for optional fields, false for required if empty
+                    const input = form.elements[key];
+                    if (input) {
+                        input.classList.remove('is-valid', 'is-invalid');
+                        const messageElement = document.getElementById(`${key}-message`);
+                        if (messageElement) {
+                            messageElement.textContent = '';
+                            messageElement.classList.remove('validation-success', 'validation-error');
+                        }
+                        // Re-validate required fields to set their initial invalid state
+                        if (input.required) {
+                            validateInput(input);
+                        }
+                    }
+                });
+
+                // Clear logo
+                appState.currentLogo = null;
+                appState.companyData = {}; // Clear company data in state
+                document.getElementById('logoPreview').innerHTML = `
+                    <div class="logo-placeholder">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <rect width="18" height="18" x="3" y="3" rx="2"/>
+                            <circle cx="9" cy="9" r="2"/>
+                            <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
+                        </svg>
+                    </div>
+                `;
+                
+                // Re-apply default values set in HTML
+                document.getElementById('currency').value = 'VES';
+                document.getElementById('timezone').value = 'America/Caracas';
+                document.getElementById('country').value = 'Venezuela';
+                document.getElementById('invoicePrefix').value = 'FAC-';
+                document.getElementById('receiptPrefix').value = 'REC-';
+                document.getElementById('vatRate').value = '16.00';
+
+                updateSubmitButtonState();
+                renderPreview(); // Update preview to reflect cleared state
+                showToast('Formulario limpiado.', 'success');
+            }
+        }
+
+        // Dark Mode Toggle
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark-mode');
+            const sunIcon = document.querySelector('.sun-icon');
+            const moonIcon = document.querySelector('.moon-icon');
+
+            if (document.body.classList.contains('dark-mode')) {
+                localStorage.setItem('darkMode', 'enabled');
+                if (sunIcon) sunIcon.style.display = 'none';
+                if (moonIcon) moonIcon.style.display = 'inline-block';
+            } else {
+                localStorage.setItem('darkMode', 'disabled');
+                if (sunIcon) sunIcon.style.display = 'inline-block';
+                if (moonIcon) moonIcon.style.display = 'none';
+            }
+        }
+
+        // --- Initialization ---
+
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            }
+
+            // Apply dark mode on load based on localStorage
+            const sunIcon = document.querySelector('.sun-icon');
+            const moonIcon = document.querySelector('.moon-icon');
+            if (localStorage.getItem('darkMode') === 'enabled') {
+                document.body.classList.add('dark-mode');
+                if (sunIcon) sunIcon.style.display = 'none';
+                if (moonIcon) moonIcon.style.display = 'inline-block';
+            } else {
+                if (sunIcon) sunIcon.style.display = 'inline-block';
+                if (moonIcon) moonIcon.style.display = 'none';
+            }
+
+            // Event Listeners for Tabs
+            document.querySelectorAll('.tab-button').forEach(button => {
+                button.addEventListener('click', handleTabSwitch);
+            });
+
+            // Event Listeners for Form
+            const companyForm = document.getElementById('company-form');
+            companyForm.addEventListener('submit', handleFormSubmit);
+            document.getElementById('resetFormButton').addEventListener('click', handleResetForm);
+
+            // Attach validation and input listeners to all relevant form elements
+            companyForm.querySelectorAll('[data-validation]').forEach(input => {
+                input.addEventListener('input', handleFormInput);
+                input.addEventListener('blur', handleFormBlur);
+            });
+
+            // Setup logo upload functionality
+            setupLogoUpload();
+
+            // Load existing data and initialize form state
+            loadCompanyData();
+            updateSubmitButtonState(); // Initial check for button state
+        });
+    </script>
+</body>
+</html>
