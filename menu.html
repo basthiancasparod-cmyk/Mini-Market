@@ -2121,7 +2121,7 @@
                     </div>
 
                     <!-- Tarjeta Realizar Nueva Venta -->
-                    <div class="operation-card" id="newSaleCard" onclick="window.location.href='Mini_market_POS.html'">
+                    <div class="operation-card" id="newSaleCard" onclick="window.location.href='mini_market_pos.html'">
                         <div class="operation-gradient gradient-emerald"></div>
                         <div class="operation-content">
                             <div class="operation-header">
@@ -3927,6 +3927,43 @@
                     notificationPanel.classList.remove('show');
                 }
             });
+
+            // --- Consolidated currentUser check and UI update ---
+            const userDataString = sessionStorage.getItem('currentUser');
+            
+            if (userDataString) {
+                try {
+                    const userData = JSON.parse(userDataString);
+                    
+                    const userNameElement = document.getElementById('user-name');
+                    const userRoleElement = document.getElementById('user-role');
+                    
+                    if (userNameElement) {
+                        // Usamos el nombre y apellido del operador
+                        userNameElement.textContent = `${userData.firstName} ${userData.lastName}`;
+                    }
+                    
+                    if (userRoleElement) {
+                        // Usamos el rol del operador
+                        userRoleElement.textContent = userData.role;
+                    }
+
+                    // Aquí también se debe llamar a la función para aplicar permisos según el rol
+                    if (window.systemManager) {
+                        systemManager.applyRoleBasedAccess();
+                    }
+
+                } catch (error) {
+                    console.error("Error al procesar los datos del usuario:", error);
+                    // Si hay un error, lo mandamos de vuelta al login
+                    window.location.href = 'index.html';
+                }
+            } else {
+                // Si no hay datos de sesión, no debería estar aquí. Lo redirigimos al login.
+                alert("No se ha iniciado sesión. Redirigiendo al login.");
+                window.location.href = 'index.html';
+            }
+            // --- End of consolidated currentUser check ---
         });
 
         // Navigation Functions
@@ -4108,45 +4145,5 @@
             }
         });
     </script>
-
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Intentamos obtener los datos del operador que guardamos en el login
-        const userDataString = sessionStorage.getItem('currentUser');
-        
-        if (userDataString) {
-            try {
-                const userData = JSON.parse(userDataString);
-                
-                const userNameElement = document.getElementById('user-name');
-                const userRoleElement = document.getElementById('user-role');
-                
-                if (userNameElement) {
-                    // Usamos el nombre y apellido del operador
-                    userNameElement.textContent = `${userData.firstName} ${userData.lastName}`;
-                }
-                
-                if (userRoleElement) {
-                    // Usamos el rol del operador
-                    userRoleElement.textContent = userData.role;
-                }
-
-                // Aquí también se debe llamar a la función para aplicar permisos según el rol
-                if (window.systemManager) {
-                    systemManager.applyRoleBasedAccess();
-                }
-
-            } catch (error) {
-                console.error("Error al procesar los datos del usuario:", error);
-                // Si hay un error, lo mandamos de vuelta al login
-                window.location.href = 'index.html';
-            }
-        } else {
-            // Si no hay datos de sesión, no debería estar aquí. Lo redirigimos al login.
-            alert("No se ha iniciado sesión. Redirigiendo al login.");
-            window.location.href = 'index.html';
-        }
-    });
-</script>
 </body>
 </html>

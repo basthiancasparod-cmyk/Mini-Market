@@ -1573,7 +1573,7 @@
             loadSavedSettings();
             document.getElementById('saleId').textContent = saleId;
             loadInventoryProducts(); // Load from localStorage
-            loadProducts();
+            renderProductList(); // Initial render of all products
             updateCartUI();
             setupEventListeners();
             setupResizeHandle();
@@ -1674,18 +1674,12 @@
                 e.target.value = e.target.value.replace(',', '.');
             });
             
-            // Corrected: Only allow integers for paidUsdCombined
+            // Corrected: Only allow integers for paidUsd
             document.getElementById('paidUsdCombined').addEventListener('input', (e) => {
                 e.target.value = e.target.value.replace(/[^0-9]/g, ''); // Solo permite números enteros
                 handleCombinedPayment(); // Llama al manejador para actualizar en tiempo real
             });
             
-            // No longer needed for paidVesCombined as it's now readonly
-            // document.getElementById('paidVesCombined').addEventListener('input', (e) => {
-            //     e.target.value = e.target.value.replace(',', '.');
-            //     calculateChangeCombined();
-            // });
-
             // New event listener for paidUsdCash
             document.getElementById('paidUsdCash').addEventListener('input', (e) => {
                 e.target.value = e.target.value.replace(/[^0-9]/g, ''); // Only allow integers
@@ -1840,7 +1834,7 @@
 
         function searchProducts() {
             const term = document.getElementById('searchInput').value.toLowerCase();
-            loadProducts(term);
+            filterAndDisplayProducts(term);
         }
 
         function toggleScanner() {
@@ -1863,31 +1857,12 @@
             } else if (category === 'all') {
                 document.querySelector('.filter-btn').classList.add('active'); // 'Todos' button
             }
-            loadProducts(document.getElementById('searchInput').value.toLowerCase());
+            filterAndDisplayProducts(document.getElementById('searchInput').value.toLowerCase());
         }
 
-        function loadProducts(searchTerm = '') {
+        function renderProductList() {
             const list = document.getElementById('productsList');
-            let filtered = inventoryProducts.filter(product => {
-                const matchesSearch = searchTerm === '' ||
-                    product.name.toLowerCase().includes(searchTerm) ||
-                    (product.code && product.code.toLowerCase().includes(searchTerm)) ||
-                    (product.brand && product.brand.toLowerCase().includes(searchTerm));
-                const matchesFilter = currentFilter === 'all' || product.category === currentFilter;
-                return matchesSearch && matchesFilter && product.stock > 0;
-            });
-
-            if (filtered.length === 0) {
-                list.innerHTML = `
-                    <div style="text-align:center;padding:2rem;color:#a0aec0;">
-                        <i class="fas fa-search" style="font-size:3rem;margin-bottom:1rem;opacity:.3;"></i>
-                        <div style="font-size:1.1rem;margin-bottom:0.5rem;">Sin productos</div>
-                        <div style="font-size:0.9rem;">No se encontraron resultados</div>
-                    </div>`;
-                return;
-            }
-
-            list.innerHTML = filtered.map(product => {
+            list.innerHTML = inventoryProducts.map(product => {
                 const stockLevel = getStockLevel(product);
                 
                 // Use pricePerUnit for display, and adjust for currency
@@ -1898,7 +1873,12 @@
                 const stockDisplay = product.isBulk ? `${product.stock.toFixed(3)} ${product.unit}` : `${product.stock} unidades`;
                 
                 return `
-                    <div class="product-item" onclick="openQuantityModal(${product.id})">
+                    <div class="product-item" data-product-id="${product.id}" 
+                         data-product-name="${product.name.toLowerCase()}" 
+                         data-product-code="${(product.code || '').toLowerCase()}"
+                         data-product-brand="${(product.brand || '').toLowerCase()}"
+                         data-product-category="${(product.category || '').toLowerCase()}"
+                         onclick="openQuantityModal(${product.id})">
                         <div class="product-emoji">${product.emoji}</div>
                         <div class="product-info">
                             <div class="product-name">${product.name}</div>
@@ -1914,7 +1894,60 @@
                         </div>
                     </div>`;
             }).join('');
+            filterAndDisplayProducts(document.getElementById('searchInput').value.toLowerCase()); // Apply initial filter
         }
+
+        function filterAndDisplayProducts(searchTerm = '') {
+            const productItems = document.querySelectorAll('.products-list .product-item');
+            let visibleCount = 0;
+            const list = document.getElementById('productsList');
+            const emptyStateHtml = `
+                <div style="text-align:center;padding:2rem;color:#a0aec0;" id="emptyProductList">
+                    <i class="fas fa-search" style="font-size:3rem;margin-bottom:1rem;opacity:.3;"></i>
+                    <div style="font-size:1.1rem;margin-bottom:0.5rem;">Sin productos</div>
+                    <div style="font-size:0.9rem;">No se encontraron resultados</div>
+                </div>`;
+            let emptyStateElement = document.getElementById('emptyProductList');
+
+            productItems.forEach(item => {
+                const productName = item.dataset.productName;
+                const productCode = item.dataset.productCode;
+                const productBrand = item.dataset.productBrand;
+                const productCategory = item.dataset.productCategory;
+
+                const matchesSearch = searchTerm === '' ||
+                    productName.includes(searchTerm) ||
+                    productCode.includes(searchTerm) ||
+                    productBrand.includes(searchTerm);
+                
+                const matchesFilter = currentFilter === 'all' || productCategory.includes(currentFilter.toLowerCase());
+
+                // Check if product has stock (assuming stock is handled by `inventoryProducts` array)
+                const productId = parseInt(item.dataset.productId);
+                const productInInventory = inventoryProducts.find(p => p.id === productId);
+                const hasStock = productInInventory && productInInventory.stock > 0;
+
+                if (matchesSearch && matchesFilter && hasStock) {
+                    item.classList.remove('hidden');
+                    visibleCount++;
+                } else {
+                    item.classList.add('hidden');
+                }
+            });
+
+            if (visibleCount === 0) {
+                if (!emptyStateElement) {
+                    list.insertAdjacentHTML('beforeend', emptyStateHtml);
+                } else {
+                    emptyStateElement.classList.remove('hidden');
+                }
+            } else {
+                if (emptyStateElement) {
+                    emptyStateElement.classList.add('hidden');
+                }
+            }
+        }
+
 
         function getStockLevel(product) {
             const minStock = product.minStock || 10; // Use product's minStock or default
@@ -2140,7 +2173,7 @@
 
                     // Calculate price with IVA if applyIVA is true
                     const priceWithIVA = applyIVA ? price * 1.16 : price;
-                    const subtotalWithIVA = applyIVA ? subtotal * 1.16 : subtotal;
+                    // const subtotalWithIVA = applyIVA ? subtotal * 1.16 : subtotal; // Not used directly in UI here
 
                     return `
                         <div class="cart-item">
@@ -2175,7 +2208,7 @@
             currentCurrency = currency;
             document.getElementById('vesToggle').classList.toggle('active', currency === 'VES');
             document.getElementById('usdToggle').classList.toggle('active', currency === 'USD');
-            loadProducts();
+            renderProductList(); // Re-render to update prices
             updateCartUI();
         }
 
@@ -2290,7 +2323,7 @@
             localStorage.setItem('pos_exchange_rate', exchangeRate);
             updateExchangeRateDisplay();
             closeExchangeModal();
-            loadProducts(); // Recargar productos para actualizar precios
+            renderProductList(); // Recargar productos para actualizar precios
             updateCartUI(); // Recalcular carrito
             showToast('Tasa de cambio actualizada');
         }
@@ -2705,7 +2738,7 @@
             
             // Recargar productos para actualizar stock en la interfaz
             loadInventoryProducts(); // Reload the global inventoryProducts array
-            loadProducts(); // Re-render the product list
+            renderProductList(); // Re-render the product list
         }
 
         function resetSale() {
@@ -2809,6 +2842,15 @@
                 toggleIcon.classList.toggle('rotated');
             }
         }
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const currentUser = sessionStorage.getItem('currentUser');
+            if (!currentUser) {
+                alert("No se ha iniciado sesión. Redirigiendo al login.");
+                window.location.href = 'index.html';
+            }
+        });
     </script>
 </body>
 </html>
