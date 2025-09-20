@@ -8,6 +8,7 @@
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.1/dist/umd/lucide.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         /* Base Styles */
         * {
@@ -364,8 +365,6 @@
 
         .form-input:focus, .form-select:focus, .form-textarea:focus {
             outline: none;
-            border-color: #3b82f6; /* Highlight on focus */
-            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
         }
 
         .form-input.invalid, .form-select.invalid, .form-textarea.invalid {
@@ -492,22 +491,6 @@
             font-size: 1.125rem;
             max-width: 48rem;
             margin: 0 auto;
-        }
-
-        .action-bar {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 1rem;
-            margin-bottom: 2rem;
-            flex-wrap: wrap;
-        }
-
-        .search-filter-group {
-            display: flex;
-            gap: 0.75rem;
-            flex: 1;
-            min-width: 300px;
         }
 
         .search-container {
@@ -935,6 +918,88 @@
             }
         }
 
+/* --- INICIO: BLOQUE DEFINITIVO PARA LA BARRA DE ACCIONES --- */
+
+.action-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 2rem;
+    flex-wrap: nowrap !important; /* Usamos !important para máxima prioridad y forzar que nunca se rompa en varias líneas */
+}
+
+.search-filter-group {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-grow: 1; /* Ocupa el espacio sobrante */
+    min-width: 250px;
+}
+
+/* Estilos para el Menú Desplegable de Acciones */
+.dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.dropdown-content {
+    display: none;
+    position: absolute;
+    right: 0;
+    background-color: #f9f9f9;
+    min-width: 200px;
+    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+    border-radius: 12px;
+    z-index: 10;
+    overflow: hidden;
+}
+
+body.dark-mode .dropdown-content {
+    background-color: #2d3748;
+    border: 1px solid #4a5568;
+}
+
+.dropdown-content button {
+    color: #334155;
+    padding: 12px 16px;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    border: none;
+    background: none;
+    text-align: left;
+    cursor: pointer;
+}
+
+body.dark-mode .dropdown-content button {
+    color: #e2e8f0;
+}
+
+.dropdown-content button:hover {
+    background-color: #f1f1f1;
+}
+
+body.dark-mode .dropdown-content button:hover {
+    background-color: #4a5568;
+}
+
+.dropdown-divider {
+    height: 1px;
+    margin: 0.5rem 0;
+    overflow: hidden;
+    background-color: #e5e7eb;
+}
+body.dark-mode .dropdown-divider {
+    background-color: #4a5568;
+}
+
+.dropdown-content.show {
+    display: block;
+}
+/* --- FIN: BLOQUE DEFINITIVO --- */
+
         /* Specific styles for bulk product fields */
         .bulk-product-fields {
             display: none; /* Hidden by default */
@@ -1189,6 +1254,196 @@
             border-top-color: #4a5568;
         }
 
+        /* Custom styles for the redesigned product modal */
+        #productModal .modal-content {
+            max-width: 800px; /* Increased width for better layout */
+        }
+
+        #productModal .form-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.5rem;
+        }
+
+        #productModal .form-group.full-width {
+            grid-column: 1 / -1;
+        }
+
+        #productModal .form-group.half-width {
+            grid-column: span 1;
+        }
+
+        #productModal .form-section {
+            padding-bottom: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        #productModal .form-section:last-of-type {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        #productModal .form-section-title {
+            font-size: 1.25rem;
+            margin-bottom: 1.25rem;
+            color: #1e293b;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        body.dark-mode #productModal .form-section-title {
+            color: #e2e8f0;
+        }
+
+        #productModal .form-section-title svg {
+            color: #3b82f6;
+        }
+        body.dark-mode #productModal .form-section-title svg {
+            color: #90cdf4;
+        }
+
+        #productModal .form-group label {
+            font-weight: 600;
+            color: #334155;
+        }
+        body.dark-mode #productModal .form-group label {
+            color: #cbd5e0;
+        }
+
+        #productModal .form-input,
+        #productModal .form-select,
+        #productModal .form-textarea {
+            border-radius: 10px;
+            padding: 0.85rem 1rem;
+            background: rgba(255, 255, 255, 0.8);
+            border: 1px solid #e2e8f0;
+            color: #1e293b;
+        }
+        body.dark-mode #productModal .form-input,
+        body.dark-mode #productModal .form-select,
+        body.dark-mode #productModal .form-textarea {
+            background: rgba(45, 55, 72, 0.7);
+            border-color: #4a5568;
+            color: #e2e8f0;
+        }
+
+        #productModal .form-input:focus,
+        #productModal .form-select:focus,
+        #productModal .form-textarea:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+        }
+        body.dark-mode #productModal .form-input:focus,
+        body.dark-mode #productModal .form-select:focus,
+        body.dark-mode #productModal .form-textarea:focus {
+            border-color: #6366f1;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+        }
+
+        #productModal .form-text.text-danger {
+            font-size: 0.8rem;
+            margin-top: 0.25rem;
+        }
+
+        #productModal .margin-profit-toggle {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 0.75rem;
+            align-items: center;
+        }
+
+        #productModal .margin-profit-toggle label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        #productModal .margin-profit-toggle input[type="radio"] {
+            margin-right: 0.25rem;
+        }
+
+        /* Highlight for profit field */
+        #productCalculatedProfit {
+            background-color: #dcfce7; /* Light green */
+            color: #166534; /* Dark green text */
+            font-weight: bold;
+        }
+        body.dark-mode #productCalculatedProfit {
+            background-color: #2f574e; /* Darker green for dark mode */
+            color: #68d391; /* Lighter green text for dark mode */
+        }
+
+        /* Flex container for name and code */
+        .name-code-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            grid-column: 1 / -1; /* Span full width */
+        }
+
+        /* Flex container for stock fields */
+        .stock-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            grid-column: 1 / -1; /* Span full width */
+        }
+
+        /* Checkbox for bulk product */
+        .bulk-checkbox-group {
+            grid-column: 1 / -1;
+            margin-top: 1rem; /* Added margin for spacing */
+            margin-bottom: 1rem;
+        }
+
+        .bulk-checkbox-group label {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .bulk-checkbox-group input[type="checkbox"] {
+            width: 1.25rem;
+            height: 1.25rem;
+            accent-color: #3b82f6;
+        }
+
+        /* IVA Exento checkbox */
+        .iva-exempt-group {
+            grid-column: 1 / -1;
+            margin-top: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .iva-exempt-group label {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .iva-exempt-group input[type="checkbox"] {
+            width: 1.25rem;
+            height: 1.25rem;
+            accent-color: #3b82f6;
+        }
+
+        /* Responsive adjustments for product modal */
+        @media (max-width: 767px) {
+            #productModal .form-grid {
+                grid-template-columns: 1fr;
+            }
+            .name-code-group, .stock-group {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+        }
+
     </style>
 </head>
 <body>
@@ -1256,64 +1511,45 @@
 
         <!-- Action Bar -->
         <div class="action-bar">
-            <div class="search-filter-group">
-                <div class="search-container">
-                    <input type="text" class="search-input" placeholder="Buscar productos por nombre, marca, código o descripción..." id="searchInput">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="11" cy="11" r="8"/>
-                        <path d="m21 21-4.35-4.35"/>
-                    </svg>
-                </div>
-                <select class="filter-select" id="categoryFilter">
-                    <option value="">Todas las Categorías</option>
-                    <!-- Categories will be dynamically loaded here -->
-                </select>
-            </div>
-            <div class="action-buttons">
-                <button class="btn btn-secondary" onclick="openCategoryModal()">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
-                        <polyline points="14 2 14 8 20 8"/>
-                        <line x1="12" y1="18" x2="12" y2="12"/>
-                        <line x1="9" y1="15" x2="15" y2="15"/>
-                    </svg>
-                    Categorías
-                </button>
-                <button class="btn btn-primary" onclick="openModal('add')">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M5 12h14"/>
-                        <path d="M12 5v14"/>
-                    </svg>
-                    Nuevo Producto
-                </button>
-                <button class="btn btn-secondary" id="bulkEditBtn" onclick="openBulkEditModal()" disabled>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M17 3a2.85 2.85 0 0 1 2.92 2.92L10 19.92 3 17l.92-7Z"/>
-                        <path d="M14.5 10.5 17 13"/>
-                    </svg>
-                    Edición en Lote
-                </button>
-                <button class="btn btn-secondary" onclick="openReportsModal()">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                        <polyline points="14 2 14 8 20 8"/>
-                        <line x1="16" y1="13" x2="8" y2="13"/>
-                        <line x1="16" y1="17" x2="8" y2="17"/>
-                        <line x1="10" y1="9" x2="10" y2="9"/>
-                    </svg>
-                    Reportes
-                </button>
-                <button class="btn btn-secondary" onclick="exportInventory()">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                        <polyline points="7,10 12,15 17,10"/>
-                        <line x1="12" y1="15" x2="12" y2="3"/>
-                    </svg>
-                    Exportar
-                </button>
-            </div>
+    <div class="search-filter-group">
+        <div class="search-container">
+            <input type="text" class="search-input" placeholder="Buscar productos por nombre, marca, código..." id="searchInput">
+            <svg xmlns="http://www.w3.org/2000/svg" class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"></circle>
+                <path d="m21 21-4.35-4.35"></path>
+            </svg>
         </div>
+        <select class="filter-select" id="categoryFilter">
+            <option value="">Todas las Categorías</option>
+        </select>
+    </div>
 
+    <button class="btn btn-primary" onclick="openModal('add')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 12h14"></path>
+            <path d="M12 5v14"></path>
+        </svg>
+        <span>Nuevo Producto</span>
+    </button>
+
+    <div class="dropdown">
+        <button class="btn btn-secondary" onclick="toggleActionsDropdown()">
+            <span>Acciones</span>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+        </button>
+        <div id="actionsDropdown" class="dropdown-content">
+            <button onclick="openCategoryModal()">Añadir Categoria</button>
+            <button id="bulkEditBtn" onclick="openBulkEditModal()" disabled>Edición por Lote</button>
+            <button onclick="openReportsModal()">Ver Reportes</button>
+            <div class="dropdown-divider"></div>
+            <button onclick="document.getElementById('importInput').click();">Importar BBDD</button>
+            <button onclick="exportInventory()">ExportarBBDD</button>
+        </div>
+    </div>
+    <input type="file" id="importInput" onchange="handleFileImport(event)" accept=".xlsx, .xls" style="display: none;">
+</div>
         <!-- Stats Grid -->
         <div class="stats-grid">
             <div class="stat-card">
@@ -1466,28 +1702,43 @@
                 <form id="productForm" class="form-grid">
                     <!-- Sección de Información General -->
                     <div class="form-section">
-                        <h4 class="form-section-title">Información General</h4>
-                        <div class="form-group">
-                            <label class="form-label" for="productName">Nombre del Producto *</label>
-                            <input type="text" class="form-input" id="productName" required>
-                            <small id="productNameError" class="form-text text-danger" style="color: #ef4444; display: none;">Este nombre ya existe.</small>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label" for="productCode">Código del Producto (o Código de Barras)</label>
-                            <input type="text" class="form-input" id="productCode">
-                            <small id="productCodeError" class="form-text text-danger" style="color: #ef4444; display: none;">Este código ya existe.</small>
+                        <h4 class="form-section-title">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2Z"/>
+                                <path d="M12 6v12"/>
+                                <path d="M12 6H7.5a2.5 2.5 0 0 0 0 5h9a2.5 2.5 0 0 1 0 5H12"/>
+                            </svg>
+                            Detalles del Producto
+                        </h4>
+                        <div class="name-code-group">
+                            <div class="form-group">
+                                <label class="form-label" for="productName">Nombre del Producto *</label>
+                                <input type="text" class="form-input" id="productName" required placeholder="Ej: Camiseta de algodón">
+                                <small id="productNameError" class="form-text text-danger" style="color: #ef4444; display: none;">Este nombre ya existe.</small>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="productCode">Código del Producto (o Código de Barras) *</label>
+                                <input type="text" class="form-input" id="productCode" required placeholder="Ej: SKU12345 o 7501234567890">
+                                <small id="productCodeError" class="form-text text-danger" style="color: #ef4444; display: none;">Este código ya existe.</small>
+                            </div>
                         </div>
                         <div class="form-group full-width">
                             <label class="form-label" for="productDescription">Descripción</label>
                             <textarea class="form-textarea" id="productDescription" placeholder="Describe las características principales del producto"></textarea>
                         </div>
-                        <div class="form-group">
+                        <div class="form-group half-width">
                             <label class="form-label" for="productBrand">Marca</label>
-                            <input type="text" class="form-input" id="productBrand">
+                            <input type="text" class="form-input" id="productBrand" placeholder="Ej: Nike, Samsung">
                         </div>
-                        <div class="form-group">
+                        <div class="bulk-checkbox-group">
+                            <label class="form-label">
+                                <input type="checkbox" id="isBulkProduct" onchange="toggleBulkFields()"> Es un producto a granel
+                                <small class="form-text text-muted" style="margin-left: 0.5rem;">(Marcar si el producto se vende por peso o medida, ej: frutas, carne)</small>
+                            </label>
+                        </div>
+                        <div class="form-group half-width">
                             <label class="form-label" for="productCategory">Categoría</label>
-                            <select class="form-select" id="productCategory">
+                            <select class="form-select" id="productCategory" title="Selecciona la categoría a la que pertenece el producto">
                                 <!-- Options will be dynamically loaded by JS -->
                             </select>
                             <p id="categoryAlert" class="category-alert">Se han actualizado las categorías para productos a granel.</p>
@@ -1496,62 +1747,76 @@
 
                     <!-- Sección de Tipo de Producto y Stock -->
                     <div class="form-section">
-                        <h4 class="form-section-title">Tipo y Stock</h4>
-                        <div class="form-group full-width">
-                            <label class="form-label">
-                                <input type="checkbox" id="isBulkProduct" onchange="toggleBulkFields()"> Es un producto a granel
-                            </label>
+                        <h4 class="form-section-title">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect width="7" height="7" x="3" y="3" rx="1"/>
+                                <rect width="7" height="7" x="14" y="3" rx="1"/>
+                                <rect width="7" height="7" x="14" y="14" rx="1"/>
+                                <rect width="7" height="7" x="3" y="14" rx="1"/>
+                            </svg>
+                            Gestión de Stock
+                        </h4>
+                        <div class="stock-group">
+                            <div class="form-group" id="stockField">
+                                <label class="form-label" for="productStock">Stock Actual *</label>
+                                <input type="text" step="1" class="form-input" id="productStock" min="0" required title="El stock se ajusta mediante movimientos, no directamente.">
+                                <small class="form-text text-muted">El stock se ajusta mediante movimientos, no directamente.</small>
+                            </div>
+                            <div class="form-group" id="minStockField">
+                                <label class="form-label" for="productMinStock">Stock Mínimo</label>
+                                <input type="text" step="1" class="form-input" id="productMinStock" min="0" value="5" title="Cantidad mínima de stock antes de generar una alerta.">
+                            </div>
                         </div>
-                        
-                        <div class="form-group" id="stockField">
-                            <label class="form-label" for="productStock">Stock Actual *</label>
-                            <input type="number" step="any" class="form-input" id="productStock" min="0" required readonly>
-                            <small class="form-text text-muted">El stock se ajusta mediante movimientos, no directamente.</small>
-                        </div>
-                        <div class="form-group" id="minStockField">
-                            <label class="form-label" for="productMinStock">Stock Mínimo</label>
-                            <input type="number" step="any" class="form-input" id="productMinStock" min="0" value="5">
-                        </div>
-
                         <div class="form-group bulk-product-fields full-width" id="unitField">
                             <label class="form-label" for="productUnit">Unidad de Medida</label>
-                            <select class="form-select" id="productUnit">
+                            <select class="form-select" id="productUnit" title="Unidad de medida para productos a granel.">
                                 <option value="kg">Kilogramos (kg)</option>
-                                <option value="g">Gramos (g)</option>
-                                <option value="lb">Libras (lb)</option>
-                                <option value="oz">Onzas (oz)</option>
+                                <!-- Removed other options as per requirement 3 -->
                             </select>
                         </div>
                     </div>
 
                     <!-- Sección de Precios y Ganancias -->
                     <div class="form-section">
-                        <h4 class="form-section-title">Precios y Ganancias</h4>
+                        <h4 class="form-section-title">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="12" y1="1" x2="12" y2="23"/>
+                                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                            </svg>
+                            Precios y Ganancias
+                        </h4>
                         <div class="form-group">
                             <label class="form-label" for="productCost">Precio de Costo * ($)</label>
-                            <input type="number" step="0.01" class="form-input" id="productCost" min="0" required>
+                            <input type="text" step="0.01" class="form-input" id="productCost" min="0" required oninput="calculatePrice()" title="Costo de adquisición del producto.">
                         </div>
                         
                         <div class="form-group">
                             <div class="margin-profit-toggle">
                                 <label>
-                                    <input type="radio" name="profitType" value="margin" id="radioMargin" checked onchange="toggleProfitInput()"> Margen de Ganancia (%)
+                                    <input type="radio" name="profitType" value="margin" id="radioMargin" checked onchange="toggleProfitInput(); calculatePrice()"> Margen de Ganancia (%)
                                 </label>
                                 <label>
-                                    <input type="radio" name="profitType" value="profit" id="radioProfit" onchange="toggleProfitInput()"> Ganancia por Unidad ($)
+                                    <input type="radio" name="profitType" value="profit" id="radioProfit" onchange="toggleProfitInput(); calculatePrice()"> Ganancia por Unidad ($)
                                 </label>
                             </div>
-                            <input type="number" step="0.01" class="form-input" id="productMargin" min="-100" max="1000" value="30">
-                            <input type="number" step="0.01" class="form-input" id="productProfitInput" min="0" style="display: none;">
+                            <input type="number" step="0.01" class="form-input" id="productMargin" min="-100" max="1000" value="30" oninput="calculatePrice()" title="Porcentaje de ganancia sobre el costo.">
+                            <input type="number" step="0.01" class="form-input" id="productProfitInput" min="0" style="display: none;" oninput="calculatePrice()" title="Monto fijo de ganancia por cada unidad vendida.">
+                        </div>
+
+                        <div class="iva-exempt-group">
+                            <label class="form-label">
+                                <input type="checkbox" id="isIvaExempt" title="Marcar si el producto está exento de IVA."> Exento de IVA
+                                <small class="form-text text-muted" style="margin-left: 0.5rem;">(Solo informativo para el módulo de venta)</small>
+                            </label>
                         </div>
 
                         <div class="form-group">
-                            <label class="form-label" for="productPrice">Precio de Venta ($)</label>
-                            <input type="text" class="form-input calculated-field" id="productPrice" readonly>
+                            <label class="form-label" for="productCalculatedProfit">Ganancia por Unidad ($)</label>
+                            <input type="text" class="form-input calculated-field" id="productCalculatedProfit" readonly title="Ganancia calculada por cada unidad vendida.">
                         </div>
                         <div class="form-group">
-                            <label class="form-label" for="productCalculatedProfit">Ganancia por Unidad ($)</label>
-                            <input type="text" class="form-input calculated-field" id="productCalculatedProfit" readonly>
+                            <label class="form-label" for="productPrice">Precio de Venta ($)</label>
+                            <input type="text" class="form-input calculated-field" id="productPrice" readonly title="Precio final de venta al público.">
                         </div>
                     </div>
                 </form>
@@ -1732,7 +1997,7 @@
                 <div class="form-grid" style="margin-top: 1.5rem;">
                     <div class="form-group full-width">
                         <label class="form-label" for="adjustmentReason">Razón del Ajuste *</label>
-                        <select class="form-select" id="adjustmentReason" required>
+                        <select class="form-select" id="adjustmentReason" required title="Motivo del ajuste de stock.">
                             <option value="">Seleccionar razón</option>
                             <option value="Conteo Físico">Conteo Físico</option>
                             <option value="Compra/Entrada">Compra/Entrada</option>
@@ -1746,16 +2011,16 @@
                     </div>
                     <div class="form-group">
                         <label class="form-label" for="adjustmentQuantity">Cantidad a Ajustar *</label>
-                        <input type="number" step="any" class="form-input" id="adjustmentQuantity" required>
+                        <input type="text" step="any" class="form-input" id="adjustmentQuantity" required title="Cantidad a sumar o restar del stock actual.">
                         <small class="form-text text-muted">Use un valor positivo para aumentar, negativo para disminuir.</small>
                     </div>
                     <div class="form-group">
                         <label class="form-label" for="adjustmentDate">Fecha del Movimiento *</label>
-                        <input type="date" class="form-input" id="adjustmentDate" required>
+                        <input type="date" class="form-input" id="adjustmentDate" required title="Fecha en que se realizó el movimiento de stock.">
                     </div>
                     <div class="form-group full-width">
                         <label class="form-label" for="adjustmentNotes">Notas (Opcional)</label>
-                        <textarea class="form-textarea" id="adjustmentNotes"></textarea>
+                        <textarea class="form-textarea" id="adjustmentNotes" title="Notas adicionales sobre el ajuste."></textarea>
                     </div>
                 </div>
                 <h4 class="form-section-title" style="margin-top: 2rem;">Historial de Movimientos</h4>
@@ -1909,6 +2174,7 @@
         let selectedProductIds = new Set();
         let bulkEditActionDetails = {}; // To store details for bulk edit confirmation
         let formHasChanges = false; // Flag for unsaved changes
+        const IVA_RATE = 0.16; // Example IVA rate (16%)
 
         // Helper function to parse numbers (handles comma and dot as decimal separators)
         function parseNumber(value) {
@@ -1943,122 +2209,150 @@
             document.getElementById('searchInput').focus(); // Auto-focus search bar
         });
 
-        // Event Listeners
         function setupEventListeners() {
-            document.getElementById('searchInput').addEventListener('input', () => {
-                currentPage = 1;
-                renderProducts();
-            });
-            
-            document.getElementById('categoryFilter').addEventListener('change', (event) => {
-                selectedCategoryFilter = event.target.value;
-                currentPage = 1;
-                renderProducts();
-            });
+    document.getElementById('searchInput').addEventListener('input', () => {
+        currentPage = 1;
+        renderProducts();
+    });
+    
+    document.getElementById('categoryFilter').addEventListener('change', (event) => {
+        selectedCategoryFilter = event.target.value;
+        currentPage = 1;
+        renderProducts();
+    });
 
-            document.getElementById('productCost').addEventListener('input', calculatePrice);
-            document.getElementById('productMargin').addEventListener('input', calculatePrice);
-            document.getElementById('productProfitInput').addEventListener('input', calculatePrice);
-            
-            document.getElementById('productStock').addEventListener('input', validateNumberInput);
-            document.getElementById('productMinStock').addEventListener('input', validateNumberInput);
-            document.getElementById('productCost').addEventListener('input', validateNumberInput);
-            document.getElementById('productMargin').addEventListener('input', validateNumberInput);
-            document.getElementById('productProfitInput').addEventListener('input', validateNumberInput);
-            
-            // Modified to allow negative input for adjustmentQuantity
-            document.getElementById('adjustmentQuantity').addEventListener('input', function(event) {
-                let input = event.target;
-                let value = input.value;
+    // --- CONEXIÓN DE LAS VALIDACIONES ---
+    // Para campos de STOCK: doble validación (preventiva + limpieza)
+    document.getElementById('productStock').addEventListener('keydown', handleStockKeydown);
+    document.getElementById('productMinStock').addEventListener('keydown', handleStockKeydown);
+    document.getElementById('productStock').addEventListener('input', validateStockInput);
+    document.getElementById('productMinStock').addEventListener('input', validateStockInput);
 
-                // Allow negative sign only at the beginning
-                if (value.startsWith('-')) {
-                    value = '-' + value.substring(1).replace(/[^0-9.]/g, '');
-                } else {
-                    value = value.replace(/[^0-9.]/g, '');
-                }
+    // Para campos de PRECIOS: validación general Y cálculo de precios
+    const priceInputs = ['productCost', 'productMargin', 'productProfitInput'];
+    priceInputs.forEach(id => {
+        document.getElementById(id).addEventListener('input', (event) => {
+            validateNumberInput(event, false); // Primero valida
+            calculatePrice(); // Luego calcula
+        });
+    });
+    
+    document.getElementById('adjustmentQuantity').addEventListener('input', (event) => validateNumberInput(event, true));
+    // --- FIN DE LA CONEXIÓN ---
 
-                // Allow only one decimal point
-                if ((value.match(/\./g) || []).length > 1) {
-                    value = value.substring(0, value.indexOf('.', value.indexOf('.') + 1));
-                }
-                input.value = value;
+    // Real-time validation for product name and code
+    document.getElementById('productName').addEventListener('input', validateProductName);
+    document.getElementById('productCode').addEventListener('input', validateProductCode);
 
-                if (!isNaN(parseNumber(value)) && value !== '') {
-                    input.classList.remove('invalid');
-                }
-            });
+    // Event listener for form changes to set the flag
+    document.getElementById('productForm').addEventListener('input', () => {
+        formHasChanges = true;
+    });
 
-            // Real-time validation for product name and code
-            document.getElementById('productName').addEventListener('input', validateProductName);
-            document.getElementById('productCode').addEventListener('input', validateProductCode);
+    document.getElementById('productModal').addEventListener('click', function(e) {
+        if (e.target === this) closeModal();
+    });
+    
+    document.getElementById('deleteModal').addEventListener('click', function(e) {
+        if (e.target === this) closeDeleteModal();
+    });
 
-            // Event listener for form changes to set the flag
-            document.getElementById('productForm').addEventListener('input', () => {
-                formHasChanges = true;
-            });
+    document.getElementById('stockAdjustmentModal').addEventListener('click', function(e) {
+        if (e.target === this) closeStockAdjustmentModal();
+    });
 
-            document.getElementById('productModal').addEventListener('click', function(e) {
-                if (e.target === this) closeModal();
-            });
-            
-            document.getElementById('deleteModal').addEventListener('click', function(e) {
-                if (e.target === this) closeDeleteModal();
-            });
+    document.getElementById('bulkEditModal').addEventListener('click', function(e) {
+        if (e.target === this) closeBulkEditModal();
+    });
 
-            document.getElementById('stockAdjustmentModal').addEventListener('click', function(e) {
-                if (e.target === this) closeStockAdjustmentModal();
-            });
+    document.getElementById('bulkEditConfirmModal').addEventListener('click', function(e) {
+        if (e.target === this) closeBulkEditConfirmModal();
+    });
 
-            document.getElementById('bulkEditModal').addEventListener('click', function(e) {
-                if (e.target === this) closeBulkEditModal();
-            });
+    document.getElementById('reportsModal').addEventListener('click', function(e) {
+        if (e.target === this) closeReportsModal();
+    });
 
-            document.getElementById('bulkEditConfirmModal').addEventListener('click', function(e) {
-                if (e.target === this) closeBulkEditConfirmModal();
-            });
+    document.getElementById('prevPage').addEventListener('click', () => changePage(-1));
+    document.getElementById('nextPage').addEventListener('click', () => changePage(1));
 
-            document.getElementById('reportsModal').addEventListener('click', function(e) {
-                if (e.target === this) closeReportsModal();
-            });
+    document.querySelectorAll('.inventory-table th[data-sort-by]').forEach(header => {
+        header.addEventListener('click', () => sortTable(header.dataset.sortBy));
+    });
 
-            document.getElementById('prevPage').addEventListener('click', () => changePage(-1));
-            document.getElementById('nextPage').addEventListener('click', () => changePage(1));
+    document.getElementById('selectAllProducts').addEventListener('change', toggleSelectAllProducts);
 
-            document.querySelectorAll('.inventory-table th[data-sort-by]').forEach(header => {
-                header.addEventListener('click', () => sortTable(header.dataset.sortBy));
-            });
+    toggleProfitInput();
+}
 
-            document.getElementById('selectAllProducts').addEventListener('change', toggleSelectAllProducts);
+// REEMPLAZA TU FUNCIÓN validateNumberInput CON ESTA VERSIÓN
+function validateNumberInput(event, allowNegative) {
+    let input = event.target;
+    let value = input.value;
 
-            toggleProfitInput();
-        }
+    // Reemplaza la coma por un punto para consistencia
+    value = value.replace(',', '.');
 
-        function validateNumberInput(event) {
-            let input = event.target;
-            let value = input.value;
+    // Permite el signo negativo solo si está explícitamente permitido
+    if (allowNegative && value.startsWith('-')) {
+        value = '-' + value.substring(1).replace(/[^0-9.]/g, '');
+    } else {
+        value = value.replace(/[^0-9.]/g, '');
+    }
 
-            value = value.replace(',', '.');
+    // Asegura que solo haya un punto decimal
+    if ((value.match(/\./g) || []).length > 1) {
+        value = value.substring(0, value.indexOf('.', value.indexOf('.') + 1));
+    }
 
-            // This function is now only for non-adjustmentQuantity inputs
-            if (input.id !== 'adjustmentQuantity') {
-                if (!/^\d*\.?\d*$/.test(value)) {
-                    input.value = input.value.replace(/[^0-9.,]/g, '');
-                    value = input.value.replace(',', '.');
-                }
-            }
+    // Asigna el valor limpio al campo
+    input.value = value;
 
-            if ((value.match(/\./g) || []).length > 1) {
-                input.value = value.substring(0, value.indexOf('.', value.indexOf('.') + 1));
-            }
+    if (!isNaN(parseNumber(value)) && value !== '') {
+        input.classList.remove('invalid');
+    }
+}
 
-            input.value = value;
 
-            if (!isNaN(parseNumber(value)) && value !== '') {
-                input.classList.remove('invalid');
-            }
-        }
+    function validateStockInput(event) {
+    const input = event.target;
+    let value = input.value;
+    const isBulk = document.getElementById('isBulkProduct').checked;
 
+    // 1. Elimina cualquier caracter que no sea un número o un punto.
+    // Esto previene letras y el signo negativo.
+    value = value.replace(/[^0-9.]/g, '');
+
+    // 2. Asegura que solo haya un punto decimal.
+    const pointIndex = value.indexOf('.');
+    if (pointIndex !== -1) {
+        // Si hay un punto, elimina cualquier otro punto que aparezca después.
+        value = value.substring(0, pointIndex + 1) + value.substring(pointIndex + 1).replace(/\./g, '');
+    }
+
+    // 3. Lógica condicional basada en el checkbox "A granel".
+    if (!isBulk) {
+        // Si no es a granel, el producto es por unidad, así que eliminamos cualquier punto decimal.
+        value = value.split('.')[0];
+    }
+
+    // 4. Actualiza el valor del campo.
+    input.value = value;
+} // <-- ✨ LA LLAVE DE CIERRE QUE FALTABA ✨
+
+/**
+ * Previene la escritura de puntos o comas en los campos de stock
+ * si el producto no es a granel. Se ejecuta ANTES de que el caracter aparezca.
+ */
+function handleStockKeydown(event) {
+    const isBulk = document.getElementById('isBulkProduct').checked;
+
+    // Si el checkbox NO está marcado y la tecla presionada es un punto o una coma...
+    if (!isBulk && (event.key === '.' || event.key === ',')) {
+        // ...prevenimos la acción por defecto (bloqueamos la escritura del caracter).
+        event.preventDefault();
+    }
+}
         // New validation functions for product name and code
         function validateProductName() {
             const productNameInput = document.getElementById('productName');
@@ -2093,9 +2387,10 @@
             const code = productCodeInput.value.trim();
 
             if (code === '') {
-                productCodeInput.classList.remove('invalid');
-                productCodeError.style.display = 'none';
-                return true; // Code is optional, so empty is valid
+                productCodeInput.classList.add('invalid'); // Make code mandatory
+                productCodeError.textContent = 'El código del producto es obligatorio.';
+                productCodeError.style.display = 'block';
+                return false;
             }
 
             const isDuplicate = products.some(p => 
@@ -2301,6 +2596,10 @@
                             newPrice: p.isBulk ? p.pricePerUnit : p.price
                         }];
                     }
+                    // Ensure isIvaExempt property exists
+                    if (typeof p.isIvaExempt === 'undefined') {
+                        p.isIvaExempt = false;
+                    }
                 });
                 nextProductId = products.length > 0 ? Math.max(...products.map(p => p.id)) + 1 : 1;
             } else {
@@ -2448,7 +2747,7 @@
                                     </svg>
                                 </div>
                                 <div class="product-details">
-                                    <h4>${product.name}</h4>
+                                    <h4>${product.isIvaExempt ? product.name + ' (E)' : product.name}</h4>
                                     <p>${product.code || 'Sin código'}</p>
                                     ${product.description ? `<p style="font-size: 0.75rem; margin-top: 0.25rem;">${product.description.length > 50 ? product.description.substring(0, 50) + '...' : product.description}</p>` : ''}
                                 </div>
@@ -2912,7 +3211,7 @@
             if (mode === 'add') {
                 title.textContent = 'Nuevo Producto';
                 saveButton.textContent = 'Guardar Producto';
-                productStockInput.readOnly = false;
+                // productStockInput.readOnly = true; // Removed as per instruction 1
                 isBulkProductCheckbox.disabled = false; // Enable for new product
                 resetForm();
             } else {
@@ -2924,7 +3223,7 @@
                 }
                 title.textContent = 'Editar Producto';
                 saveButton.textContent = 'Actualizar Producto';
-                productStockInput.readOnly = true;
+                // productStockInput.readOnly = true; // Removed as per instruction 1
                 isBulkProductCheckbox.disabled = true; // Disable for existing product
                 fillForm(product);
             }
@@ -2952,6 +3251,7 @@
             document.getElementById('productCalculatedProfit').value = '';
             document.getElementById('isBulkProduct').checked = false;
             document.getElementById('radioMargin').checked = true;
+            document.getElementById('isIvaExempt').checked = false; // Reset IVA exempt checkbox
             
             populateCategories(false);
             toggleBulkFields();
@@ -2993,6 +3293,8 @@
                 document.getElementById('radioProfit').checked = true;
                 document.getElementById('productProfitInput').value = product.profitPerUnit || product.profit;
             }
+            document.getElementById('isIvaExempt').checked = product.isIvaExempt; // Set IVA exempt checkbox
+
             toggleProfitInput();
 
             calculatePrice(); 
@@ -3042,6 +3344,7 @@
             const productCostLabel = document.querySelector('label[for="productCost"]');
             const productPriceLabel = document.querySelector('label[for="productPrice"]');
             const productCalculatedProfitLabel = document.querySelector('label[for="productCalculatedProfit"]');
+            const productUnitSelect = document.getElementById('productUnit');
             
             populateCategories(isBulk);
 
@@ -3054,6 +3357,8 @@
                 productCostLabel.textContent = 'Precio de Costo por Unidad ($)';
                 productPriceLabel.textContent = 'Precio de Venta por Unidad ($)';
                 productCalculatedProfitLabel.textContent = 'Ganancia por Unidad ($)';
+                productUnitSelect.value = 'kg'; // Set to kg as per requirement 3
+                productUnitSelect.disabled = true; // Disable unit selection for bulk
                 
             } else {
                 bulkFields.forEach(field => field.classList.remove('show'));
@@ -3061,9 +3366,13 @@
                 minStockLabel.textContent = 'Stock Mínimo';
                 productStockInput.step = '1';
                 productMinStockInput.step = '1';
+		productStockInput.value = ''; 
+                productMinStockInput.value = '5';
                 productCostLabel.textContent = 'Precio de Costo * ($)';
                 productPriceLabel.textContent = 'Precio de Venta ($)';
                 productCalculatedProfitLabel.textContent = 'Ganancia por Unidad ($)';
+                productUnitSelect.value = 'kg'; // Reset to default or empty
+                productUnitSelect.disabled = false; // Enable unit selection for non-bulk
             }
             calculatePrice();
         }
@@ -3094,6 +3403,7 @@
             const productPriceOutput = document.getElementById('productPrice');
             const productCalculatedProfitOutput = document.getElementById('productCalculatedProfit');
             const radioMargin = document.getElementById('radioMargin');
+            // const isIvaExempt = document.getElementById('isIvaExempt').checked; // Removed as per requirement 4
             
             const cost = parseNumber(costInput.value);
             let price = 0;
@@ -3118,8 +3428,10 @@
                     productCalculatedProfitOutput.value = '';
                     return;
                 }
+                // Calculate price before IVA
                 price = cost * (1 + margin / 100);
                 profit = price - cost;
+                // price = isIvaExempt ? priceBeforeIva : priceBeforeIva * (1 + IVA_RATE); // Removed IVA calculation
             } else {
                 const directProfit = parseNumber(profitInputDirect.value);
                 if (isNaN(directProfit) || directProfit < 0) {
@@ -3129,7 +3441,9 @@
                     return;
                 }
                 profit = directProfit;
+                // Calculate price before IVA
                 price = cost + profit;
+                // price = isIvaExempt ? priceBeforeIva : priceBeforeIva * (1 + IVA_RATE); // Removed IVA calculation
             }
             
             productPriceOutput.value = price.toFixed(2);
@@ -3171,6 +3485,7 @@
             const margin = parseNumber(document.getElementById('productMargin').value);
             const directProfit = parseNumber(document.getElementById('productProfitInput').value);
             const radioMargin = document.getElementById('radioMargin');
+            const isIvaExempt = document.getElementById('isIvaExempt').checked;
 
             let productData = {
                 name: document.getElementById('productName').value.trim(),
@@ -3183,7 +3498,8 @@
                 isBulk: isBulk,
                 unit: isBulk ? document.getElementById('productUnit').value : null,
                 price: parseNumber(document.getElementById('productPrice').value),
-                profit: parseNumber(document.getElementById('productCalculatedProfit').value)
+                profit: parseNumber(document.getElementById('productCalculatedProfit').value),
+                isIvaExempt: isIvaExempt // Save IVA exempt status
             };
 
             let oldCostValue = null;
@@ -3216,7 +3532,7 @@
                 productData.margin = null;
             }
 
-            if (productData.stock < 0 && !editingProductId) {
+            if (productData.stock < 0) { // Removed !editingProductId condition
                 showNotification('El stock actual no puede ser negativo.', 'error');
                 document.getElementById('productStock').classList.add('invalid');
                 return;
@@ -3256,7 +3572,19 @@
                     const currentStockHistory = products[index].stockHistory;
                     const currentPriceHistory = products[index].priceHistory;
 
-                    products[index] = { ...products[index], ...productData, stock: currentStock, stockHistory: currentStockHistory, priceHistory: currentPriceHistory };
+                    // If stock was changed directly in the modal, add a stock history entry
+                    if (currentStock !== productData.stock) {
+                        const stockChange = productData.stock - currentStock;
+                        currentStockHistory.push({
+                            date: new Date().toISOString().split('T')[0],
+                            reason: 'Manual Adjustment (Product Edit)',
+                            quantity: stockChange,
+                            finalStock: productData.stock,
+                            notes: 'Stock ajustado directamente desde la edición del producto'
+                        });
+                    }
+
+                    products[index] = { ...products[index], ...productData, stockHistory: currentStockHistory, priceHistory: currentPriceHistory };
 
                     // Add to price history if cost or price changed
                     const newCostValue = products[index].isBulk ? products[index].costPerUnit : products[index].cost;
@@ -3300,6 +3628,9 @@
             saveProducts();
             renderProducts();
             updateDashboard();
+
+	    formHasChanges = false;
+
             closeModal(); // This will now trigger the unsaved changes check
         }
 
@@ -3324,7 +3655,7 @@
         function confirmDelete() {
             if (deletingProductId) {
                 const initialLength = products.length;
-                products = products.filter(p => p.id !== deletingProductId);
+                products = products.filter(p => p.id !== deletingProductId); // Changed to delete only the specific product
                 if (products.length < initialLength) {
                     saveProducts();
                     currentPage = 1;
@@ -3381,6 +3712,8 @@
             doc.text(`Margen de Ganancia: ${product.margin !== null ? product.margin.toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + '%' : 'N/A'}`, 14, y);
             y += 6;
             doc.text(`Ganancia por Unidad: $${(product.isBulk ? product.profitPerUnit : product.profit).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 14, y);
+            y += 6;
+            doc.text(`Exento de IVA: ${product.isIvaExempt ? 'Sí' : 'No'}`, 14, y);
             y += 10;
 
             // Stock History
@@ -3751,62 +4084,43 @@
 
         // Utility Functions
         function exportInventory() {
-            if (products.length === 0) {
-                showNotification('No hay productos para exportar.', 'info');
-                return;
-            }
+    if (products.length === 0) {
+        showNotification('No hay productos para exportar.', 'info');
+        return;
+    }
 
-            const data = products.map(p => ({
-                Nombre: p.name,
-                Código: p.code || '',
-                Descripción: p.description || '',
-                Marca: p.brand || '',
-                Categoría: p.category || '',
-                Stock: p.isBulk ? p.stock.toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 3 }) + ' ' + p.unit : p.stock,
-                'Stock Mínimo': p.isBulk ? p.minStock.toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 3 }) + ' ' + p.unit : p.minStock,
-                'Es a Granel': p.isBulk ? 'Sí' : 'No',
-                'Unidad de Medida': p.unit || '',
-                'Precio Costo': p.isBulk ? (p.costPerUnit || 0).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '/' + p.unit : (p.cost || 0).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
-                'Margen (%)': p.margin !== null ? p.margin.toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : 'N/A',
-                'Ganancia por Unidad (Directa)': p.profitPerUnit !== null ? (p.profitPerUnit || 0).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : 'N/A',
-                'Precio Venta': p.isBulk ? (p.pricePerUnit || 0).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '/' + p.unit : (p.price || 0).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
-                'Ganancia por Venta': p.isBulk ? (p.profitPerUnit || 0).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '/' + p.unit : (p.profit || 0).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-            }));
-            
-            const csv = convertToCSV(data);
-            downloadCSV(csv, 'inventario_ciervo.csv');
-            showNotification('Inventario exportado exitosamente.', 'success');
-        }
+    // 1. Preparamos los datos con el formato que ya tenías.
+    //    Esto asegura que las columnas tengan nombres amigables.
+    const data = products.map(p => ({
+        'Nombre': p.name,
+        'Código': p.code || '',
+        'Descripción': p.description || '',
+        'Marca': p.brand || '',
+        'Categoría': p.category || '',
+        'Stock': p.isBulk ? `${p.stock.toLocaleString('es-ES', { maximumFractionDigits: 3 })} ${p.unit}` : p.stock,
+        'Stock Mínimo': p.isBulk ? `${p.minStock.toLocaleString('es-ES', { maximumFractionDigits: 3 })} ${p.unit}` : p.minStock,
+        'Es a Granel': p.isBulk ? 'Sí' : 'No',
+        'Exento de IVA (E)': p.isIvaExempt ? 'Sí' : 'No',
+        'Precio Costo': p.isBulk ? p.costPerUnit : p.cost,
+        'Margen (%)': p.margin !== null ? p.margin : 'N/A',
+        'Precio Venta': p.isBulk ? p.pricePerUnit : p.price,
+        'Ganancia por Venta': p.isBulk ? p.profitPerUnit : p.profit
+    }));
 
-        function convertToCSV(data) {
-            if (data.length === 0) return '';
+    // 2. Creamos una nueva "hoja de trabajo" a partir de nuestros datos.
+    const worksheet = XLSX.utils.json_to_sheet(data);
 
-            const headers = Object.keys(data[0]).join(',');
-            const rows = data.map(row => 
-                Object.values(row).map(value => {
-                    let stringValue = String(value);
-                    if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
-                        return `"${stringValue.replace(/"/g, '""')}"`;
-                    }
-                    return stringValue;
-                }).join(',')
-            ).join('\n');
-            return headers + '\n' + rows;
-        }
+    // 3. Creamos un nuevo "libro de Excel".
+    const workbook = XLSX.utils.book_new();
 
-        function downloadCSV(csv, filename) {
-            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement('a');
-            if (link.download !== undefined) {
-                const url = URL.createObjectURL(blob);
-                link.setAttribute('href', url);
-                link.setAttribute('download', filename);
-                link.style.visibility = 'hidden';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-            }
-        }
+    // 4. Añadimos nuestra hoja de trabajo al libro, dándole el nombre "Inventario".
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Inventario');
+
+    // 5. Generamos el archivo .xlsx y activamos la descarga.
+    XLSX.writeFile(workbook, 'Inventario_Ciervo_Administrativo.xlsx');
+
+    showNotification('Inventario exportado a Excel exitosamente.', 'success');
+}
 
         // Notification System
         function showNotification(message, type = 'info') {
@@ -3880,6 +4194,142 @@
                 if (moonIcon) moonIcon.style.display = 'none';
             }
         }
+
+/**
+ * Muestra u oculta el menú desplegable de acciones.
+ */
+function toggleActionsDropdown() {
+    document.getElementById("actionsDropdown").classList.toggle("show");
+}
+
+/**
+ * Cierra el menú desplegable si el usuario hace clic fuera de él.
+ * Es importante para que el menú no se quede abierto permanentemente.
+ */
+window.onclick = function(event) {
+    // Primero, nos aseguramos de no estar haciendo clic dentro del propio menú o en su botón.
+    if (!event.target.closest('.dropdown')) {
+        var dropdowns = document.getElementsByClassName("dropdown-content");
+        for (var i = 0; i < dropdowns.length; i++) {
+            var openDropdown = dropdowns[i];
+            // Si el menú está abierto (tiene la clase 'show'), la eliminamos para ocultarlo.
+            if (openDropdown.classList.contains('show')) {
+                openDropdown.classList.remove('show');
+            }
+        }
+    }
+}
+
+/**
+ * FUNCIÓN QUE FALTA: Convierte texto como "10 unidades" o "1.5 kg" a un número.
+ */
+function parseStockString(stockStr) {
+    if (typeof stockStr !== 'string') {
+        return parseNumber(stockStr); // Si ya es un número, solo lo procesa.
+    }
+    // Toma la primera parte del texto (el número) y lo convierte.
+    const numericPart = stockStr.split(' ')[0].replace(',', '.');
+    return parseFloat(numericPart);
+}
+
+/**
+ * VERSIÓN MÁS RECIENTE: Maneja la importación de archivos Excel.
+ */
+function handleFileImport(event) {
+    const file = event.target.files[0];
+    if (!file) {
+        return;
+    }
+
+    const reader = new FileReader();
+
+    reader.onload = function(e) {
+        try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+
+            const firstSheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[firstSheetName];
+            const importedData = XLSX.utils.sheet_to_json(worksheet);
+
+            if (importedData.length === 0) {
+                showNotification('El archivo de Excel está vacío o no tiene datos.', 'info');
+                event.target.value = ''; // Limpiar input
+                return;
+            }
+
+            const confirmed = confirm(
+                `Se encontraron ${importedData.length} productos en el archivo.\n\n¿Deseas continuar? ADVERTENCIA: Esta acción sobrescribirá TODO tu inventario actual.`
+            );
+
+            if (confirmed) {
+                let currentId = 1;
+                const newProducts = importedData.map(row => {
+                    const isBulk = row['Es a Granel'] === 'Sí';
+                    const cost = parseNumber(row['Precio Costo']);
+                    const price = parseNumber(row['Precio Venta']);
+                    const stock = parseStockString(row['Stock']);
+                    const minStock = parseStockString(row['Stock Mínimo']);
+
+                    if (isNaN(stock) || isNaN(cost) || isNaN(price)) {
+                        throw new Error(`El producto "${row['Nombre']}" tiene datos inválidos.`);
+                    }
+
+                    const newProduct = {
+                        id: currentId++,
+                        name: row['Nombre'],
+                        code: row['Código'],
+                        description: row['Descripción'],
+                        brand: row['Marca'],
+                        category: row['Categoría'],
+                        stock: stock,
+                        minStock: minStock,
+                        isBulk: isBulk,
+                        unit: isBulk ? 'kg' : null,
+                        cost: isBulk ? null : cost,
+                        costPerUnit: isBulk ? cost : null,
+                        price: price,
+                        pricePerUnit: isBulk ? price : null,
+                        profit: parseNumber(row['Ganancia por Venta']),
+                        profitPerUnit: isBulk ? parseNumber(row['Ganancia por Venta']) : null,
+                        margin: row['Margen (%)'] === 'N/A' ? null : parseNumber(row['Margen (%)']),
+                        isIvaExempt: row['Exento de IVA (E)'] === 'Sí',
+                        stockHistory: [{
+                            date: new Date().toISOString().split('T')[0],
+                            reason: 'Importación Masiva',
+                            quantity: stock,
+                            finalStock: stock,
+                            notes: 'Stock inicial cargado desde archivo'
+                        }],
+                        priceHistory: [{
+                            date: new Date().toISOString().split('T')[0],
+                            type: 'Importación Masiva',
+                            oldCost: cost, newCost: cost,
+                            oldPrice: price, newPrice: price
+                        }]
+                    };
+                    return newProduct;
+                });
+
+                products = newProducts;
+                nextProductId = currentId;
+                saveProducts();
+                renderProducts();
+                updateDashboard();
+                showNotification('Inventario importado con éxito.', 'success');
+            }
+
+        } catch (error) {
+            console.error("Error al leer o procesar el archivo:", error);
+            showNotification(`Error: ${error.message || 'El archivo no es un formato de Excel válido.'}`, 'error');
+        } finally {
+            event.target.value = '';
+        }
+    };
+
+    reader.readAsArrayBuffer(file);
+}
+
     </script>
 </body>
 </html>
