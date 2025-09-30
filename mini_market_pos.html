@@ -120,7 +120,7 @@
         .dark-mode .dark-mode-toggle:hover {
             background: rgba(255, 255, 255, 0.1);
         }
-        
+
         .product-item.hidden {
             display: none;
         }
@@ -293,6 +293,51 @@
         .dark-mode .filter-btn:hover {
             box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
         }
+
+
+        /* ===== SECCIÓN DE CATEGORÍAS DESPLEGABLE ===== */
+.collapsible-filter-section {
+    margin-bottom: 12px;
+}
+
+/* Usamos un estilo similar al de los modales para consistencia */
+.collapsible-filter-section .section-title {
+    padding: 10px 14px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    font-weight: 600;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.dark-mode .collapsible-filter-section .section-title {
+    background: #4a5568;
+    border-color: #64748b;
+}
+
+.collapsible-filter-section .section-title:hover {
+    border-color: #3b82f6;
+}
+.dark-mode .collapsible-filter-section .section-title:hover {
+    border-color: #6366f1;
+}
+
+.filters-container {
+    max-height: 500px; /* Altura suficiente para todos los filtros */
+    overflow: hidden;
+    transition: max-height 0.3s ease-out, padding-top 0.3s ease-out;
+    padding-top: 12px; /* Espacio entre el título y los botones */
+}
+
+.filters-container.collapsed {
+    max-height: 0;
+    padding-top: 0;
+    margin-bottom: 0; /* Asegura que no haya espacio extra cuando está colapsado */
+}
+
 
         /* Lista de productos mejorada */
         .products-list {
@@ -1190,6 +1235,83 @@
             border: 1px solid #fbbf24;
         }
 
+        /* ===== ESTILOS PARA CARRITOS EN ESPERA ===== */
+        .cart-header-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .hold-cart-btn, .held-carts-btn {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.3rem;
+            cursor: pointer;
+            opacity: 0.8;
+            transition: all 0.2s ease;
+            padding: 5px;
+            position: relative; /* Para el badge */
+        }
+
+        .hold-cart-btn:hover, .held-carts-btn:hover {
+            opacity: 1;
+            transform: scale(1.1);
+        }
+
+        .held-carts-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: #ef4444;
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            font-size: 0.75rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            border: 2px solid #3b82f6; /* Borde del color del header */
+        }
+
+        .held-carts-list {
+            list-style: none;
+            padding: 0;
+            margin-top: 1rem;
+            max-height: 50vh;
+            overflow-y: auto;
+        }
+
+        .held-cart-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .dark-mode .held-cart-item { border-bottom-color: #4a5568; }
+        .held-cart-item:last-child { border-bottom: none; }
+
+        .held-cart-info span { display: block; }
+        .held-cart-name { font-weight: bold; }
+        .held-cart-details { font-size: 0.85rem; color: #64748b; }
+        .dark-mode .held-cart-details { color: #a0aec0; }
+
+        .held-cart-actions { display: flex; gap: 0.5rem; }
+        .restore-btn, .delete-held-btn {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+        .restore-btn:hover, .delete-held-btn:hover { transform: scale(1.05); }
+
+        .restore-btn { background: #dbeafe; color: #2563eb; }
+        .delete-held-btn { background: #fee2e2; color: #dc2626; }
 
         /* ====== RESPONSIVE ====== */
         @media (max-width: 1200px) {
@@ -1257,11 +1379,14 @@
                     </button>
                 </div>
                 
-                <div class="filters">
-                    <button class="filter-btn active" onclick="setFilter('all')">Todos</button>
-                    <button class="filter-btn" onclick="setFilter('Frutas y Hortalizas')">Frutas y Hortalizas</button>
-                    <button class="filter-btn" onclick="setFilter('Charcutería')">Charcutería</button>
-                    <button class="filter-btn" onclick="setFilter('Electrónicos')">Electrónicos</button>
+                <div class="collapsible-filter-section">
+                    <div class="section-title" onclick="toggleFilterSection()">
+                        <span><i class="fas fa-tags" style="margin-right: 8px;"></i>Categorías</span>
+                        <i class="fas fa-chevron-down toggle-icon" id="filterToggleIcon"></i>
+                    </div>
+                    <div class="filters-container" id="filtersContainer">
+                        
+                    </div>
                 </div>
                 
                 <div class="products-list" id="productsList">
@@ -1318,6 +1443,15 @@
                         <i class="fas fa-shopping-cart"></i>
                         <span>Carrito de Compras</span>
                         <span class="cart-count" id="cartCount">0</span>
+                    </div>
+                    <div class="cart-header-actions">
+                        <button class="held-carts-btn" onclick="openHeldCartsModal()" title="Ver carritos en espera">
+                            <i class="fas fa-inbox"></i>
+                            <span class="held-carts-badge" id="heldCartsBadge" style="display: none;">0</span>
+                        </button>
+                        <button class="hold-cart-btn" onclick="holdCurrentCart()" title="Guardar carrito actual">
+                            <i class="fas fa-pause-circle"></i>
+                        </button>
                     </div>
                 </div>
                 <div class="cart-items" id="cartItems">
@@ -1526,6 +1660,20 @@
     <!-- Toast -->
     <div class="toast" id="toast"></div>
 
+    <div class="modal" id="heldCartsModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title">Carritos en Espera</h3>
+            <p class="modal-subtitle">Selecciona un carrito para restaurarlo o eliminarlo</p>
+        </div>
+        <ul class="held-carts-list" id="heldCartsList">
+            </ul>
+        <div class="modal-actions">
+            <button class="modal-btn modal-cancel" onclick="closeHeldCartsModal()">Cerrar (Esc)</button>
+        </div>
+    </div>
+</div>
+
     <script>
         // ===== VARIABLES GLOBALES =====
         let currentCurrency = 'VES';
@@ -1541,6 +1689,7 @@
         let inventoryProducts = []; // This will now be loaded from localStorage
         let confirmCallback = null;
         let totalsDetailsCollapsed = true; // Estado inicial: colapsado
+        let heldCarts = []; // <-- AÑADIR ESTA LÍNEA
 
         // Datos del cliente y pago
         let customerData = null;
@@ -1551,6 +1700,7 @@
                 { id: 'ves-pos', name: 'Punto de Venta', icon: '💳' },
                 { id: 'ves-cash', name: 'Efectivo', icon: '💵' },
                 { id: 'ves-mobile', name: 'Pago Móvil', icon: '📱' },
+                { id: 'ves-biopago', name: 'Biopago', icon: '☝️' },
                 { id: 'combined', name: 'Combinado USD/VES', icon: '🔄' }
             ],
             USD: [
@@ -1572,11 +1722,14 @@
         // ===== INICIALIZACIÓN =====
         document.addEventListener('DOMContentLoaded', function() {
             loadSavedSettings();
+            loadCategories(); // <-- AÑADIR ESTA LÍNEA
+            renderCategoryFilters(); // <-- AÑADIR ESTA LÍNEA
             document.getElementById('saleId').textContent = saleId;
             loadInventoryProducts(); // Load from localStorage
             renderProductList(); // Initial render of all products
             updateCartUI();
             setupEventListeners();
+            document.getElementById('filtersContainer').classList.add('collapsed');
             setupResizeHandle();
             document.getElementById('searchInput').focus();
             // Inicializar el estado de los detalles de totales
@@ -1599,6 +1752,60 @@
                 updateCartUI(); // Actualizar precios en el carrito
             });
         });
+
+        // AÑADE ESTE BLOQUE DE CÓDIGO
+
+let categories = []; // Variable global para almacenar las categorías
+
+/**
+ * Carga las categorías desde localStorage, donde las guarda inventario.html.
+ */
+// REEMPLAZA LA FUNCIÓN ANTERIOR CON ESTA VERSIÓN MÁS ROBUSTA
+function loadCategories() {
+    const savedCategories = localStorage.getItem('ciervo_categories');
+    if (savedCategories) {
+        try {
+            // INTENTAMOS: Leer y procesar los datos guardados.
+            categories = JSON.parse(savedCategories).filter(cat => cat.value !== "");
+        } catch (e) {
+            // SI FALLA: Atrapamos el error y tomamos una acción segura.
+            console.error("Error al cargar las categorías desde localStorage. Los datos podrían estar corruptos.", e);
+            showToast("Error al cargar categorías.");
+            categories = []; // Dejamos las categorías como un array vacío para no detener la app.
+        }
+    } else {
+        // Esto se mantiene igual, si no hay nada guardado, no es un error.
+        console.warn('No se encontraron categorías guardadas.');
+        categories = [];
+    }
+}
+
+/**
+ * Dibuja los botones de filtro en el HTML a partir de las categorías cargadas.
+ */
+function renderCategoryFilters() {
+    const container = document.getElementById('filtersContainer');
+    if (!container) return;
+
+    // Limpiamos el contenedor
+    container.innerHTML = '';
+
+    // 1. Creamos y añadimos el botón "Todos", que siempre debe estar
+    const allButton = document.createElement('button');
+    allButton.className = 'filter-btn active'; // "Todos" empieza activo
+    allButton.textContent = 'Todos';
+    allButton.onclick = () => setFilter('all');
+    container.appendChild(allButton);
+
+    // 2. Creamos un botón por cada categoría encontrada
+    categories.forEach(category => {
+        const categoryButton = document.createElement('button');
+        categoryButton.className = 'filter-btn';
+        categoryButton.textContent = category.text;
+        categoryButton.onclick = () => setFilter(category.text);
+        container.appendChild(categoryButton);
+    });
+}
 
         function setupEventListeners() {
             document.getElementById('searchInput').addEventListener('input', searchProducts);
@@ -1814,17 +2021,81 @@
         }
 
         // ===== BÚSQUEDA Y FILTROS =====
+        // REEMPLAZA LA FUNCIÓN ANTERIOR CON ESTA VERSIÓN MEJORADA
         function handleSearchEnter(event) {
             if (event.key === 'Enter') {
-                const searchTerm = event.target.value.trim();
-                if (searchTerm) {
-                    const product = findProductByCode(searchTerm);
-                    if (product) {
-                        openQuantityModal(product.id);
-                        event.target.value = '';
-                    } else {
-                        showToast('Producto no encontrado.');
+                event.preventDefault();
+                const searchInput = document.getElementById('searchInput');
+                const searchTerm = searchInput.value.trim();
+
+                if (!searchTerm) {
+                    return;
+                }
+
+                // --- INICIO: Lógica para "Producto Varios" ---
+                if (searchTerm.startsWith('+')) {
+                    // 1. Extraemos el monto y validamos que sea un número válido.
+                    const amountStr = searchTerm.substring(1);
+                    const amount = parseNumber(amountStr); // Usamos tu función helper que ya maneja comas y puntos.
+
+                    if (isNaN(amount) || amount <= 0) {
+                        showToast('Monto inválido. Usa el formato +20 o +15,50');
+                        return; // Detenemos la ejecución si no es un número válido.
                     }
+
+                    // 2. Determinamos el precio en USD (la moneda base del sistema).
+                    let priceInUsd;
+                    if (currentCurrency === 'VES') {
+                        // Si la moneda actual es VES, convertimos el monto a USD para guardarlo.
+                        priceInUsd = amount / exchangeRate;
+                    } else {
+                        // Si la moneda actual ya es USD, lo usamos directamente.
+                        priceInUsd = amount;
+                    }
+
+                    // 3. Creamos el producto "virtual" que se añadirá al carrito.
+                    const virtualProduct = {
+                        id: `VAR-${Date.now()}`, // ID único para que cada "Varios" sea un item distinto.
+                        name: 'Producto Varios',
+                        price: priceInUsd, // El precio del producto siempre se almacena en USD.
+                        stock: Infinity,   // Le damos stock infinito.
+                        isBulk: false,
+                        isIvaExempt: true,
+                        emoji: '🛍️',      // Un emoji genérico de bolsa de compras.
+                        code: 'VARIOS',
+                        brand: 'Detal'
+                    };
+
+                    // 4. Añadimos el producto al carrito y limpiamos la barra de búsqueda.
+                    addToCart(virtualProduct, 1, 'unidades');
+                    showToast(`"Producto Varios" de ${currentCurrency === 'VES' ? 'Bs.' : '$'}${formatCurrency(amount)} agregado.`);
+                    searchInput.value = '';
+                    searchProducts(); // Actualizamos la vista de productos.
+                    return; // ¡MUY IMPORTANTE! Terminamos la función aquí para no seguir buscando.
+                }
+                // --- FIN: Lógica para "Producto Varios" ---
+
+                // Si el texto no empieza con "+", la búsqueda normal continúa como siempre...
+                const productByCode = findProductByCode(searchTerm);
+                if (productByCode) {
+                    openQuantityModal(productByCode.id);
+                    searchInput.value = '';
+                    searchProducts();
+                    return;
+                }
+
+                const visibleProducts = document.querySelectorAll('.products-list .product-item:not(.hidden)');
+                if (visibleProducts.length === 1) {
+                    const uniqueProductElement = visibleProducts[0];
+                    const productId = parseInt(uniqueProductElement.dataset.productId);
+
+                    if (!isNaN(productId)) {
+                        openQuantityModal(productId);
+                        searchInput.value = '';
+                        searchProducts();
+                    }
+                } else if (visibleProducts.length === 0) {
+                    showToast('Producto no encontrado.');
                 }
             }
         }
@@ -1861,93 +2132,93 @@
             filterAndDisplayProducts(document.getElementById('searchInput').value.toLowerCase());
         }
 
-        function renderProductList() {
-            const list = document.getElementById('productsList');
-            list.innerHTML = inventoryProducts.map(product => {
-                const stockLevel = getStockLevel(product);
-                
-                // Use pricePerUnit for display, and adjust for currency
-                const priceUsd = product.isBulk ? product.pricePerUnit : product.price;
-                const priceVes = priceUsd * exchangeRate;
+        // mini_market_pos.html - REEMPLAZAR ESTA FUNCIÓN
 
-                const unitDisplay = product.isBulk ? `/${product.unit}` : '';
-                const stockDisplay = product.isBulk ? `${product.stock.toFixed(3)} ${product.unit}` : `${product.stock} unidades`;
-                
-                return `
-                    <div class="product-item" data-product-id="${product.id}" 
-                         data-product-name="${product.name.toLowerCase()}" 
-                         data-product-code="${(product.code || '').toLowerCase()}"
-                         data-product-brand="${(product.brand || '').toLowerCase()}"
-                         data-product-category="${(product.category || '').toLowerCase()}"
-                         onclick="openQuantityModal(${product.id})">
-                        <div class="product-emoji">${product.emoji}</div>
-                        <div class="product-info">
-                            <div class="product-name">${product.name}</div>
-                            <div class="product-code">${product.code}</div>
-                            <div class="product-prices">
-                                <span class="price-usd">$ ${formatCurrency(priceUsd)}${unitDisplay}</span>
-                                <span class="price-ves">Bs. ${formatCurrency(priceVes)}${unitDisplay}</span>
-                            </div>
-                            <div class="product-stock">
-                                <span class="stock-indicator ${stockLevel}"></span>
-                                <span>Stock: ${stockDisplay}</span>
-                            </div>
-                        </div>
-                    </div>`;
-            }).join('');
-            filterAndDisplayProducts(document.getElementById('searchInput').value.toLowerCase()); // Apply initial filter
+function renderProductList() {
+    const list = document.getElementById('productsList');
+    list.innerHTML = inventoryProducts.map(product => {
+        const stockLevel = getStockLevel(product);
+        
+        // Usamos el precio por unidad, ajustado a la moneda actual
+        const priceUsd = product.isBulk ? product.pricePerUnit : product.price;
+        const priceVes = priceUsd * exchangeRate;
+
+        const unitDisplay = product.isBulk ? `/${product.unit}` : '';
+        const stockDisplay = product.isBulk ? `${product.stock.toFixed(3)} ${product.unit}` : `${product.stock} unidades`;
+        
+        // ✨ CORRECCIÓN CLAVE: Se añade .toLowerCase() a los atributos data-*
+        return `
+            <div class="product-item" data-product-id="${product.id}" 
+                 data-product-name="${product.name.toLowerCase()}" 
+                 data-product-code="${(product.code || '').toLowerCase()}"
+                 data-product-brand="${(product.brand || '').toLowerCase()}"
+                 data-product-category="${(product.category || '').toLowerCase()}"
+                 onclick="openQuantityModal(${product.id})">
+                <div class="product-emoji">${product.emoji}</div>
+                <div class="product-info">
+                    <div class="product-name">${product.name} ${product.isIvaExempt ? '<span style="font-weight:400; color:#059669;">(E)</span>' : ''}</div>
+                    <div class="product-code">${product.code}</div>
+                    <div class="product-prices">
+                        <span class="price-usd">$ ${formatCurrency(priceUsd)}${unitDisplay}</span>
+                        <span class="price-ves">Bs. ${formatCurrency(priceVes)}${unitDisplay}</span>
+                    </div>
+                    <div class="product-stock">
+                        <span class="stock-indicator ${stockLevel}"></span>
+                        <span>Stock: ${stockDisplay}</span>
+                    </div>
+                </div>
+            </div>`;
+    }).join('');
+    // Al final, aplicamos el filtro inicial para asegurar que todo se muestre correctamente.
+    filterAndDisplayProducts();
+}
+
+        // mini_market_pos.html - REEMPLAZAR ESTA FUNCIÓN
+
+function filterAndDisplayProducts(searchTerm = '') {
+    const productItems = document.querySelectorAll('.products-list .product-item');
+    let visibleCount = 0;
+    const list = document.getElementById('productsList');
+    const emptyStateHtml = `
+        <div style="text-align:center;padding:2rem;color:#a0aec0;" id="emptyProductList">
+            <i class="fas fa-search" style="font-size:3rem;margin-bottom:1rem;opacity:.3;"></i>
+            <div style="font-size:1.1rem;margin-bottom:0.5rem;">Sin productos</div>
+            <div style="font-size:0.9rem;">No se encontraron resultados</div>
+        </div>`;
+    let emptyStateElement = document.getElementById('emptyProductList');
+
+    productItems.forEach(item => {
+        // ✨ CORRECCIÓN: Nos aseguramos de leer los datos en minúsculas.
+        const productName = (item.dataset.productName || '').toLowerCase();
+        const productCode = (item.dataset.productCode || '').toLowerCase();
+        const productBrand = (item.dataset.productBrand || '').toLowerCase();
+        const productCategory = (item.dataset.productCategory || '').toLowerCase();
+
+        const matchesSearch = searchTerm === '' ||
+            productName.includes(searchTerm) ||
+            productCode.includes(searchTerm) ||
+            productBrand.includes(searchTerm);
+        
+        const matchesFilter = currentFilter === 'all' || productCategory.includes(currentFilter.toLowerCase());
+
+        const productId = parseInt(item.dataset.productId);
+        const productInInventory = inventoryProducts.find(p => p.id === productId);
+        const hasStock = productInInventory && productInInventory.stock > 0;
+
+        if (matchesSearch && matchesFilter && hasStock) {
+            item.classList.remove('hidden');
+            visibleCount++;
+        } else {
+            item.classList.add('hidden');
         }
+    });
 
-        function filterAndDisplayProducts(searchTerm = '') {
-            const productItems = document.querySelectorAll('.products-list .product-item');
-            let visibleCount = 0;
-            const list = document.getElementById('productsList');
-            const emptyStateHtml = `
-                <div style="text-align:center;padding:2rem;color:#a0aec0;" id="emptyProductList">
-                    <i class="fas fa-search" style="font-size:3rem;margin-bottom:1rem;opacity:.3;"></i>
-                    <div style="font-size:1.1rem;margin-bottom:0.5rem;">Sin productos</div>
-                    <div style="font-size:0.9rem;">No se encontraron resultados</div>
-                </div>`;
-            let emptyStateElement = document.getElementById('emptyProductList');
-
-            productItems.forEach(item => {
-                const productName = item.dataset.productName;
-                const productCode = item.dataset.productCode;
-                const productBrand = item.dataset.productBrand;
-                const productCategory = item.dataset.productCategory;
-
-                const matchesSearch = searchTerm === '' ||
-                    productName.includes(searchTerm) ||
-                    productCode.includes(searchTerm) ||
-                    productBrand.includes(searchTerm);
-                
-                const matchesFilter = currentFilter === 'all' || productCategory.includes(currentFilter.toLowerCase());
-
-                // Check if product has stock (assuming stock is handled by `inventoryProducts` array)
-                const productId = parseInt(item.dataset.productId);
-                const productInInventory = inventoryProducts.find(p => p.id === productId);
-                const hasStock = productInInventory && productInInventory.stock > 0;
-
-                if (matchesSearch && matchesFilter && hasStock) {
-                    item.classList.remove('hidden');
-                    visibleCount++;
-                } else {
-                    item.classList.add('hidden');
-                }
-            });
-
-            if (visibleCount === 0) {
-                if (!emptyStateElement) {
-                    list.insertAdjacentHTML('beforeend', emptyStateHtml);
-                } else {
-                    emptyStateElement.classList.remove('hidden');
-                }
-            } else {
-                if (emptyStateElement) {
-                    emptyStateElement.classList.add('hidden');
-                }
-            }
-        }
+    // Manejo del mensaje "Sin resultados"
+    if (emptyStateElement) emptyStateElement.remove();
+    if (visibleCount === 0 && inventoryProducts.length > 0) {
+        list.insertAdjacentHTML('beforeend', emptyStateHtml);
+    }
+}
 
 
         function getStockLevel(product) {
@@ -2103,8 +2374,9 @@
             updateCartUI();
         }
 
+        // REEMPLAZA LA FUNCIÓN ANTERIOR CON ESTA VERSIÓN CORREGIDA
         function removeFromCart(productId) {
-            cart = cart.filter(item => item.product.id !== productId);
+            cart = cart.filter(item => item.product.id != productId); // <-- CAMBIO AQUÍ
             updateCartUI();
             showToast("Producto eliminado");
         }
@@ -2180,11 +2452,11 @@
                         <div class="cart-item">
                             <div class="cart-item-icon">${item.product.emoji}</div>
                             <div class="cart-item-details">
-                                <div class="cart-item-name">${item.product.name}</div>
+                                <div class="cart-item-name">${item.product.name} ${item.product.isIvaExempt ? '<span style="font-weight:400; color:#059669;">(E)</span>' : ''}</div>
                                 <div class="cart-item-info">${item.product.brand} - ${item.product.code}</div>
                                 <div class="cart-item-pricing">
                                     <span class="unit-price">${symbol}${formatCurrency(price)}${unitPriceLabel}</span>
-                                    ${applyIVA ? `<span class="price-with-iva">(${symbol}${formatCurrency(priceWithIVA)}${unitPriceLabel} con IVA)</span>` : ''}
+                                    ${applyIVA && !item.product.isIvaExempt ? `<span class="price-with-iva">(${symbol}${formatCurrency(priceWithIVA)}${unitPriceLabel} con IVA)</span>` : ''}
                                     <span class="subtotal-price">${symbol}${formatCurrency(subtotal)}</span>
                                 </div>
                             </div>
@@ -2192,7 +2464,7 @@
                                 <button class="qty-btn" onclick="updateQuantity(${item.product.id}, ${item.quantity - (item.product.isBulk ? 0.001 : 1)})">-</button>
                                 <span class="qty-display">${quantityDisplay} ${unitLabel}</span>
                                 <button class="qty-btn" onclick="updateQuantity(${item.product.id}, ${item.quantity + (item.product.isBulk ? 0.001 : 1)})">+</button>
-                                <button class="remove-btn" onclick="removeFromCart(${item.product.id})">
+                                <button class="remove-btn" onclick="removeFromCart('${item.product.id}')">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </div>
@@ -2213,28 +2485,46 @@
             updateCartUI();
         }
 
-        function calculateSubtotal() {
-            return cart.reduce((sum, item) => {
-                // Use pricePerUnit for bulk products, and regular price for others
-                const basePrice = item.product.isBulk ? item.product.pricePerUnit : item.product.price;
-                const price = currentCurrency === 'VES' ? basePrice * exchangeRate : basePrice;
-                return sum + (price * item.quantity);
-            }, 0);
-        }
+        // BORRA TUS FUNCIONES calculateSubtotal Y updateTotals, Y PEGA ESTA EN SU LUGAR
 
         function updateTotals() {
-            const subtotal = calculateSubtotal();
+            let subtotalIvaApplicable = 0;
+            let subtotalIvaExempt = 0;
+
+            // 1. Recorremos el carrito y separamos los subtotales
+            cart.forEach(item => {
+                const basePrice = item.product.isBulk ? item.product.pricePerUnit : item.product.price;
+                const price = currentCurrency === 'VES' ? basePrice * exchangeRate : basePrice;
+                const itemTotal = price * item.quantity;
+
+                // Verificamos si el producto está marcado como exento
+                if (item.product.isIvaExempt) {
+                    subtotalIvaExempt += itemTotal;
+                } else {
+                    subtotalIvaApplicable += itemTotal;
+                }
+            });
+
+            const subtotal = subtotalIvaApplicable + subtotalIvaExempt;
+
+            // 2. Calculamos el descuento de forma proporcional
             const discountAmount = subtotal * (currentDiscount / 100);
-            const afterDiscount = subtotal - discountAmount;
+            const discountRatio = (subtotal > 0) ? (discountAmount / subtotal) : 0;
+
+            const discountOnIvaApplicable = subtotalIvaApplicable * discountRatio;
+
+            const afterDiscountIvaApplicable = subtotalIvaApplicable - discountOnIvaApplicable;
+
+            // 3. Calculamos el IVA SOLO sobre la base de los productos que lo aplican
             let iva = 0;
-            let total = afterDiscount;
-            
-            // IVA se aplica solo si applyIVA es true
             if (applyIVA) {
-                iva = afterDiscount * 0.16;
-                total = afterDiscount + iva;
+                iva = afterDiscountIvaApplicable * 0.16;
             }
-            
+
+            // 4. Calculamos el total final
+            const total = subtotal - discountAmount + iva;
+
+            // 5. Actualizamos la interfaz
             const symbol = currentCurrency === 'VES' ? 'Bs. ' : '$ ';
             document.getElementById('subtotal').textContent = symbol + formatCurrency(subtotal);
             document.getElementById('discount').textContent = symbol + formatCurrency(discountAmount);
@@ -2536,18 +2826,39 @@
             updateConfirmButton(); // Re-evaluate button state
         }
 
+        // REEMPLAZA LA FUNCIÓN ANTERIOR CON ESTA VERSIÓN CORREGIDA
         function updateModalTotals() {
-            const subtotal = calculateSubtotal();
+            let subtotalIvaApplicable = 0;
+            let subtotalIvaExempt = 0;
+
+            // 1. Recorremos el carrito para obtener los subtotales (igual que en updateTotals)
+            cart.forEach(item => {
+                const basePrice = item.product.isBulk ? item.product.pricePerUnit : item.product.price;
+                const price = currentCurrency === 'VES' ? basePrice * exchangeRate : basePrice;
+                const itemTotal = price * item.quantity;
+
+                if (item.product.isIvaExempt) {
+                    subtotalIvaExempt += itemTotal;
+                } else {
+                    subtotalIvaApplicable += itemTotal;
+                }
+            });
+
+            const subtotal = subtotalIvaApplicable + subtotalIvaExempt;
+
+            // 2. Calculamos el resto de los montos
             const discountAmount = subtotal * (currentDiscount / 100);
-            const afterDiscount = subtotal - discountAmount;
+            const discountRatio = (subtotal > 0) ? (discountAmount / subtotal) : 0;
+            const discountOnIvaApplicable = subtotalIvaApplicable * discountRatio;
+            const afterDiscountIvaApplicable = subtotalIvaApplicable - discountOnIvaApplicable;
+
             let iva = 0;
-            let total = afterDiscount;
-            
             if (applyIVA) {
-                iva = afterDiscount * 0.16;
-                total = afterDiscount + iva;
+                iva = afterDiscountIvaApplicable * 0.16;
             }
-            
+            const total = subtotal - discountAmount + iva;
+
+            // 3. Actualizamos la interfaz del MODAL con los valores correctos
             const symbol = currentCurrency === 'VES' ? 'Bs. ' : '$ ';
             document.getElementById('modalSubtotal').textContent = symbol + formatCurrency(subtotal);
             document.getElementById('modalDiscount').textContent = symbol + formatCurrency(discountAmount);
@@ -2591,6 +2902,7 @@
                     break;
                 case 'ves-mobile': // Reference is optional, so always enabled if selected
                 case 'ves-pos':
+                case 'ves-biopago':
                 case 'ves-cash':
                 case 'usd-zelle':
                 case 'usd-cash-simple': // Assuming a simple USD cash option without change calculation
@@ -2709,18 +3021,40 @@
             }
         }
 
+        // REEMPLÁZALA CON ESTA VERSIÓN CORRECTA
         function calculateSaleTotals() {
-            const subtotal = calculateSubtotal(); // This subtotal is already in currentCurrency
+            let subtotalIvaApplicable = 0;
+            let subtotalIvaExempt = 0;
+
+            // 1. Separa los subtotales basado en la exención de IVA de cada producto
+            cart.forEach(item => {
+                const basePrice = item.product.isBulk ? item.product.pricePerUnit : item.product.price;
+                // OJO: El precio base siempre está en USD, no necesitamos la moneda actual aquí
+                // ya que el registro final debe ser consistente.
+                const itemTotal = basePrice * item.quantity;
+
+                if (item.product.isIvaExempt) {
+                    subtotalIvaExempt += itemTotal;
+                } else {
+                    subtotalIvaApplicable += itemTotal;
+                }
+            });
+
+            const subtotal = subtotalIvaApplicable + subtotalIvaExempt;
+
+            // 2. Calcula el descuento y el IVA sobre las bases correctas
             const discountAmount = subtotal * (currentDiscount / 100);
-            const afterDiscount = subtotal - discountAmount;
+            const discountRatio = (subtotal > 0) ? (discountAmount / subtotal) : 0;
+            const afterDiscountIvaApplicable = subtotalIvaApplicable * (1 - discountRatio);
+
             let iva = 0;
-            let total = afterDiscount;
-            
             if (applyIVA) {
-                iva = afterDiscount * 0.16;
-                total = afterDiscount + iva;
+                iva = afterDiscountIvaApplicable * 0.16;
             }
-            
+
+            const total = subtotal - discountAmount + iva;
+
+            // 3. Devuelve el objeto con los totales finales y correctos
             return { subtotal, discount: discountAmount, iva, total };
         }
 
@@ -2742,23 +3076,25 @@
             renderProductList(); // Re-render the product list
         }
 
-        function resetSale() {
-            cart = [];
-            selectedPaymentMethod = null;
-            currentDiscount = 0;
-            customerData = null;
-            paymentDetails = {}; // Reset payment details
-            
-            document.getElementById('discountInput').value = '';
-            document.getElementById('searchInput').value = '';
-            
-            saleId = generateSaleId(); // Generate a new sale ID
-            document.getElementById('saleId').textContent = saleId;
-            
-            updateCartUI(); // Update the cart interface
-            document.getElementById('searchInput').focus(); // Re-focus search
-            toggleTotalsDetails(true); // Collapse total details on sale reset
-        }
+        function resetSale(generateNewId = true) {
+    cart = [];
+    selectedPaymentMethod = null;
+    currentDiscount = 0;
+    customerData = null;
+    paymentDetails = {};
+
+    document.getElementById('discountInput').value = '';
+    document.getElementById('searchInput').value = '';
+
+    if (generateNewId) {
+        saleId = generateSaleId();
+        document.getElementById('saleId').textContent = saleId;
+    }
+
+    updateCartUI();
+    document.getElementById('searchInput').focus();
+    toggleTotalsDetails(true);
+}
 
         // ===== MODAL DE CONFIRMACIÓN =====
         function showConfirmModal(title, message, callback) {
@@ -2829,6 +3165,132 @@
                 window.location.href = 'menu.html';
             }
         }
+
+        // ===== FUNCIONES PARA CARRITOS EN ESPERA =====
+
+/**
+ * Guarda el carrito actual en la "gaveta" (array heldCarts).
+ */
+function holdCurrentCart() {
+    if (cart.length === 0) {
+        showToast('El carrito está vacío, no hay nada que guardar.');
+        return;
+    }
+
+    const cartName = prompt('Ingresa un nombre para este carrito (ej: Cliente de la gorra roja)', `Carrito - ${new Date().toLocaleTimeString()}`);
+
+    if (cartName) {
+        const cartState = {
+            name: cartName,
+            cart: [...cart], // Importante: creamos una copia del carrito
+            discount: currentDiscount
+        };
+        heldCarts.push(cartState);
+
+        showToast(`Carrito "${cartName}" guardado.`);
+        resetSale(false); // Limpiamos el carrito actual sin generar nuevo ID de venta
+        updateHeldCartsIndicator();
+    }
+}
+
+/**
+ * Muestra el modal con la lista de carritos guardados.
+ */
+function openHeldCartsModal() {
+    if (heldCarts.length === 0) {
+        showToast('No hay carritos en espera.');
+        return;
+    }
+
+    const list = document.getElementById('heldCartsList');
+    list.innerHTML = '';
+
+    heldCarts.forEach((heldCart, index) => {
+        const total = heldCart.cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
+        const li = document.createElement('li');
+        li.className = 'held-cart-item';
+        li.innerHTML = `
+            <div class="held-cart-info">
+                <span class="held-cart-name">${heldCart.name}</span>
+                <span class="held-cart-details">${heldCart.cart.length} productos - Total (aprox): $${formatCurrency(total)}</span>
+            </div>
+            <div class="held-cart-actions">
+                <button class="restore-btn" onclick="restoreCart(${index})">Restaurar</button>
+                <button class="delete-held-btn" onclick="deleteHeldCart(${index})">Eliminar</button>
+            </div>
+        `;
+        list.appendChild(li);
+    });
+    document.getElementById('heldCartsModal').classList.add('active');
+}
+
+function closeHeldCartsModal() {
+    document.getElementById('heldCartsModal').classList.remove('active');
+}
+
+/**
+ * Restaura un carrito guardado al área de trabajo principal.
+ */
+function restoreCart(index) {
+    if (cart.length > 0) {
+        if (!confirm('¿Seguro? El carrito actual se reemplazará por el que vas a restaurar.')) {
+            return;
+        }
+    }
+
+    const cartToRestore = heldCarts[index];
+    cart = [...cartToRestore.cart];
+    currentDiscount = cartToRestore.discount;
+
+    heldCarts.splice(index, 1);
+
+    updateCartUI();
+    document.getElementById('discountInput').value = currentDiscount > 0 ? `${currentDiscount}%` : '';
+    showToast(`Carrito "${cartToRestore.name}" restaurado.`);
+    closeHeldCartsModal();
+    updateHeldCartsIndicator();
+}
+
+/**
+ * Elimina un carrito guardado sin restaurarlo.
+ */
+function deleteHeldCart(index) {
+    const deletedCartName = heldCarts[index].name;
+    heldCarts.splice(index, 1);
+    showToast(`Carrito "${deletedCartName}" eliminado.`);
+
+    if (heldCarts.length === 0) {
+        closeHeldCartsModal();
+    } else {
+        openHeldCartsModal(); // Recargamos la lista del modal
+    }
+    updateHeldCartsIndicator();
+}
+
+/**
+ * Actualiza el contador visual en el botón de carritos guardados.
+ */
+function updateHeldCartsIndicator() {
+    const badge = document.getElementById('heldCartsBadge');
+    if (heldCarts.length > 0) {
+        badge.textContent = heldCarts.length;
+        badge.style.display = 'flex';
+    } else {
+        badge.style.display = 'none';
+    }
+}
+
+
+        // AÑADE ESTA NUEVA FUNCIÓN
+
+        function toggleFilterSection() {
+            const filtersContainer = document.getElementById('filtersContainer');
+            const toggleIcon = document.getElementById('filterToggleIcon');
+
+            filtersContainer.classList.toggle('collapsed');
+            toggleIcon.classList.toggle('rotated');
+        }
+
 
         // Collapsible section function
         function toggleSection(sectionId, forceCollapse = false) {
