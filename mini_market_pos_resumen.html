@@ -1172,6 +1172,16 @@
             color: #e2e8f0;
         }
 
+        .sale-tag.exempt-iva {
+            background: #e2e8f0;
+            color: #475569;
+        }
+
+        .dark-mode .sale-tag.exempt-iva {
+            background: #475569;
+            color: #cbd5e1;
+        }
+
     </style>
 </head>
 <body>
@@ -1274,6 +1284,7 @@
                         <option value="ves-pos">Punto de Venta</option>
                         <option value="ves-mobile">Pago Móvil</option>
                         <option value="usd-cash">Efectivo USD</option>
+                        <option value="ves-biopago">Biopago</option>
                         <option value="usd-zelle">Zelle</option>
                         <option value="combined">Combinado USD/VES</option>
                     </select>
@@ -1393,6 +1404,7 @@
     <script>
         // Global variables
         let allSales = [];
+        let mainInventory = [];
         let filteredSales = [];
         let currentPage = 1;
         let itemsPerPage = 10;
@@ -1413,9 +1425,7 @@
 
         // Initialize application
         document.addEventListener('DOMContentLoaded', function() {
-            loadSales();
-            loadMetrics();
-            loadCharts();
+            loadSales(); // Esta función ahora iniciará todo el proceso.
             initializeDateInputs();
             setupEventListeners();
             setupThemeToggle();
@@ -1496,177 +1506,31 @@
         }
 
         function loadSales() {
-            try {
-                const storedSales = localStorage.getItem('pos_sales');
-                if (storedSales) {
-                    allSales = JSON.parse(storedSales);
-                } else {
-                    // ANTES: Aquí se creaban los datos de ejemplo.
-                    // AHORA: Simplemente se crea un arreglo vacío.
-                    allSales = [];
-                }
-            } catch (e) {
-                console.error('Error loading sales data from localStorage:', e);
-                // Si hay un error, también se inicia con un arreglo vacío.
-                allSales = [];
-            }
-            
-            // Sort by timestamp (most recent first)
-            allSales.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-            applyFilters();
+    try {
+        const storedSales = localStorage.getItem('pos_sales');
+        if (storedSales) {
+            allSales = JSON.parse(storedSales);
+        } else {
+            allSales = [];
+        }
+        
+        // ✨ CARGA EL INVENTARIO PARA CONSULTAS
+        const storedInventory = localStorage.getItem('ciervo_inventory');
+        if (storedInventory) {
+            mainInventory = JSON.parse(storedInventory);
+        } else {
+            mainInventory = [];
         }
 
-        function loadMetrics() {
-            const today = new Date();
-            const yesterday = new Date(today);
-            yesterday.setDate(yesterday.getDate() - 1);
-            
-            const startOfToday = new Date(today.setHours(0, 0, 0, 0));
-            const startOfYesterday = new Date(yesterday.setHours(0, 0, 0, 0));
-            const startOfWeek = new Date(today);
-            startOfWeek.setDate(today.getDate() - 7);
-            const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-
-            // Calculate metrics
-            const todaySales = allSales.filter(sale => new Date(sale.timestamp) >= startOfToday);
-            const yesterdaySales = allSales.filter(sale => 
-                new Date(sale.timestamp) >= startOfYesterday && new Date(sale.timestamp) < startOfToday
-            );
-            const weekSales = allSales.filter(sale => new Date(sale.timestamp) >= startOfWeek);
-            const monthSales = allSales.filter(sale => new Date(sale.timestamp) >= startOfMonth);
-
-            // Calculate totals in VES and USD, considering combined payments
-            let todayTotalVES = 0;
-            let todayTotalUSD = 0;
-            let yesterdayTotalVES = 0;
-            let yesterdayTotalUSD = 0;
-            let weekTotalVES = 0;
-            let weekTotalUSD = 0;
-            let monthTotalVES = 0;
-            let monthTotalUSD = 0;
-
-            todaySales.forEach(sale => {
-                if (sale.paymentMethod === 'combined' && sale.combinedPayment) {
-                    todayTotalVES += sale.combinedPayment.paidVes;
-                    todayTotalUSD += sale.combinedPayment.paidUsd;
-                } else if (sale.currency === 'VES') {
-                    todayTotalVES += sale.totals.total;
-                } else if (sale.currency === 'USD') {
-                    todayTotalUSD += sale.totals.total;
-                }
-            });
-
-            yesterdaySales.forEach(sale => {
-                if (sale.paymentMethod === 'combined' && sale.combinedPayment) {
-                    yesterdayTotalVES += sale.combinedPayment.paidVes;
-                    yesterdayTotalUSD += sale.combinedPayment.paidUsd;
-                } else if (sale.currency === 'VES') {
-                    yesterdayTotalVES += sale.totals.total;
-                } else if (sale.currency === 'USD') {
-                    yesterdayTotalUSD += sale.totals.total;
-                }
-            });
-
-            weekSales.forEach(sale => {
-                if (sale.paymentMethod === 'combined' && sale.combinedPayment) {
-                    weekTotalVES += sale.combinedPayment.paidVes;
-                    weekTotalUSD += sale.combinedPayment.paidUsd;
-                } else if (sale.currency === 'VES') {
-                    weekTotalVES += sale.totals.total;
-                } else if (sale.currency === 'USD') {
-                    weekTotalUSD += sale.totals.total;
-                }
-            });
-
-            monthSales.forEach(sale => {
-                if (sale.paymentMethod === 'combined' && sale.combinedPayment) {
-                    monthTotalVES += sale.combinedPayment.paidVes;
-                    monthTotalUSD += sale.combinedPayment.paidUsd;
-                } else if (sale.currency === 'VES') {
-                    monthTotalVES += sale.totals.total;
-                } else if (sale.currency === 'USD') {
-                    monthTotalUSD += sale.totals.total;
-                }
-            });
-
-            // Calculate changes
-            const dailyChangeVES = yesterdayTotalVES > 0 ? ((todayTotalVES - yesterdayTotalVES) / yesterdayTotalVES * 100) : 0;
-            const dailyChangeUSD = yesterdayTotalUSD > 0 ? ((todayTotalUSD - yesterdayTotalUSD) / yesterdayTotalUSD * 100) : 0;
-            const transactionsChange = yesterdaySales.length > 0 ? ((todaySales.length - yesterdaySales.length) / yesterdaySales.length * 100) : 0;
-
-            // Get most sold products
-            const productSales = {};
-            weekSales.forEach(sale => {
-                sale.items.forEach(item => {
-                    const productName = item.product.name;
-                    productSales[productName] = (productSales[productName] || 0) + item.quantity;
-                });
-            });
-
-            const topProduct = Object.entries(productSales).sort((a, b) => b[1] - a[1])[0];
-
-            const metrics = [
-                {
-                    title: 'Ventas de Hoy (VES)',
-                    value: formatCurrency(todayTotalVES),
-                    change: dailyChangeVES,
-                    icon: '💰',
-                    color: 'linear-gradient(135deg, #059669, #14b8a6)'
-                },
-                {
-                    title: 'Ventas de Hoy (USD)',
-                    value: formatCurrency(todayTotalUSD, 'USD'),
-                    change: dailyChangeUSD,
-                    icon: '💵',
-                    color: 'linear-gradient(135deg, #3b82f6, #6366f1)'
-                },
-                {
-                    title: 'Transacciones Hoy',
-                    value: todaySales.length,
-                    change: transactionsChange,
-                    icon: '📊',
-                    color: 'linear-gradient(135deg, #8b5cf6, #a855f7)'
-                },
-                {
-                    title: 'Ventas de la Semana (VES)',
-                    value: formatCurrency(weekTotalVES),
-                    change: 0, // Not calculating weekly change for simplicity
-                    icon: '📈',
-                    color: 'linear-gradient(135deg, #f59e0b, #fbbf24)'
-                },
-                {
-                    title: 'Ventas de la Semana (USD)',
-                    value: formatCurrency(weekTotalUSD, 'USD'),
-                    change: 0,
-                    icon: '💸',
-                    color: 'linear-gradient(135deg, #ef4444, #f87171)'
-                },
-                {
-                    title: 'Ventas del Mes (VES)',
-                    value: formatCurrency(monthTotalVES),
-                    change: 0,
-                    icon: '🗓️',
-                    color: 'linear-gradient(135deg, #10b981, #34d399)'
-                },
-                {
-                    title: 'Ventas del Mes (USD)',
-                    value: formatCurrency(monthTotalUSD, 'USD'),
-                    change: 0,
-                    icon: '🏦',
-                    color: 'linear-gradient(135deg, #6366f1, #818cf8)'
-                },
-                {
-                    title: 'Producto Más Vendido',
-                    value: topProduct ? topProduct[0] : 'N/A',
-                    change: 0,
-                    icon: '🏆',
-                    color: 'linear-gradient(135deg, #ec4899, #f472b6)',
-                    subtitle: topProduct ? `${topProduct[1]} unidades` : ''
-                }
-            ];
-
-            renderMetrics(metrics);
-        }
+    } catch (e) {
+        console.error('Error loading data from localStorage:', e);
+        allSales = [];
+        mainInventory = [];
+    }
+    
+    allSales.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    applyFilters();
+}
 
         function loadCharts() {
             // Sales by day chart (last 7 days)
@@ -1679,116 +1543,147 @@
         }
 
         function calculateSalesByDay() {
-            const result = {};
-            const today = new Date();
-            
-            // Initialize last 7 days with 0 sales
-            for (let i = 6; i >= 0; i--) {
-                const date = new Date(today);
-                date.setDate(today.getDate() - i);
-                const dateString = date.toISOString().split('T')[0];
-                result[dateString] = { ves: 0, usd: 0 };
+    const result = {};
+
+    if (filteredSales.length === 0) {
+        return {};
+    }
+
+    // 1. Encuentra el rango de fechas dentro de los resultados filtrados.
+    const dates = filteredSales.map(s => {
+        const saleDate = new Date(s.timestamp);
+        return new Date(saleDate.getFullYear(), saleDate.getMonth(), saleDate.getDate());
+    });
+    const minDate = new Date(Math.min.apply(null, dates));
+    const maxDate = new Date(Math.max.apply(null, dates));
+
+    // 2. Inicializa todos los días en ese rango con un valor de cero.
+    let currentDate = new Date(minDate);
+    while (currentDate <= maxDate) {
+        const dateString = currentDate.toISOString().split('T')[0];
+        result[dateString] = { ves: 0 };
+        currentDate.setDate(currentDate.getDate() + 1);
+    }
+    
+    // 3. Llena los datos usando únicamente las ventas que pasaron el filtro.
+    filteredSales.forEach(sale => {
+        const saleDate = new Date(sale.timestamp);
+        const saleDateString = new Date(saleDate.getFullYear(), saleDate.getMonth(), saleDate.getDate()).toISOString().split('T')[0];
+        
+        if (result.hasOwnProperty(saleDateString)) {
+            const correctTotals = recalculateTotalFromItems(sale);
+            let saleTotalInVES = 0;
+
+            if (sale.paymentMethod === 'combined' && sale.combinedPayment) {
+                saleTotalInVES = sale.combinedPayment.paidVes + (sale.combinedPayment.paidUsd * sale.exchangeRate);
+            } else if (sale.currency === 'VES') {
+                saleTotalInVES = correctTotals.total;
+            } else if (sale.currency === 'USD') {
+                saleTotalInVES = correctTotals.total * sale.exchangeRate;
             }
-            
-            // Calculate sales for each day (using actual paid amounts for combined payments)
-            allSales.forEach(sale => {
-                const saleDate = new Date(sale.timestamp).toISOString().split('T')[0];
-                if (result.hasOwnProperty(saleDate)) {
-                    if (sale.paymentMethod === 'combined' && sale.combinedPayment) {
-                        result[saleDate].ves += sale.combinedPayment.paidVes;
-                        result[saleDate].usd += sale.combinedPayment.paidUsd;
-                    } else if (sale.currency === 'VES') {
-                        result[saleDate].ves += sale.totals.total;
-                    } else if (sale.currency === 'USD') {
-                        result[saleDate].usd += sale.totals.total;
-                    }
-                }
-            });
-            
-            return result;
+            result[saleDateString].ves += saleTotalInVES;
         }
+    });
+
+    return result;
+}
 
         function calculatePaymentMethods() {
-            const result = {};
-            
-            allSales.forEach(sale => {
-                const method = getPaymentMethodName(sale.paymentMethod);
-                if (!result[method]) {
-                    result[method] = { ves: 0, usd: 0 };
-                }
-
-                if (sale.paymentMethod === 'combined' && sale.combinedPayment) {
-                    result[method].ves += sale.combinedPayment.paidVes;
-                    result[method].usd += sale.combinedPayment.paidUsd;
-                } else if (sale.currency === 'VES') {
-                    result[method].ves += sale.totals.total;
-                } else if (sale.currency === 'USD') {
-                    result[method].usd += sale.totals.total;
-                }
-            });
-            
-            return result;
+    const result = {};
+    
+    // ✨ CORRECCIÓN: Ahora itera sobre las ventas filtradas (`filteredSales`).
+    filteredSales.forEach(sale => {
+        const method = getPaymentMethodName(sale.paymentMethod);
+        if (!result[method]) {
+            result[method] = { ves: 0 }; // El gráfico solo está mostrando montos en VES.
         }
+        
+        // Se usan los totales reconstruidos para asegurar la precisión.
+        const correctTotals = recalculateTotalFromItems(sale);
+        let saleTotalInVES = 0;
+
+        if (sale.paymentMethod === 'combined' && sale.combinedPayment) {
+            saleTotalInVES = sale.combinedPayment.paidVes + (sale.combinedPayment.paidUsd * sale.exchangeRate);
+        } else if (sale.currency === 'VES') {
+            saleTotalInVES = correctTotals.total;
+        } else if (sale.currency === 'USD') {
+            saleTotalInVES = correctTotals.total * sale.exchangeRate;
+        }
+        result[method].ves += saleTotalInVES;
+    });
+    
+    return result;
+}
 
         function renderSalesChart(salesData) {
-            const ctx = document.getElementById('salesChart').getContext('2d');
-            if (window.salesChartInstance) {
-                window.salesChartInstance.destroy();
-            }
+    const ctx = document.getElementById('salesChart').getContext('2d');
+    if (window.salesChartInstance) {
+        window.salesChartInstance.destroy();
+    }
+    
+    // ✨ CORRECCIÓN: El título del gráfico ahora es dinámico y refleja el filtro.
+    let chartTitle = 'Ventas por Día';
+    if (currentFilters.dateFrom || currentFilters.dateTo) {
+        chartTitle += ` (${currentFilters.dateFrom || 'Inicio'} al ${currentFilters.dateTo || 'Fin'})`;
+    }
+    document.querySelector('#salesChart').closest('.chart-card').querySelector('.chart-title').textContent = chartTitle;
 
-            const labels = Object.keys(salesData).map(date => {
-                const d = new Date(date);
-                return d.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric' });
-            });
+    const labels = Object.keys(salesData).map(date => {
+        // Se ajusta la fecha para mostrarla correctamente sin problemas de zona horaria.
+        const d = new Date(date);
+        const userTimezoneOffset = d.getTimezoneOffset() * 60000;
+        const localDate = new Date(d.getTime() + userTimezoneOffset);
+        return localDate.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
+    });
 
-            const vesData = Object.values(salesData).map(data => data.ves);
+    const vesData = Object.values(salesData).map(data => data.ves);
 
-            window.salesChartInstance = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: labels,
-                    datasets: [
-                        {
-                            label: 'Ventas por Día (Bs.)',
-                            data: vesData,
-                            backgroundColor: 'rgba(59, 130, 246, 0.5)',
-                            borderColor: 'rgb(59, 130, 246)',
-                            borderWidth: 1
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                callback: function(value) {
-                                    return 'Bs. ' + formatCurrency(value);
-                                }
-                            }
-                        }
-                    },
-                    plugins: {
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    let label = context.dataset.label || '';
-                                    if (label) {
-                                        label += ': ';
-                                    }
-                                    if (context.parsed.y !== null) {
-                                        label += 'Bs. ' + formatCurrency(context.parsed.y);
-                                    }
-                                    return label;
-                                }
-                            }
+    window.salesChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Ventas por Día (Bs.)',
+                    data: vesData,
+                    backgroundColor: 'rgba(59, 130, 246, 0.5)',
+                    borderColor: 'rgb(59, 130, 246)',
+                    borderWidth: 1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return 'Bs. ' + formatCurrency(value);
                         }
                     }
                 }
-            });
+            },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.dataset.label || '';
+                            if (label) {
+                                label += ': ';
+                            }
+                            if (context.parsed.y !== null) {
+                                label += 'Bs. ' + formatCurrency(context.parsed.y);
+                            }
+                            return label;
+                        }
+                    }
+                }
+            }
         }
+    });
+}
 
         function renderPaymentChart(paymentData) {
             const ctx = document.getElementById('paymentChart').getContext('2d');
@@ -1877,53 +1772,72 @@
         }
 
         function setQuickFilter(filter) {
-            // Update button states
-            document.querySelectorAll('.quick-filter-btn').forEach(btn => btn.classList.remove('active'));
-            event.target.classList.add('active');
+    // Update button states
+    document.querySelectorAll('.quick-filter-btn').forEach(btn => btn.classList.remove('active'));
+    // Ensure event.target exists before using it
+    if (event && event.target) {
+        event.target.classList.add('active');
+    }
 
-            currentFilters.quickFilter = filter;
-            currentPage = 1;
+    currentFilters.quickFilter = filter;
+    currentPage = 1;
 
-            const today = new Date();
-            const dateFrom = document.getElementById('dateFrom');
-            const dateTo = document.getElementById('dateTo');
+    const dateFrom = document.getElementById('dateFrom');
+    const dateTo = document.getElementById('dateTo');
 
-            switch(filter) {
-                case 'today':
-                    dateFrom.value = today.toISOString().split('T')[0];
-                    dateTo.value = today.toISOString().split('T')[0];
-                    break;
-                case 'week':
-                    const weekAgo = new Date(today);
-                    weekAgo.setDate(today.getDate() - 7);
-                    dateFrom.value = weekAgo.toISOString().split('T')[0];
-                    dateTo.value = today.toISOString().split('T')[0];
-                    break;
-                case 'month':
-                    const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-                    dateFrom.value = monthStart.toISOString().split('T')[0];
-                    dateTo.value = today.toISOString().split('T')[0];
-                    break;
-                case 'last7':
-                    const sevenDaysAgo = new Date(today);
-                    sevenDaysAgo.setDate(today.getDate() - 7);
-                    dateFrom.value = sevenDaysAgo.toISOString().split('T')[0];
-                    dateTo.value = today.toISOString().split('T')[0];
-                    break;
-                case 'lastMonth':
-                    const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-                    const lastMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
-                    dateFrom.value = lastMonth.toISOString().split('T')[0];
-                    dateTo.value = lastMonthEnd.toISOString().split('T')[0];
-                    break;
-                case 'all':
-                    dateFrom.value = '';
-                    dateTo.value = '';
-                    break;
-            }
+    // ✨ INICIO DE LA CORRECCIÓN DE ZONA HORARIA ✨
+    // Obtenemos la fecha actual en la zona horaria del navegador.
+    const today = new Date();
+    
+    // Función auxiliar para formatear la fecha a 'YYYY-MM-DD' de forma local y segura.
+    const toLocalISOString = (date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
 
-            applyFilters();
-        }
+    switch(filter) {
+        case 'today':
+            dateFrom.value = toLocalISOString(today);
+            dateTo.value = toLocalISOString(today);
+            break;
+        case 'week':
+            const weekStart = new Date(today);
+            // Retrocede al inicio de la semana (asumiendo que la semana empieza en Lunes)
+            const dayOfWeek = today.getDay();
+            const diff = today.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1); 
+            weekStart.setDate(diff);
+
+            dateFrom.value = toLocalISOString(weekStart);
+            dateTo.value = toLocalISOString(today);
+            break;
+        case 'month':
+            const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+            dateFrom.value = toLocalISOString(monthStart);
+            dateTo.value = toLocalISOString(today);
+            break;
+        case 'last7':
+            const sevenDaysAgo = new Date(today);
+            sevenDaysAgo.setDate(today.getDate() - 7);
+            dateFrom.value = toLocalISOString(sevenDaysAgo);
+            dateTo.value = toLocalISOString(today);
+            break;
+        case 'lastMonth':
+            const lastMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+            const lastMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
+            dateFrom.value = toLocalISOString(lastMonthStart);
+            dateTo.value = toLocalISOString(lastMonthEnd);
+            break;
+        case 'all':
+            dateFrom.value = '';
+            dateTo.value = '';
+            break;
+    }
+    // ✨ FIN DE LA CORRECCIÓN ✨
+
+    applyFilters();
+}
 
         function clearFilters() {
             document.getElementById('searchInput').value = '';
@@ -1959,433 +1873,444 @@
             applyFilters();
         }
 
-        function applyFilters() {
-            // Update filters from inputs
-            currentFilters.search = document.getElementById('searchInput').value.trim().toLowerCase();
-            currentFilters.dateFrom = document.getElementById('dateFrom').value;
-            currentFilters.dateTo = document.getElementById('dateTo').value;
-            currentFilters.paymentMethod = document.getElementById('paymentFilter').value;
-            currentFilters.currency = document.getElementById('currencyFilter').value;
-            currentFilters.amountMin = parseFloat(document.getElementById('amountMin').value);
-            currentFilters.amountMax = parseFloat(document.getElementById('amountMax').value);
-            currentFilters.category = document.getElementById('categoryFilter').value;
-            currentFilters.product = document.getElementById('productFilter').value.trim().toLowerCase();
-            currentFilters.customer = document.getElementById('customerFilter').value.trim().toLowerCase();
-            currentFilters.tag = document.getElementById('tagFilter').value;
+function applyFilters() {
+    // 1. Recolecta los valores de todos los filtros (lógica sin cambios)
+    currentFilters.search = document.getElementById('searchInput').value.trim().toLowerCase();
+    currentFilters.dateFrom = document.getElementById('dateFrom').value;
+    currentFilters.dateTo = document.getElementById('dateTo').value;
+    currentFilters.paymentMethod = document.getElementById('paymentFilter').value;
+    currentFilters.currency = document.getElementById('currencyFilter').value;
+    currentFilters.amountMin = parseFloat(document.getElementById('amountMin').value);
+    currentFilters.amountMax = parseFloat(document.getElementById('amountMax').value);
+    currentFilters.category = document.getElementById('categoryFilter').value;
+    currentFilters.product = document.getElementById('productFilter').value.trim().toLowerCase();
+    currentFilters.customer = document.getElementById('customerFilter').value.trim().toLowerCase();
+    currentFilters.tag = document.getElementById('tagFilter').value;
 
-            filteredSales = allSales.filter(sale => {
-                const saleDate = new Date(sale.timestamp);
-                const saleDateOnly = new Date(saleDate.getFullYear(), saleDate.getMonth(), saleDate.getDate());
+    // 2. Filtra las ventas según los criterios (lógica de filtrado que ya funciona)
+    filteredSales = allSales.filter(sale => {
+        const saleDate = new Date(sale.timestamp);
+        const saleDateOnly = new Date(saleDate.getFullYear(), saleDate.getMonth(), saleDate.getDate());
 
-                // Date range filter
-                if (currentFilters.dateFrom) {
-                    const fromDate = new Date(currentFilters.dateFrom);
-                    const fromDateOnly = new Date(fromDate.getFullYear(), fromDate.getMonth(), fromDate.getDate());
-                    if (saleDateOnly < fromDateOnly) return false;
-                }
-                if (currentFilters.dateTo) {
-                    const toDate = new Date(currentFilters.dateTo);
-                    const toDateOnly = new Date(toDate.getFullYear(), toDate.getMonth(), toDate.getDate());
-                    if (saleDateOnly > toDateOnly) return false;
-                }
+        if (currentFilters.dateFrom) {
+            const fromDateParts = currentFilters.dateFrom.split('-');
+            const fromDateOnly = new Date(fromDateParts[0], fromDateParts[1] - 1, fromDateParts[2]);
+            if (saleDateOnly < fromDateOnly) return false;
+        }
+        if (currentFilters.dateTo) {
+            const toDateParts = currentFilters.dateTo.split('-');
+            const toDateOnly = new Date(toDateParts[0], toDateParts[1] - 1, toDateParts[2]);
+            if (saleDateOnly > toDateOnly) return false;
+        }
+        
+        if (currentFilters.paymentMethod && sale.paymentMethod !== currentFilters.paymentMethod) return false;
+        if (currentFilters.currency) {
+            if (sale.paymentMethod === 'combined' && sale.combinedPayment) {
+                if (currentFilters.currency === 'VES' && sale.combinedPayment.paidVes === 0) return false;
+                if (currentFilters.currency === 'USD' && sale.combinedPayment.paidUsd === 0) return false;
+            } else if (sale.currency !== currentFilters.currency) return false;
+        }
+        let saleTotalInVESForFilter;
+        const correctTotalsForFilter = recalculateTotalFromItems(sale);
+        if (sale.paymentMethod === 'combined' && sale.combinedPayment) {
+            saleTotalInVESForFilter = sale.combinedPayment.paidVes + (sale.combinedPayment.paidUsd * sale.exchangeRate);
+        } else {
+            saleTotalInVESForFilter = sale.currency === 'VES' ? correctTotalsForFilter.total : correctTotalsForFilter.total * sale.exchangeRate;
+        }
+        if (!isNaN(currentFilters.amountMin) && saleTotalInVESForFilter < currentFilters.amountMin) return false;
+        if (!isNaN(currentFilters.amountMax) && saleTotalInVESForFilter > currentFilters.amountMax) return false;
+        if (currentFilters.category && !sale.items.some(item => item.product.category === currentFilters.category)) return false;
+        if (currentFilters.product && !sale.items.some(item => item.product.name.toLowerCase().includes(currentFilters.product))) return false;
+        if (currentFilters.customer) {
+            if (!sale.customer || !sale.customer.name.toLowerCase().includes(currentFilters.customer)) return false;
+        }
+        if (currentFilters.tag) {
+            const totalInUSD = sale.currency === 'USD' ? correctTotalsForFilter.total : correctTotalsForFilter.total / sale.exchangeRate;
+            if (currentFilters.tag === 'high-value' && totalInUSD <= 50) return false;
+            if (currentFilters.tag === 'foreign' && !(sale.currency === 'USD' || (sale.paymentMethod === 'combined' && sale.combinedPayment && sale.combinedPayment.paidUsd > 0))) return false;
+            if (currentFilters.tag === 'combined-payment' && sale.paymentMethod !== 'combined') return false;
+        }
+        if (currentFilters.search) {
+            const saleDateString = saleDate.toISOString().split('T')[0];
+            const matchesId = sale.id.toLowerCase().includes(currentFilters.search);
+            const matchesCustomer = sale.customer && (sale.customer.name.toLowerCase().includes(currentFilters.search) || (sale.customer.document && sale.customer.document.toLowerCase().includes(currentFilters.search)));
+            const matchesProduct = sale.items.some(item => item.product.name.toLowerCase().includes(currentFilters.search) || (item.product.code && item.product.code.toLowerCase().includes(currentFilters.search)));
+            const matchesDate = saleDateString.includes(currentFilters.search);
+            if (!matchesId && !matchesCustomer && !matchesProduct && !matchesDate) return false;
+        }
+        
+        return true;
+    });
 
-                // Payment method filter
-                if (currentFilters.paymentMethod && sale.paymentMethod !== currentFilters.paymentMethod) {
-                    return false;
-                }
+    // ✨ INICIO DE LA NUEVA LÓGICA DE CÁLCULO POR MONEDA ✨
+    // 3. Calcula las métricas separando por moneda desde el principio.
+    let totalVesSales = 0;
+    let totalUsdSales = 0;
+    let totalVesProfit = 0;
+    let totalUsdProfit = 0;
+    const productSales = {};
 
-                // Currency filter
-                if (currentFilters.currency) {
-                    if (sale.paymentMethod === 'combined' && sale.combinedPayment) {
-                        if (currentFilters.currency === 'VES' && sale.combinedPayment.paidVes === 0) return false;
-                        if (currentFilters.currency === 'USD' && sale.combinedPayment.paidUsd === 0) return false;
-                    } else if (sale.currency !== currentFilters.currency) {
-                        return false;
-                    }
-                }
-                
-                // Amount range filter (VES)
-                let saleTotalInVESForFilter;
-                if (sale.paymentMethod === 'combined' && sale.combinedPayment) {
-                    saleTotalInVESForFilter = sale.combinedPayment.paidVes + (sale.combinedPayment.paidUsd * sale.exchangeRate);
-                } else {
-                    saleTotalInVESForFilter = sale.currency === 'VES' ? sale.totals.total : sale.totals.total * sale.exchangeRate;
-                }
+    filteredSales.forEach(sale => {
+        const correctTotals = recalculateTotalFromItems(sale);
+        const exchangeRate = sale.exchangeRate;
 
-                if (!isNaN(currentFilters.amountMin) && saleTotalInVESForFilter < currentFilters.amountMin) {
-                    return false;
-                }
-                if (!isNaN(currentFilters.amountMax) && saleTotalInVESForFilter > currentFilters.amountMax) {
-                    return false;
-                }
+        // Calcula la ganancia total de la venta en USD
+        let saleProfitInUSD = 0;
+        sale.items.forEach(item => {
+            const unitPriceUSD = (item.currency === 'USD') ? item.unitPrice : (item.unitPrice / exchangeRate);
+            const unitCostUSD = item.product.isBulk ? (item.product.costPerUnit || 0) : (item.product.cost || 0);
+            saleProfitInUSD += (unitPriceUSD - unitCostUSD) * item.quantity;
+        });
 
-                // Advanced: Category filter
-                if (currentFilters.category && !sale.items.some(item => item.product.category === currentFilters.category)) {
-                    return false;
-                }
+        // Asigna la venta y la ganancia al "bote" correcto según la moneda de la transacción.
+        if (sale.currency === 'VES') {
+            totalVesSales += correctTotals.total;
+            totalVesProfit += saleProfitInUSD * exchangeRate;
+        } else { // Si la moneda es USD
+            totalUsdSales += correctTotals.total;
+            totalUsdProfit += saleProfitInUSD;
+        }
 
-                // Advanced: Product filter
-                if (currentFilters.product && !sale.items.some(item => item.product.name.toLowerCase().includes(currentFilters.product))) {
-                    return false;
-                }
+        // Conteo de productos para el "Más Vendido" (sin cambios)
+        sale.items.forEach(item => {
+            const productName = item.product.name;
+            productSales[productName] = (productSales[productName] || 0) + item.quantity;
+        });
+    });
 
-                // Advanced: Customer filter
-                if (currentFilters.customer) {
-                    if (!sale.customer || !sale.customer.name.toLowerCase().includes(currentFilters.customer)) {
-                        return false;
-                    }
-                }
+    const filteredTransactions = filteredSales.length;
+    const topProduct = Object.entries(productSales).sort((a, b) => b[1] - a[1])[0];
 
-                // Advanced: Tag filter
-                if (currentFilters.tag) {
-                    const totalInUSD = sale.currency === 'USD' ? sale.totals.total : sale.totals.total / sale.exchangeRate;
-                    if (currentFilters.tag === 'high-value' && totalInUSD <= 50) return false;
-                    if (currentFilters.tag === 'foreign' && !(sale.currency === 'USD' || (sale.paymentMethod === 'combined' && sale.combinedPayment && sale.combinedPayment.paidUsd > 0))) return false;
-                    if (currentFilters.tag === 'combined-payment' && sale.paymentMethod !== 'combined') return false;
-                }
+    // 4. Construye el array de tarjetas con la nueva estructura clara.
+    const metrics = [
+        {
+            title: 'Ventas en VES (Filtro)',
+            value: `Bs. ${formatCurrency(totalVesSales)}`,
+            subtitle: 'Total de ventas en Bolívares',
+            icon: '💰',
+            color: 'linear-gradient(135deg, #059669, #14b8a6)'
+        },
+        {
+            title: 'Ventas en USD (Filtro)',
+            value: `$ ${formatCurrency(totalUsdSales, 'USD')}`,
+            subtitle: 'Total de ventas en Dólares',
+            icon: '💵',
+            color: 'linear-gradient(135deg, #065f46, #047857)'
+        },
+        {
+            title: 'Ganancias en VES (Filtro)',
+            value: `Bs. ${formatCurrency(totalVesProfit)}`,
+            subtitle: 'Ganancia de ventas en Bolívares',
+            icon: '💎',
+            color: 'linear-gradient(135deg, #3b82f6, #6366f1)'
+        },
+        {
+            title: 'Ganancias en USD (Filtro)',
+            value: `$ ${formatCurrency(totalUsdProfit, 'USD')}`,
+            subtitle: 'Ganancia de ventas en Dólares',
+            icon: '💍',
+            color: 'linear-gradient(135deg, #2563eb, #1d4ed8)'
+        },
+        {
+            title: 'Transacciones del Filtro',
+            value: filteredTransactions,
+            subtitle: `Total de ventas en el período`,
+            icon: '📊',
+            color: 'linear-gradient(135deg, #8b5cf6, #a855f7)'
+        },
+        {
+            title: 'Producto Más Vendido',
+            value: topProduct ? topProduct[0] : 'N/A',
+            subtitle: topProduct ? `${topProduct[1].toLocaleString('es-ES')} unidades vendidas` : 'Sin ventas en el período',
+            icon: '🏆',
+            color: 'linear-gradient(135deg, #ec4899, #f472b6)'
+        }
+    ];
 
-                // General search filter
-                if (currentFilters.search) {
-                    const saleDateString = saleDate.toISOString().split('T')[0];
-                    const matchesId = sale.id.toLowerCase().includes(currentFilters.search);
-                    const matchesCustomer = sale.customer && (sale.customer.name.toLowerCase().includes(currentFilters.search) || sale.customer.document.toLowerCase().includes(currentFilters.search));
-                    const matchesProduct = sale.items.some(item => item.product.name.toLowerCase().includes(currentFilters.search) || item.product.code.toLowerCase().includes(currentFilters.search));
-                    const matchesDate = saleDateString.includes(currentFilters.search);
-
-                    if (!matchesId && !matchesCustomer && !matchesProduct && !matchesDate) {
-                        return false;
-                    }
-                }
-
-                return true;
-            });
-
-            currentPage = 1;
-            renderResults();
-        }                                                
+    // 5. Renderiza todo (sin cambios)
+    renderMetrics(metrics);
+    loadCharts();
+    currentPage = 1;
+    renderResults();
+}                                      
 
         function renderResults() {
-            const container = document.getElementById('resultsContainer');
-            const resultsCount = document.getElementById('resultsCount');
-            
-            resultsCount.textContent = filteredSales.length;
+    const container = document.getElementById('resultsContainer');
+    const resultsCount = document.getElementById('resultsCount');
+    resultsCount.textContent = filteredSales.length;
 
-            if (filteredSales.length === 0) {
-                container.innerHTML = `
-                    <div class="empty-state">
-                        <div class="empty-icon">🔍</div>
-                        <div class="empty-title">No se encontraron resultados</div>
-                        <div class="empty-description">Intenta ajustar los filtros de búsqueda o verificar los criterios</div>
-                    </div>
-                `;
-                renderPagination();
-                return;
-            }
+    if (filteredSales.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon">🔍</div>
+                <div class="empty-title">No se encontraron resultados</div>
+                <div class="empty-description">Intenta ajustar los filtros de búsqueda o verificar los criterios</div>
+            </div>
+        `;
+        renderPagination();
+        return;
+    }
 
-            // Calculate pagination
-            const startIndex = (currentPage - 1) * itemsPerPage;
-            const endIndex = startIndex + itemsPerPage;
-            const paginatedSales = filteredSales.slice(startIndex, endIndex);
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const paginatedSales = filteredSales.slice(startIndex, endIndex);
 
-            container.innerHTML = paginatedSales.map(sale => {
-                const saleDate = new Date(sale.timestamp);
-                const formattedDate = saleDate.toLocaleDateString('es-VE', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                });
+    container.innerHTML = paginatedSales.map(sale => {
+        const saleDate = new Date(sale.timestamp);
+        const formattedDate = saleDate.toLocaleDateString('es-VE', {
+            day: '2-digit', month: '2-digit', year: 'numeric',
+            hour: '2-digit', minute: '2-digit'
+        });
 
-                const customerName = sale.customer ? sale.customer.name : 'Cliente Anónimo';
-                const paymentMethodName = getPaymentMethodName(sale.paymentMethod);
-                
-                // Determine tags for this sale
-                const tags = [];
-                // Assuming high value is > $50 USD equivalent
-                const totalInUSD = sale.currency === 'USD' ? sale.totals.total : sale.totals.total / sale.exchangeRate;
-                if (totalInUSD > 50) tags.push({text: 'Alto Valor', class: 'high-value'});
-                if (sale.currency === 'USD' || (sale.paymentMethod === 'combined' && sale.combinedPayment && sale.combinedPayment.paidUsd > 0)) tags.push({text: 'USD', class: 'foreign'});
-                if (sale.paymentMethod === 'combined') tags.push({text: 'Combinado', class: 'combined-payment'}); 
-                // Example for 'Regular' tag (based on sample data)
-                if (sale.customer && sale.customer.document === 'V12345678') tags.push({text: 'Regular', class: 'regular'});
+        const customerName = sale.customer ? sale.customer.name : 'Cliente Anónimo';
+        const paymentMethodName = getPaymentMethodName(sale.paymentMethod);
+        
+        const correctTotals = recalculateTotalFromItems(sale);
+        const totalInUSD = sale.currency === 'USD' ? correctTotals.total : correctTotals.total / sale.exchangeRate;
 
-                let displayTotalVES = 0;
-                let displayTotalUSD = 0;
+        const tags = [];
+        if (totalInUSD > 50) tags.push({text: 'Alto Valor', class: 'high-value'});
+        if (sale.currency === 'USD' || (sale.paymentMethod === 'combined' && sale.combinedPayment && sale.combinedPayment.paidUsd > 0)) tags.push({text: 'USD', class: 'foreign'});
+        if (sale.paymentMethod === 'combined') tags.push({text: 'Combinado', class: 'combined-payment'}); 
+        if (sale.customer && sale.customer.document === 'V12345678') tags.push({text: 'Regular', class: 'regular'});
 
-                if (sale.paymentMethod === 'combined' && sale.combinedPayment) {
-                    displayTotalVES = sale.combinedPayment.paidVes;
-                    displayTotalUSD = sale.combinedPayment.paidUsd;
-                } else if (sale.currency === 'VES') {
-                    displayTotalVES = sale.totals.total;
-                    displayTotalUSD = sale.totals.total / sale.exchangeRate;
-                } else if (sale.currency === 'USD') {
-                    displayTotalVES = sale.totals.total * sale.exchangeRate;
-                    displayTotalUSD = sale.totals.total;
-                }
+        if (sale.ivaApplied === false) {
+            tags.push({text: 'Exento (E)', class: 'exempt-iva'});
+        }
+        
+        let displayTotalVES = 0;
+        let displayTotalUSD = 0;
 
-                return `
-                    <div class="sale-item" id="sale-${sale.id}">
-                        <div class="sale-summary" onclick="toggleSaleDetails('${sale.id}')">
-                            <div class="sale-id">${sale.id}</div>
-                            <div class="sale-info">
-                                <div>
-                                    <div class="sale-customer ${!sale.customer ? 'anonymous' : ''}">${customerName}</div>
-                                    ${tags.length > 0 ? `
-                                        <div class="sale-tags">
-                                            ${tags.map(tag => `<span class="sale-tag ${tag.class}">${tag.text}</span>`).join('')}
-                                        </div>
-                                    ` : ''}
-                                </div>
-                                <div class="sale-date">${formattedDate}</div>
-                                <div class="sale-payment">
-                                    <span class="payment-method">${paymentMethodName}</span>
-                                    <span>${sale.currency}</span>
-                                </div>
-                                <div class="sale-total both-currencies">
-                                    <span>Bs. ${formatCurrency(displayTotalVES)}</span>
-                                    <span class="sale-total-secondary">$ ${formatCurrency(displayTotalUSD, 'USD')}</span>
-                                </div>
-                            </div>
-                            <svg xmlns="http://www.w3.org/2000/svg" class="expand-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="m6 9 6 6 6-6"/>
-                            </svg>
-                        </div>
-                        <div class="sale-details">
-                            ${renderSaleDetails(sale)}
-                        </div>
-                    </div>
-                `;
-            }).join('');
-
-            renderPagination();
+        if (sale.paymentMethod === 'combined' && sale.combinedPayment) {
+            displayTotalVES = sale.combinedPayment.paidVes;
+            displayTotalUSD = sale.combinedPayment.paidUsd;
+        } else if (sale.currency === 'VES') {
+            displayTotalVES = correctTotals.total;
+            displayTotalUSD = correctTotals.total / sale.exchangeRate;
+        } else if (sale.currency === 'USD') {
+            displayTotalVES = correctTotals.total * sale.exchangeRate;
+            displayTotalUSD = correctTotals.total;
         }
 
-        function renderSaleDetails(sale) {
-            const customer = sale.customer;
-            const totals = sale.totals;
-            const exchangeRate = sale.exchangeRate;
-
-            // Calculate total in USD for display based on the sale's main currency and total
-            const totalInUSD = sale.currency === 'USD' ? totals.total : totals.total / exchangeRate;
-            const subtotalInUSD = sale.currency === 'USD' ? totals.subtotal : totals.subtotal / exchangeRate;
-            const discountInUSD = sale.currency === 'USD' ? totals.discount : totals.discount / exchangeRate;
-            const ivaInUSD = sale.currency === 'USD' ? totals.iva : totals.iva / exchangeRate;
-
-            // Check if customer has multiple purchases
-            const customerSales = customer ? allSales.filter(s => 
-                s.customer && s.customer.document === customer.document
-            ) : [];
-
-            return `
-                <div class="details-grid">
-                    <div class="customer-details">
-                        <div class="detail-section-title">Información del Cliente</div>
-                        ${customer ? `
-                            <div class="detail-item">
-                                <span class="detail-label">Nombre:</span>
-                                <span class="detail-value">${customer.name}</span>
-                            </div>
-                            <div class="detail-item">
-                                <span class="detail-label">Documento:</span>
-                                <span class="detail-value">${customer.document}</span>
-                            </div>
-                            <div class="detail-item">
-                                <span class="detail-label">Teléfono:</span>
-                                <span class="detail-value">${customer.phone || 'N/A'}</span>
-                            </div>
-                            <div class="detail-item">
-                                <span class="detail-label">Email:</span>
-                                <span class="detail-value">${customer.email || 'N/A'}</span>
-                            </div>
-                        ` : `
-                            <div class="detail-item">
-                                <span class="detail-label">Cliente:</span>
-                                <span class="detail-value">Anónimo</span>
-                            </div>
-                        `}
-                    </div>
-                    
-                    <div class="sale-summary-details">
-                        <div class="detail-section-title">Resumen de Venta</div>
-                        <div class="detail-item">
-                            <span class="detail-label">Subtotal:</span>
-                            <span class="detail-value">Bs. ${formatCurrency(totals.subtotal)} ($ ${formatCurrency(subtotalInUSD, 'USD')})</span>
-                        </div>
-                        ${totals.discount > 0 ? `
-                            <div class="detail-item">
-                                <span class="detail-label">Descuento:</span>
-                                <span class="detail-value">Bs. ${formatCurrency(totals.discount)} ($ ${formatCurrency(discountInUSD, 'USD')})</span>
-                            </div>
-                        ` : ''}
-                        ${sale.ivaApplied ? `
-                            <div class="detail-item">
-                                <span class="detail-label">IVA (16%):</span>
-                                <span class="detail-value">Bs. ${formatCurrency(totals.iva)} ($ ${formatCurrency(ivaInUSD, 'USD')})</span>
-                            </div>
-                        ` : ''}
-                        <div class="detail-item">
-                            <span class="detail-label">Total:</span>
-                            <span class="detail-value">Bs. ${formatCurrency(totals.total)} ($ ${formatCurrency(totalInUSD, 'USD')})</span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="detail-label">Tasa de Cambio:</span>
-                            <span class="detail-value">${exchangeRate.toFixed(2)} Bs/$</span>
-                        </div>
-                        ${sale.paymentMethod === 'ves-mobile' && sale.paymentDetails && sale.paymentDetails.reference ? `
-                            <div class="detail-item">
-                                <span class="detail-label">Referencia Pago Móvil:</span>
-                                <span class="detail-value">${sale.paymentDetails.reference}</span>
-                            </div>
-                        ` : ''}
-                        ${sale.paymentMethod === 'usd-cash' && sale.paymentDetails ? `
-                            <div class="detail-item">
-                                <span class="detail-label">Monto Recibido USD:</span>
-                                <span class="detail-value">$ ${formatCurrency(sale.paymentDetails.paidUsd || 0, 'USD')}</span>
-                            </div>
-                            ${sale.paymentDetails.changeUsd > 0 ? `
-                                <div class="detail-item">
-                                    <span class="detail-label">Vuelto USD:</span>
-                                    <span class="detail-value">$ ${formatCurrency(sale.paymentDetails.changeUsd || 0, 'USD')}</span>
-                                </div>
-                            ` : ''}
-                             ${sale.paymentDetails.changeVes > 0 ? `
-                                <div class="detail-item">
-                                    <span class="detail-label">Vuelto VES:</span>
-                                    <span class="detail-value">Bs. ${formatCurrency(sale.paymentDetails.changeVes || 0)}</span>
-                                </div>
-                            ` : ''}
-                        ` : ''}
-                        ${sale.paymentMethod === 'combined' && sale.combinedPayment ? `
-                            <div class="detail-item">
-                                <span class="detail-label">Pagado USD:</span>
-                                <span class="detail-value">$ ${formatCurrency(sale.combinedPayment.paidUsd, 'USD')}</span>
-                            </div>
-                            <div class="detail-item">
-                                <span class="detail-label">Pagado VES:</span>
-                                <span class="detail-value">Bs. ${formatCurrency(sale.combinedPayment.paidVes)}</span>
-                            </div>
-                            ${(sale.combinedPayment.changeUsd && sale.combinedPayment.changeUsd > 0.01) || (sale.combinedPayment.changeVes && sale.combinedPayment.changeVes > 0.01) ? `
-                                <div class="detail-item">
-                                    <span class="detail-label">Cambio USD:</span>
-                                    <span class="detail-value">$ ${formatCurrency(sale.combinedPayment.changeUsd || 0, 'USD')}</span>
-                                </div>
-                                <div class="detail-item">
-                                    <span class="detail-label">Cambio VES:</span>
-                                    <span class="detail-value">Bs. ${formatCurrency(sale.combinedPayment.changeVes || 0)}</span>
-                                </div>
-                            ` : ''}
-                        ` : ''}
-                        ${sale.notes ? `
-                            <div class="detail-item">
-                                <span class="detail-label">Notas:</span>
-                                <span class="detail-value">${sale.notes}</span>
-                            </div>
-                        ` : ''}
-                    </div>
-                </div>
-                
-                <table class="products-table">
-                    <thead>
-                        <tr>
-                            <th>Producto</th>
-                            <th>Cantidad</th>
-                            <th>Precio Unitario</th>
-                            <th>Costo Unitario</th>
-                            <th>Subtotal</th>
-                            <th>Ganancia</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${sale.items.map(item => {
-                            // item.unitPrice is the price in item.currency (which is the currency it was sold in POS)
-                            // item.product.cost is the cost in USD (as per POS logic)
-
-                            let unitPriceUSD, unitPriceVES;
-                            let unitCostUSD, unitCostVES;
-                            let subtotalUSD, subtotalVES;
-                            let profitUSD, profitVES;
-
-                            // Calculate unit price in USD and VES
-                            if (item.currency === 'USD') {
-                                unitPriceUSD = item.unitPrice;
-                                unitPriceVES = item.unitPrice * exchangeRate;
-                            } else { // item.currency === 'VES'
-                                unitPriceVES = item.unitPrice;
-                                unitPriceUSD = item.unitPrice / exchangeRate;
-                            }
-
-                            // Calculate unit cost in USD and VES (assuming product.cost is always in USD)
-                            unitCostUSD = item.product.cost || 0;
-                            unitCostVES = unitCostUSD * exchangeRate;
-
-                            // Calculate subtotal in USD and VES
-                            subtotalUSD = unitPriceUSD * item.quantity;
-                            subtotalVES = unitPriceVES * item.quantity;
-
-                            // Calculate profit in USD and VES
-                            profitUSD = (unitPriceUSD - unitCostUSD) * item.quantity;
-                            profitVES = (unitPriceVES - unitCostVES) * item.quantity;
-                            
-                            return `
-                                <tr>
-                                    <td>
-                                        <div class="product-name">${item.product.name}</div>
-                                        <div class="product-details-cell">
-                                            ${item.product.brand || 'N/A'} | ${item.product.code || 'N/A'} | ${getCategoryName(item.product.category)}
-                                        </div>
-                                    </td>
-                                    <td>${item.quantity} ${item.unit || 'unidades'}</td>
-                                    <td class="amount-cell">Bs. ${formatCurrency(unitPriceVES)} ($ ${formatCurrency(unitPriceUSD, 'USD')})</td>
-                                    <td class="amount-cell">Bs. ${formatCurrency(unitCostVES)} ($ ${formatCurrency(unitCostUSD, 'USD')})</td>
-                                    <td class="amount-cell">Bs. ${formatCurrency(subtotalVES)} ($ ${formatCurrency(subtotalUSD, 'USD')})</td>
-                                    <td class="amount-cell ${profitUSD >= 0 ? 'profit-positive' : 'profit-negative'}">
-                                        Bs. ${formatCurrency(profitVES)} ($ ${formatCurrency(profitUSD, 'USD')})
-                                    </td>
-                                </tr>
-                            `;
-                        }).join('')}
-                    </tbody>
-                </table>
-                
-                ${customerSales.length > 1 && customer ? `
-                    <div class="timeline-section">
-                        <div class="timeline-title">Historial de Compras del Cliente (${customerSales.length} transacciones)</div>
-                        ${customerSales.slice(0, 5).map(s => {
-                            let saleTotalInVES = 0;
-                            let saleTotalInUSD = 0;
-                            if (s.paymentMethod === 'combined' && s.combinedPayment) {
-                                saleTotalInVES = s.combinedPayment.paidVes;
-                                saleTotalInUSD = s.combinedPayment.paidUsd;
-                            } else if (s.currency === 'VES') {
-                                saleTotalInVES = s.totals.total;
-                                saleTotalInUSD = s.totals.total / s.exchangeRate;
-                            } else if (s.currency === 'USD') {
-                                saleTotalInVES = s.totals.total * s.exchangeRate;
-                                saleTotalInUSD = s.totals.total;
-                            }
-
-                            return `
-                                <div class="timeline-item">
-                                    <div class="timeline-date">${new Date(s.timestamp).toLocaleDateString('es-VE')}</div>
-                                    <div class="timeline-amount">
-                                        Bs. ${formatCurrency(saleTotalInVES)} ($ ${formatCurrency(saleTotalInUSD, 'USD')})
-                                    </div>
-                                    <div style="font-size: 0.75rem; color: #64748b;">
-                                        ${s.id} - ${s.items.length} producto${s.items.length > 1 ? 's' : ''}
-                                    </div>
-                                </div>
-                            `;
-                        }).join('')}
-                        ${customerSales.length > 5 ? `
-                            <div style="text-align: center; margin-top: 0.5rem; font-size: 0.75rem; color: #64748b;">
-                                Y ${customerSales.length - 5} compra${customerSales.length - 5 > 1 ? 's' : ''} más...
-                            </div>
-                        ` : ''}
-                    </div>
-                ` : ''}
+        // ✨ INICIO DE LA CORRECCIÓN VISUAL ✨
+        // Se crea una variable para el HTML del total, que cambiará según la moneda.
+        let totalDisplayHtml = '';
+        if (sale.currency === 'USD') {
+            // Si la venta fue en USD, se muestra el dólar como principal.
+            totalDisplayHtml = `
+                <span>$ ${formatCurrency(displayTotalUSD, 'USD')}</span>
+                <span class="sale-total-secondary">Bs. ${formatCurrency(displayTotalVES)}</span>
+            `;
+        } else {
+            // Si no, se mantiene Bolívares como principal (comportamiento por defecto).
+            totalDisplayHtml = `
+                <span>Bs. ${formatCurrency(displayTotalVES)}</span>
+                <span class="sale-total-secondary">$ ${formatCurrency(displayTotalUSD, 'USD')}</span>
             `;
         }
+        // ✨ FIN DE LA CORRECCIÓN VISUAL ✨
+
+        return `
+            <div class="sale-item" id="sale-${sale.id}">
+                <div class="sale-summary" onclick="toggleSaleDetails('${sale.id}')">
+                    <div class="sale-id">${sale.id}</div>
+                    <div class="sale-info">
+                        <div>
+                            <div class="sale-customer ${!sale.customer ? 'anonymous' : ''}">${customerName}</div>
+                            ${tags.length > 0 ? `
+                                <div class="sale-tags">
+                                    ${tags.map(tag => `<span class="sale-tag ${tag.class}">${tag.text}</span>`).join('')}
+                                </div>
+                            ` : ''}
+                        </div>
+                        <div class="sale-date">${formattedDate}</div>
+                        <div class="sale-payment">
+                            <span class="payment-method">${paymentMethodName}</span>
+                            <span>${sale.currency}</span>
+                        </div>
+                        <div class="sale-total both-currencies">
+                            ${totalDisplayHtml}  </div>
+                    </div>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="expand-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="m6 9 6 6 6-6"/>
+                    </svg>
+                </div>
+                <div class="sale-details">
+                    ${renderSaleDetails(sale)}
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    renderPagination();
+}
+
+    function renderSaleDetails(sale) {
+    const customer = sale.customer;
+    const exchangeRate = sale.exchangeRate;
+
+    // 1. Se reconstruyen los totales correctos (esto ya funcionaba bien).
+    const correctTotals = recalculateTotalFromItems(sale);
+
+    // 2. ✨ INICIO DE LA LÓGICA DE VISUALIZACIÓN INTELIGENTE ✨
+    // Se preparan las variables para mostrar, dependiendo de la moneda de la venta.
+    let subtotalDisplay, ivaDisplay, totalDisplay;
+
+    if (sale.currency === 'USD') {
+        // Si la venta fue en DÓLARES, el USD es la moneda principal.
+        subtotalDisplay = `$ ${formatCurrency(correctTotals.subtotal, 'USD')} (Bs. ${formatCurrency(correctTotals.subtotal * exchangeRate)})`;
+        totalDisplay = `$ ${formatCurrency(correctTotals.total, 'USD')} (Bs. ${formatCurrency(correctTotals.total * exchangeRate)})`;
+        ivaDisplay = sale.ivaApplied === false 
+            ? 'Exento (Global)' 
+            : `$ ${formatCurrency(correctTotals.iva, 'USD')} (Bs. ${formatCurrency(correctTotals.iva * exchangeRate)})`;
+    } else {
+        // Si la venta fue en BOLÍVARES, el VES es la moneda principal.
+        const subtotalInUSD = correctTotals.subtotal / exchangeRate;
+        const totalInUSD = correctTotals.total / exchangeRate;
+        const ivaInUSD = correctTotals.iva / exchangeRate;
+
+        subtotalDisplay = `Bs. ${formatCurrency(correctTotals.subtotal)} ($ ${formatCurrency(subtotalInUSD, 'USD')})`;
+        totalDisplay = `Bs. ${formatCurrency(correctTotals.total)} ($ ${formatCurrency(totalInUSD, 'USD')})`;
+        ivaDisplay = sale.ivaApplied === false 
+            ? 'Exento (Global)' 
+            : `Bs. ${formatCurrency(correctTotals.iva)} ($ ${formatCurrency(ivaInUSD, 'USD')})`;
+    }
+    // ✨ FIN DE LA LÓGICA DE VISUALIZACIÓN INTELIGENTE ✨
+
+    const customerSales = customer ? allSales.filter(s => s.customer && s.customer.document === customer.document) : [];
+
+    return `
+        <div class="details-grid">
+            <div class="customer-details">
+                <div class="detail-section-title">Información del Cliente</div>
+                ${customer ? `
+                    <div class="detail-item"><span class="detail-label">Nombre:</span><span class="detail-value">${customer.name}</span></div>
+                    <div class="detail-item"><span class="detail-label">Documento:</span><span class="detail-value">${customer.document}</span></div>
+                    <div class="detail-item"><span class="detail-label">Teléfono:</span><span class="detail-value">${customer.phone || 'N/A'}</span></div>
+                    <div class="detail-item"><span class="detail-label">Email:</span><span class="detail-value">${customer.email || 'N/A'}</span></div>
+                ` : `
+                    <div class="detail-item"><span class="detail-label">Cliente:</span><span class="detail-value">Anónimo</span></div>
+                `}
+            </div>
+            
+            <div class="sale-summary-details">
+                <div class="detail-section-title">Resumen de Venta</div>
+                <div class="detail-item"><span class="detail-label">Subtotal:</span><span class="detail-value">${subtotalDisplay}</span></div>
+                <div class="detail-item"><span class="detail-label">IVA (16%):</span><span class="detail-value">${ivaDisplay}</span></div>
+                <div class="detail-item"><span class="detail-label">Total:</span><span class="detail-value">${totalDisplay}</span></div>
+                <div class="detail-item"><span class="detail-label">Tasa de Cambio:</span><span class="detail-value">${exchangeRate.toFixed(2)} Bs/$</span></div>
+                
+                ${sale.paymentMethod === 'ves-mobile' && sale.paymentDetails && sale.paymentDetails.reference ? `
+                    <div class="detail-item">
+                        <span class="detail-label">Referencia Pago Móvil:</span>
+                        <span class="detail-value">${sale.paymentDetails.reference}</span>
+                    </div>
+                ` : ''}
+
+                ${sale.paymentMethod === 'usd-cash' && sale.paymentDetails ? `
+                    <div class="detail-item">
+                        <span class="detail-label">Monto Recibido USD:</span>
+                        <span class="detail-value">$ ${formatCurrency(sale.paymentDetails.paidUsd || 0, 'USD')}</span>
+                    </div>
+                    ${(sale.paymentDetails.changeUsd > 0 || sale.paymentDetails.changeVes > 0) ? `
+                        <div class="detail-item">
+                            <span class="detail-label">Vuelto:</span>
+                            <span class="detail-value">$ ${formatCurrency(sale.paymentDetails.changeUsd || 0, 'USD')} (Bs. ${formatCurrency(sale.paymentDetails.changeVes || 0)})</span>
+                        </div>
+                    ` : ''}
+                ` : ''}
+
+                ${sale.paymentMethod === 'combined' && sale.combinedPayment ? `
+                    <div class="detail-item">
+                        <span class="detail-label">Pagado USD:</span>
+                        <span class="detail-value">$ ${formatCurrency(sale.combinedPayment.paidUsd, 'USD')}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Pagado VES:</span>
+                        <span class="detail-value">Bs. ${formatCurrency(sale.combinedPayment.paidVes)}</span>
+                    </div>
+                    ${(sale.combinedPayment.changeUsd > 0.01 || sale.combinedPayment.changeVes > 0.01) ? `
+                        <div class="detail-item">
+                            <span class="detail-label">Vuelto:</span>
+                            <span class="detail-value">$ ${formatCurrency(sale.combinedPayment.changeUsd || 0, 'USD')} (Bs. ${formatCurrency(sale.combinedPayment.changeVes || 0)})</span>
+                        </div>
+                    ` : ''}
+                ` : ''}
+            </div>
+        </div>
+        
+        <table class="products-table">
+            <thead><tr><th>Producto</th><th>Cantidad</th><th>Precio Unitario</th><th>Costo Unitario</th><th>Subtotal</th><th>Ganancia</th></tr></thead>
+            <tbody>
+                ${sale.items.map(item => {
+                    let unitPriceUSD, unitPriceVES, unitCostUSD, unitCostVES, subtotalUSD, subtotalVES, profitUSD, profitVES;
+                    if (item.currency === 'USD') { 
+                        unitPriceUSD = item.unitPrice; 
+                        unitPriceVES = item.unitPrice * exchangeRate; 
+                    } else { 
+                        unitPriceVES = item.unitPrice; 
+                        unitPriceUSD = item.unitPrice / exchangeRate; 
+                    }
+                    
+                    const baseCostUSD = item.product.isBulk ? item.product.costPerUnit : item.product.cost;
+                    unitCostUSD = baseCostUSD || 0;
+
+                    unitCostVES = unitCostUSD * exchangeRate;
+                    subtotalUSD = unitPriceUSD * item.quantity;
+                    subtotalVES = unitPriceVES * item.quantity;
+                    profitUSD = (unitPriceUSD - unitCostUSD) * item.quantity;
+                    profitVES = (unitPriceVES - unitCostVES) * item.quantity;
+                    
+                    const currentProduct = mainInventory.find(p => p.id === item.product.id);
+                    const isExempt = currentProduct ? currentProduct.isIvaExempt : false;
+
+                    return `
+                        <tr>
+                            <td>
+                                <div class="product-name">${item.product.name} ${isExempt ? '(E)' : ''}</div>
+                                <div class="product-details-cell">${item.product.brand || 'N/A'} | ${item.product.code || 'N/A'} | ${getCategoryName(item.product.category)}</div>
+                            </td>
+                            <td>${item.quantity} ${item.unit || 'unidades'}</td>
+                            <td class="amount-cell">Bs. ${formatCurrency(unitPriceVES)} ($ ${formatCurrency(unitPriceUSD, 'USD')})</td>
+                            <td class="amount-cell">Bs. ${formatCurrency(unitCostVES)} ($ ${formatCurrency(unitCostUSD, 'USD')})</td>
+                            <td class="amount-cell">Bs. ${formatCurrency(subtotalVES)} ($ ${formatCurrency(subtotalUSD, 'USD')})</td>
+                            <td class="amount-cell ${profitUSD >= 0 ? 'profit-positive' : 'profit-negative'}">Bs. ${formatCurrency(profitVES)} ($ ${formatCurrency(profitUSD, 'USD')})</td>
+                        </tr>
+                    `;
+                }).join('')}
+            </tbody>
+        </table>
+        
+        ${customerSales.length > 1 && customer ? `
+            <div class="timeline-section">
+                <div class="timeline-title">Historial de Compras del Cliente (${customerSales.length} transacciones)</div>
+                ${customerSales.slice(0, 5).map(s => {
+                    let saleTotalInVES = 0, saleTotalInUSD = 0;
+                    const recalculatedTotals = recalculateTotalFromItems(s);
+                    if (s.paymentMethod === 'combined' && s.combinedPayment) {
+                        saleTotalInVES = s.combinedPayment.paidVes;
+                        saleTotalInUSD = s.combinedPayment.paidUsd;
+                    } else if (s.currency === 'VES') {
+                        saleTotalInVES = recalculatedTotals.total;
+                        saleTotalInUSD = recalculatedTotals.total / s.exchangeRate;
+                    } else if (s.currency === 'USD') {
+                        saleTotalInVES = recalculatedTotals.total * s.exchangeRate;
+                        saleTotalInUSD = recalculatedTotals.total;
+                    }
+
+                    return `
+                        <div class="timeline-item">
+                            <div class="timeline-date">${new Date(s.timestamp).toLocaleDateString('es-VE')}</div>
+                            <div class="timeline-amount">Bs. ${formatCurrency(saleTotalInVES)} ($ ${formatCurrency(saleTotalInUSD, 'USD')})</div>
+                            <div style="font-size: 0.75rem; color: #64748b;">${s.id} - ${s.items.length} producto${s.items.length > 1 ? 's' : ''}</div>
+                        </div>
+                    `;
+                }).join('')}
+                ${customerSales.length > 5 ? `<div style="text-align: center; margin-top: 0.5rem; font-size: 0.75rem; color: #64748b;">Y ${customerSales.length - 5} compra${customerSales.length - 5 > 1 ? 's' : ''} más...</div>` : ''}
+            </div>
+        ` : ''}
+    `;
+}
 
         function renderPagination() {
             const pagination = document.getElementById('pagination');
@@ -2557,6 +2482,49 @@
             }
         }
 
+function recalculateTotalFromItems(sale) {
+    if (!sale || !sale.items || !sale.items.length === 0) {
+        return { subtotal: 0, discount: 0, iva: 0, total: 0 };
+    }
+
+    const correctSubtotal = sale.items.reduce((acc, item) => acc + (item.subtotal || 0), 0);
+    const discountAmount = sale.totals.discount || 0; // El descuento guardado por el POS es correcto.
+
+    let ivaAmount = 0;
+    // Solo se calcula el IVA si la venta completa fue marcada con el interruptor de IVA.
+    if (sale.ivaApplied === true) {
+        // Se calcula la base imponible: la suma de los subtotales de los productos que NO son exentos.
+        const taxableBase = sale.items.reduce((sum, item) => {
+            // Se busca el producto en el inventario actual para saber su estado.
+            const currentProduct = mainInventory.find(p => p.id === item.product.id);
+            const isExempt = currentProduct ? currentProduct.isIvaExempt : false;
+            
+            if (!isExempt) {
+                return sum + item.subtotal;
+            }
+            return sum;
+        }, 0);
+
+        // Se aplica la proporción del descuento solo a la parte que paga impuestos.
+        const discountRatio = correctSubtotal > 0 ? (discountAmount / correctSubtotal) : 0;
+        const taxableBaseAfterDiscount = taxableBase * (1 - discountRatio);
+        
+        // El IVA se calcula solo sobre esa base imponible ya descontada.
+        if (taxableBaseAfterDiscount > 0) {
+            ivaAmount = taxableBaseAfterDiscount * 0.16;
+        }
+    }
+
+    const correctTotal = (correctSubtotal - discountAmount) + ivaAmount;
+
+    return { 
+        subtotal: correctSubtotal, 
+        discount: discountAmount, 
+        iva: ivaAmount, 
+        total: correctTotal 
+    };
+}
+
         function showToast(message, type = 'info') {
             const toast = document.getElementById('toast');
             toast.textContent = message;
@@ -2581,5 +2549,7 @@
         }
 
     </script>
+
+    
 </body>
 </html>
