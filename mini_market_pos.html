@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -2477,6 +2478,17 @@ function filterAndDisplayProducts(searchTerm = '') {
         }
 
         // ===== TOTALES =====
+
+                // NUEVA FUNCIÓN AÑADIDA PARA CORREGIR EL ERROR
+        function calculateSubtotal() {
+            // Recorre el carrito, calcula el subtotal de cada item en la moneda actual y los suma.
+            return cart.reduce((acc, item) => {
+                const basePrice = item.product.isBulk ? item.product.pricePerUnit : item.product.price;
+                const priceInCurrentCurrency = currentCurrency === 'VES' ? basePrice * exchangeRate : basePrice;
+                return acc + (priceInCurrentCurrency * item.quantity);
+            }, 0);
+        }
+        
         function setCurrency(currency) {
             currentCurrency = currency;
             document.getElementById('vesToggle').classList.toggle('active', currency === 'VES');
