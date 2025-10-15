@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -2394,79 +2395,191 @@ function applyFilters() {
         }
 
         function exportToPDF() {
-            if (filteredSales.length === 0) {
-                showToast('No hay datos para exportar');
-                return;
-            }
+    if (filteredSales.length === 0) {
+        showToast('No hay datos para exportar', 'info');
+        return;
+    }
 
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
-            
-            // Header
-            doc.setFontSize(20);
-            doc.text('Reporte de Ventas', 20, 20);
-            doc.setFontSize(12);
-            doc.text(`Generado: ${new Date().toLocaleString('es-VE')}`, 20, 30);
-            doc.text(`Total de registros: ${filteredSales.length}`, 20, 37);
-            
-            // Summary
-            let totalAmountVES = 0;
-            let totalAmountUSD = 0;
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({
+        orientation: 'p',
+        unit: 'mm',
+        format: 'a4'
+    });
 
-            filteredSales.forEach(sale => {
-                if (sale.paymentMethod === 'combined' && sale.combinedPayment) {
-                    totalAmountVES += sale.combinedPayment.paidVes;
-                    totalAmountUSD += sale.combinedPayment.paidUsd;
-                } else if (sale.currency === 'VES') {
-                    totalAmountVES += sale.totals.total;
-                } else if (sale.currency === 'USD') {
-                    totalAmountUSD += sale.totals.total;
-                }
-            });
+    // --- Variables de control y Título ---
+    let y = 15;
+    const pageHeight = doc.internal.pageSize.height;
+    const margin = 15;
 
-            const totalTransactions = filteredSales.length;
-            
-            doc.text(`Total en Ventas (VES): Bs. ${formatCurrency(totalAmountVES)}`, 20, 50);
-            doc.text(`Total en Ventas (USD): $ ${formatCurrency(totalAmountUSD, 'USD')}`, 20, 57);
-            doc.text(`Transacciones: ${totalTransactions}`, 20, 64);
-            
-            // Sales list
-            let yPosition = 80;
-            doc.setFontSize(14);
-            doc.text('Detalle de Ventas:', 20, yPosition);
-            yPosition += 10;
-            
-            doc.setFontSize(10);
-            filteredSales.forEach((sale, index) => {
-                if (yPosition > 270) { // Check if new page is needed
-                    doc.addPage();
-                    yPosition = 20;
-                }
-                
-                const saleDate = new Date(sale.timestamp).toLocaleDateString('es-VE');
-                const customerName = sale.customer ? sale.customer.name : 'Anónimo';
-                
-                let displayTotalVES = 0;
-                let displayTotalUSD = 0;
+    doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Reporte de Ventas', margin, y);
+    y += 10;
 
-                if (sale.paymentMethod === 'combined' && sale.combinedPayment) {
-                    displayTotalVES = sale.combinedPayment.paidVes;
-                    displayTotalUSD = sale.combinedPayment.paidUsd;
-                } else if (sale.currency === 'VES') {
-                    displayTotalVES = sale.totals.total;
-                    displayTotalUSD = sale.totals.total / sale.exchangeRate;
-                } else if (sale.currency === 'USD') {
-                    displayTotalVES = sale.totals.total * sale.exchangeRate;
-                    displayTotalUSD = sale.totals.total;
-                }
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Generado: ${new Date().toLocaleString('es-VE')}`, margin, y);
+    y += 5;
 
-                doc.text(`${sale.id} | ${saleDate} | ${customerName} | Bs. ${formatCurrency(displayTotalVES)} ($ ${formatCurrency(displayTotalUSD, 'USD')})`, 20, yPosition);
-                yPosition += 7;
-            });
-            
-            doc.save(`reporte-ventas-${new Date().toISOString().split('T')[0]}.pdf`);
-            showToast('Reporte exportado exitosamente');
+    // ✨ MUESTRA EL RANGO DE FECHAS DEL FILTRO
+    const dateFrom = currentFilters.dateFrom ? new Date(currentFilters.dateFrom).toLocaleDateString('es-VE', {timeZone: 'UTC'}) : 'Inicio';
+    const dateTo = currentFilters.dateTo ? new Date(currentFilters.dateTo).toLocaleDateString('es-VE', {timeZone: 'UTC'}) : 'Fin';
+    doc.text(`Período del Filtro: Desde ${dateFrom} hasta ${dateTo}`, margin, y);
+    y += 10;
+
+    // --- INICIO DE LA SECCIÓN DE RESUMEN (TARJETAS Y GRÁFICOS) ---
+
+    // 1. Recalcula los totales de las tarjetas del dashboard
+    let totalVesSales = 0, totalUsdSales = 0, totalVesProfit = 0, totalUsdProfit = 0;
+    const productSales = {};
+    filteredSales.forEach(sale => {
+        const correctTotals = recalculateTotalFromItems(sale);
+        const exchangeRate = sale.exchangeRate;
+        let saleProfitInUSD = 0;
+        sale.items.forEach(item => {
+            const unitPriceUSD = (item.currency === 'USD') ? item.unitPrice : (item.unitPrice / exchangeRate);
+            const unitCostUSD = item.product.isBulk ? (item.product.costPerUnit || 0) : (item.product.cost || 0);
+            saleProfitInUSD += (unitPriceUSD - unitCostUSD) * item.quantity;
+            const productName = item.product.name;
+            productSales[productName] = (productSales[productName] || 0) + item.quantity;
+        });
+        if (sale.currency === 'VES') {
+            totalVesSales += correctTotals.total;
+            totalVesProfit += saleProfitInUSD * exchangeRate;
+        } else {
+            totalUsdSales += correctTotals.total;
+            totalUsdProfit += saleProfitInUSD;
         }
+    });
+    const filteredTransactions = filteredSales.length;
+    const topProduct = Object.entries(productSales).sort((a, b) => b[1] - a[1])[0];
+
+    // 2. Imprime el Resumen General (Tarjetas del Dashboard)
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Resumen General (Según Filtro)', margin, y);
+    y += 7;
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Ventas Totales en VES: Bs. ${formatCurrency(totalVesSales)}`, margin, y);
+    doc.text(`Ventas Totales en USD: $ ${formatCurrency(totalUsdSales, 'USD')}`, doc.internal.pageSize.width / 2, y);
+    y += 6;
+    doc.text(`Ganancias Totales en VES: Bs. ${formatCurrency(totalVesProfit)}`, margin, y);
+    doc.text(`Ganancias Totales en USD: $ ${formatCurrency(totalUsdProfit, 'USD')}`, doc.internal.pageSize.width / 2, y);
+    y += 6;
+    doc.text(`Total Transacciones: ${filteredTransactions}`, margin, y);
+    const topProductName = topProduct ? `${topProduct[0]} (${topProduct[1]} unid.)` : 'N/A';
+    doc.text(`Producto Más Vendido: ${topProductName}`, doc.internal.pageSize.width / 2, y);
+    y += 10;
+
+    // 3. Imprime el resumen por Método de Pago (Gráfico)
+    const paymentMethodsData = calculatePaymentMethods();
+    const paymentBody = Object.entries(paymentMethodsData).map(([name, data]) => [
+        name,
+        `Bs. ${formatCurrency(data.ves)}`
+    ]);
+
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Distribución por Método de Pago', margin, y);
+    y += 2;
+
+    doc.autoTable({
+        head: [['Método de Pago', 'Monto Total (Bs)']],
+        body: paymentBody,
+        startY: y,
+        theme: 'striped',
+        headStyles: { fillColor: [41, 128, 186], textColor: [255, 255, 255], fontSize: 9 },
+        bodyStyles: { fontSize: 8 },
+        margin: { left: margin, right: margin }
+    });
+    y = doc.autoTable.previous.finalY + 10;
+    
+    // --- FIN DE LA SECCIÓN DE RESUMEN ---
+
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Detalle de Transacciones', margin, y);
+    y += 7;
+
+    // --- Bucle para cada venta filtrada (lógica sin cambios) ---
+    filteredSales.forEach((sale) => {
+        const correctTotals = recalculateTotalFromItems(sale);
+        const exchangeRate = sale.exchangeRate;
+
+        if (y > pageHeight - 70) { 
+            doc.addPage();
+            y = 15;
+            doc.setFontSize(14);
+            doc.setFont('helvetica', 'bold');
+            doc.text('Detalle de Transacciones (Continuación)', margin, y);
+            y += 7;
+        }
+
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.setFillColor(236, 240, 241);
+        doc.rect(margin, y - 4, doc.internal.pageSize.width - (margin * 2), 10, 'F');
+        doc.text(`Venta ID: ${sale.id}`, margin + 2, y);
+        doc.setFont('helvetica', 'normal');
+        doc.text(new Date(sale.timestamp).toLocaleString('es-VE'), doc.internal.pageSize.width - margin - 55, y);
+        y += 10;
+
+        doc.setFontSize(9);
+        const customerName = sale.customer ? `${sale.customer.name} (${sale.customer.document || 'N/A'})` : 'Cliente Anónimo';
+        doc.text(`Cliente: ${customerName}`, margin, y);
+        const paymentMethod = getPaymentMethodName(sale.paymentMethod);
+        doc.text(`Método de Pago: ${paymentMethod}`, doc.internal.pageSize.width / 2, y);
+        y += 6;
+
+        let totalDisplay, subtotalDisplay, ivaDisplay;
+        if (sale.currency === 'USD') {
+            subtotalDisplay = `$${formatCurrency(correctTotals.subtotal, 'USD')} (Bs. ${formatCurrency(correctTotals.subtotal * exchangeRate)})`;
+            ivaDisplay = sale.ivaApplied === false ? 'Exento (Global)' : `$${formatCurrency(correctTotals.iva, 'USD')} (Bs. ${formatCurrency(correctTotals.iva * exchangeRate)})`;
+            totalDisplay = `$${formatCurrency(correctTotals.total, 'USD')} (Bs. ${formatCurrency(correctTotals.total * exchangeRate)})`;
+        } else {
+            subtotalDisplay = `Bs. ${formatCurrency(correctTotals.subtotal)} ($${formatCurrency(correctTotals.subtotal / exchangeRate, 'USD')})`;
+            ivaDisplay = sale.ivaApplied === false ? 'Exento (Global)' : `Bs. ${formatCurrency(correctTotals.iva)} ($${formatCurrency(correctTotals.iva / exchangeRate, 'USD')})`;
+            totalDisplay = `Bs. ${formatCurrency(correctTotals.total)} ($${formatCurrency(correctTotals.total / exchangeRate, 'USD')})`;
+        }
+        
+        doc.text(`Subtotal: ${subtotalDisplay}`, margin, y); y += 5;
+        doc.text(`IVA (16%): ${ivaDisplay}`, margin, y); y += 5;
+        doc.setFont('helvetica', 'bold');
+        doc.text(`Total: ${totalDisplay}`, margin, y);
+        doc.setFont('helvetica', 'normal'); y += 7;
+
+        if (sale.paymentMethod === 'ves-mobile' && sale.paymentDetails && sale.paymentDetails.reference) { doc.text(`Referencia: ${sale.paymentDetails.reference}`, margin, y); y += 5; }
+        if (sale.paymentMethod === 'usd-cash' && sale.paymentDetails) {
+            doc.text(`Monto Recibido: $${formatCurrency(sale.paymentDetails.paidUsd || 0, 'USD')}`, margin, y); y += 5;
+            if (sale.paymentDetails.changeUsd > 0 || sale.paymentDetails.changeVes > 0) {
+                doc.text(`Vuelto: $${formatCurrency(sale.paymentDetails.changeUsd || 0, 'USD')} (Bs. ${formatCurrency(sale.paymentDetails.changeVes || 0)})`, margin, y); y += 5;
+            }
+        }
+        if (sale.paymentMethod === 'combined' && sale.combinedPayment) {
+            doc.text(`Pagado USD: $${formatCurrency(sale.combinedPayment.paidUsd, 'USD')}`, margin, y);
+            doc.text(`Pagado VES: Bs. ${formatCurrency(sale.combinedPayment.paidVes)}`, doc.internal.pageSize.width / 2, y);
+            y += 5;
+        }
+
+        const head = [['Producto', 'Cant.', 'Precio Unit.', 'Subtotal']];
+        const body = sale.items.map(item => {
+            const price = sale.currency === 'USD' ? `$${formatCurrency(item.unitPrice, 'USD')}` : `Bs. ${formatCurrency(item.unitPrice)}`;
+            const subtotal = sale.currency === 'USD' ? `$${formatCurrency(item.subtotal, 'USD')}` : `Bs. ${formatCurrency(item.subtotal)}`;
+            return [ item.product.name, `${item.quantity} ${item.unit || 'unid.'}`, price, subtotal ];
+        });
+        doc.autoTable({
+            head: head, body: body, startY: y, theme: 'grid',
+            headStyles: { fillColor: [241, 245, 249], textColor: [20, 20, 20], fontSize: 8 },
+            bodyStyles: { fontSize: 8 }, margin: { left: margin, right: margin }
+        });
+        y = doc.autoTable.previous.finalY + 10;
+    });
+
+    doc.save(`Reporte_Ventas_${new Date().toISOString().split('T')[0]}.pdf`);
+    showToast('Reporte PDF generado exitosamente', 'success');
+}
 
         function formatCurrency(amount, currency = 'VES') {
             if (currency === 'USD') {
