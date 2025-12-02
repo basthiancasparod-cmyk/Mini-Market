@@ -370,18 +370,28 @@
             box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
         }
         
-        .product-emoji {
-            font-size: 1.5rem;
-            width: 48px;
-            height: 48px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 12px;
-            background: linear-gradient(to bottom right, #3b82f6, #9333ea);
-            color: white;
-            flex-shrink: 0;
-        }
+        /* Reemplaza o actualiza tu clase .product-emoji con esto */
+.product-icon {
+    width: 48px;
+    height: 48px;
+    flex-shrink: 0;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden; /* Importante para recortar la imagen a las esquinas redondeadas */
+    background: linear-gradient(to bottom right, #3b82f6, #9333ea); /* Fondo por defecto para emojis */
+    color: white;
+    font-size: 1.5rem;
+}
+
+/* Nueva clase para la imagen real */
+.product-real-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover; /* Hace que la imagen llene el cuadro sin deformarse */
+    display: block;
+}
         
         .product-info {
             flex: 1;
@@ -535,6 +545,8 @@
             justify-content: center;
             color: white;
             flex-shrink: 0;
+            overflow: hidden; /* Para que la imagen respete los bordes redondeados */
+            padding: 0;       /* Para que la imagen ocupe todo el espacio */
         }
         
         .cart-item-details {
@@ -2137,17 +2149,28 @@ function renderCategoryFilters() {
 
 function renderProductList() {
     const list = document.getElementById('productsList');
+    
     list.innerHTML = inventoryProducts.map(product => {
         const stockLevel = getStockLevel(product);
         
-        // Usamos el precio por unidad, ajustado a la moneda actual
+        // Precios
         const priceUsd = product.isBulk ? product.pricePerUnit : product.price;
         const priceVes = priceUsd * exchangeRate;
 
         const unitDisplay = product.isBulk ? `/${product.unit}` : '';
         const stockDisplay = product.isBulk ? `${product.stock.toFixed(3)} ${product.unit}` : `${product.stock} unidades`;
         
-        // ✨ CORRECCIÓN CLAVE: Se añade .toLowerCase() a los atributos data-*
+        // --- LÓGICA DE IMAGEN VS EMOJI ---
+        // Si existe imageUrl, creamos una etiqueta <img>. Si no, ponemos el emoji.
+        // El 'onerror' sirve por si el link de la imagen se rompe, vuelve a mostrar el emoji.
+        let iconHtml;
+        if (product.imageUrl && product.imageUrl.trim() !== "") {
+            iconHtml = `<img src="${product.imageUrl}" class="product-real-img" onerror="this.onerror=null; this.parentNode.innerHTML='${product.emoji}';">`;
+        } else {
+            iconHtml = product.emoji; // Mantiene el emoji por defecto si no hay foto
+        }
+        // ----------------------------------
+
         return `
             <div class="product-item" data-product-id="${product.id}" 
                  data-product-name="${product.name.toLowerCase()}" 
@@ -2155,7 +2178,9 @@ function renderProductList() {
                  data-product-brand="${(product.brand || '').toLowerCase()}"
                  data-product-category="${(product.category || '').toLowerCase()}"
                  onclick="openQuantityModal(${product.id})">
-                <div class="product-emoji">${product.emoji}</div>
+                
+                <div class="product-icon">${iconHtml}</div>
+                
                 <div class="product-info">
                     <div class="product-name">${product.name} ${product.isIvaExempt ? '<span style="font-weight:400; color:#059669;">(E)</span>' : ''}</div>
                     <div class="product-code">${product.code}</div>
@@ -2170,7 +2195,7 @@ function renderProductList() {
                 </div>
             </div>`;
     }).join('');
-    // Al final, aplicamos el filtro inicial para asegurar que todo se muestre correctamente.
+    
     filterAndDisplayProducts();
 }
 
@@ -2449,9 +2474,22 @@ function filterAndDisplayProducts(searchTerm = '') {
                     const priceWithIVA = applyIVA ? price * 1.16 : price;
                     // const subtotalWithIVA = applyIVA ? subtotal * 1.16 : subtotal; // Not used directly in UI here
 
+                    let cartIconHtml;
+            
+                    // Verificamos si tiene imagen y no está vacía
+                    if (item.product.imageUrl && item.product.imageUrl.trim() !== "") {
+                        // Si tiene imagen, creamos la etiqueta <img>
+                        // Usamos la clase 'product-real-img' que definimos en el paso anterior
+                        // El 'onerror' es un truco: si la imagen falla, se reemplaza a sí misma por el emoji original
+                        cartIconHtml = `<img src="${item.product.imageUrl}" class="product-real-img" onerror="this.onerror=null; this.parentNode.innerHTML='${item.product.emoji}';">`;
+                    } else {
+                        // Si no tiene imagen, usamos el emoji
+                        cartIconHtml = item.product.emoji;
+                    }
+
                     return `
                         <div class="cart-item">
-                            <div class="cart-item-icon">${item.product.emoji}</div>
+                            <div class="cart-item-icon">${cartIconHtml}</div>
                             <div class="cart-item-details">
                                 <div class="cart-item-name">${item.product.name} ${item.product.isIvaExempt ? '<span style="font-weight:400; color:#059669;">(E)</span>' : ''}</div>
                                 <div class="cart-item-info">${item.product.brand} - ${item.product.code}</div>
