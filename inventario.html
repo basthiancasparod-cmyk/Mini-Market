@@ -149,10 +149,34 @@
             background: #f8fafc;
         }
 
-        .product-image {
-            background: linear-gradient(to bottom right, #dbeafe, #e0e7ff);
-            color: #3b82f6;
-        }
+/* Estilos para la imagen en la tabla con efecto ZOOM */
+.product-image {
+    position: relative; /* Necesario para el efecto zoom */
+    overflow: visible !important; /* Permitir que la imagen se salga del cuadro al hacer hover */
+    z-index: 1;
+}
+
+.product-real-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px;
+    display: block;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    background-color: white; /* Fondo blanco por si la imagen es transparente */
+}
+
+/* Al pasar el mouse, la imagen crece */
+.product-image:hover .product-real-img {
+    transform: scale(3.5); /* Crece 3.5 veces su tamaño */
+    z-index: 100;
+    position: absolute;
+    top: -10px;
+    left: 10px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+    border: 2px solid white;
+    border-radius: 12px;
+}
 
         .stock-high { background: #dcfce7; color: #166534; }
         .stock-medium { background: #fef3c7; color: #92400e; }
@@ -2732,6 +2756,22 @@ function handleStockKeydown(event) {
 
                 const isSelected = selectedProductIds.has(product.id);
 
+                // --- LÓGICA DE IMAGEN NUEVA ---
+                // Definimos el icono por defecto (el SVG que ya tenías)
+                const defaultIconSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>`;
+                
+                let imageContent;
+
+                // Verificamos si existe la URL de la imagen
+                if (product.imageUrl && product.imageUrl.trim() !== "") {
+                    // Si existe, ponemos la etiqueta IMG. 
+                    // El truco 'onerror' hace que si el link está roto, se reemplace automáticamente por el icono SVG.
+                    imageContent = `<img src="${product.imageUrl}" class="product-real-img" onerror="this.parentNode.innerHTML='${defaultIconSvg.replace(/"/g, "'")}'">`;
+                } else {
+                    // Si no existe, usamos el icono SVG por defecto
+                    imageContent = defaultIconSvg;
+                }
+
                 return `
                     <tr data-product-id="${product.id}">
                         <td class="checkbox-col">
@@ -2740,11 +2780,7 @@ function handleStockKeydown(event) {
                         <td>
                             <div class="product-info">
                                 <div class="product-image">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                        <rect width="20" height="14" x="2" y="3" rx="2"/>
-                                        <line x1="8" y1="21" x2="16" y2="21"/>
-                                        <line x1="12" y1="17" x2="12" y2="21"/>
-                                    </svg>
+                                    ${imageContent}
                                 </div>
                                 <div class="product-details">
                                     <h4>${product.isIvaExempt ? product.name + ' (E)' : product.name}</h4>
