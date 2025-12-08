@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configuración de Recibo - Ciervo</title>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* --- ESTILOS BASE --- */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(to bottom right, #f8fafc, #dbeafe, #e0e7ff);
+            min-height: 100vh;
+            color: #334155;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        body.dark-mode {
+            background: linear-gradient(to bottom right, #1a202c, #2d3748, #4a5568);
+            color: #e2e8f0;
+        }
+
+        /* Header */
+        .glassmorphic-bar {
+            position: sticky; top: 0; z-index: 50;
+            background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(16px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        body.dark-mode .glassmorphic-bar {
+            background: rgba(26, 32, 44, 0.7); border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .container { max-width: 1400px; margin: 0 auto; padding: 0 1.5rem; }
+        .top-bar { display: flex; align-items: center; justify-content: space-between; padding: 1rem 0; }
+        
+        .brand-section { display: flex; align-items: center; gap: 1rem; }
+        .brand-icon {
+            width: 40px; height: 40px;
+            background: linear-gradient(to bottom right, #3b82f6, #9333ea);
+            border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white;
+        }
+        
+        .btn-back {
+            display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem;
+            background: rgba(255,255,255,0.5); border-radius: 8px; text-decoration: none;
+            color: #64748b; transition: all 0.2s; border: none; cursor: pointer;
+        }
+        body.dark-mode .btn-back { background: rgba(26,32,44,0.5); color: #a0aec0; }
+        .btn-back:hover { background: white; transform: translateY(-1px); }
+
+        /* --- LAYOUT --- */
+        .module-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 2rem;
+            padding: 2rem 0;
+        }
+        @media (min-width: 1024px) {
+            .module-grid { grid-template-columns: 1fr 380px; }
+        }
+
+        /* Panel Config */
+        .config-card {
+            background: white; border-radius: 20px; padding: 2rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e2e8f0;
+        }
+        body.dark-mode .config-card { background: #2d3748; border-color: #4a5568; }
+
+        .section-header { margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid #e2e8f0; }
+        .section-title { font-size: 1.25rem; font-weight: 700; color: #1e293b; margin-bottom: 0.5rem; }
+        body.dark-mode .section-title { color: #f1f5f9; }
+
+        /* Acordeones */
+        details {
+            margin-bottom: 1rem;
+            border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;
+            background: #fff; transition: all 0.3s;
+        }
+        body.dark-mode details { background: #2d3748; border-color: #4a5568; }
+        
+        summary {
+            padding: 1rem; cursor: pointer; font-weight: 600; color: #334155;
+            background: #f8fafc; list-style: none; display: flex; align-items: center; justify-content: space-between;
+        }
+        body.dark-mode summary { background: #4a5568; color: #e2e8f0; }
+        summary::-webkit-details-marker { display: none; }
+        summary::after { content: '+'; font-size: 1.2rem; }
+        details[open] summary::after { content: '-'; }
+        
+        .details-content { padding: 1rem; }
+
+        /* Switches */
+        .switch-row {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 0.75rem 0; border-bottom: 1px dashed #e2e8f0;
+        }
+        .switch-row:last-child { border-bottom: none; }
+        body.dark-mode .switch-row { border-color: #4a5568; }
+        
+        .switch-label strong { display: block; font-size: 0.9rem; color: #334155; }
+        body.dark-mode .switch-label strong { color: #e2e8f0; }
+        .switch-label span { font-size: 0.75rem; color: #64748b; }
+
+        .toggle-switch { position: relative; display: inline-block; width: 46px; height: 24px; }
+        .toggle-switch input { 
+            opacity: 0; width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 100; cursor: pointer;
+        }
+        .slider {
+            position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #cbd5e1; transition: .4s; border-radius: 34px; pointer-events: none;
+        }
+        .slider:before {
+            position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px;
+            background-color: white; transition: .4s; border-radius: 50%;
+        }
+        input:checked + .slider { background-color: #3b82f6; }
+        input:checked + .slider:before { transform: translateX(22px); }
+
+        /* Inputs de Texto */
+        .form-group { margin-bottom: 1rem; }
+        .form-label { display: block; font-weight: 600; font-size: 0.85rem; margin-bottom: 0.5rem; color: #475569; }
+        body.dark-mode .form-label { color: #cbd5e1; }
+        .form-input, .form-textarea, .form-select {
+            width: 100%; padding: 0.75rem; border-radius: 10px;
+            border: 1px solid #cbd5e1; background: #f8fafc;
+            color: #1e293b; transition: all 0.2s; font-size: 0.9rem;
+        }
+        body.dark-mode .form-input, body.dark-mode .form-textarea, body.dark-mode .form-select {
+            background: #1a202c; border-color: #4a5568; color: white;
+        }
+
+        /* --- PREVIEW ESTILO TICKET --- */
+        .preview-container {
+            position: sticky; top: 100px;
+            display: flex; flex-direction: column; align-items: center;
+        }
+        .receipt-paper {
+            width: 320px; background: #fff; padding: 25px 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 11px; color: #000; min-height: 500px;
+            transition: opacity 0.3s; position: relative;
+        }
+        /* Efecto borde papel */
+        .receipt-paper::before {
+            content: ""; position: absolute; top: -5px; left: 0; width: 100%; height: 5px;
+            background: radial-gradient(circle, transparent, transparent 50%, #fff 50%, #fff 100%) 0 0/10px 10px;
+        }
+
+        .receipt-header { text-align: center; margin-bottom: 10px; }
+        .receipt-logo { max-width: 100px; margin: 0 auto 5px; display: block; filter: grayscale(100%); }
+        
+        .dashed-line { border-bottom: 1px dashed #000; margin: 8px 0; }
+        .double-line { border-bottom: 3px double #000; margin: 8px 0; }
+        
+        .receipt-block { margin-bottom: 10px; }
+        .receipt-row { display: flex; justify-content: space-between; margin-bottom: 2px; }
+        .receipt-center { text-align: center; }
+        .receipt-right { text-align: right; }
+        
+        .bold { font-weight: 800; }
+        
+        .ticket-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+        .ticket-table th { border-bottom: 1px solid #000; text-align: left; font-weight: bold; }
+        .ticket-table td { padding: 2px 0; }
+        .ticket-table .col-price { text-align: right; }
+        
+        .tax-table { width: 100%; font-size: 10px; margin-top: 5px; border: 1px solid #ccc; }
+        .tax-table th, .tax-table td { border: 1px solid #ccc; padding: 2px; text-align: center; }
+
+        .payment-box { border: 1px solid #000; padding: 5px; margin-top: 5px; }
+
+        .save-fab {
+            background: linear-gradient(to right, #3b82f6, #6366f1);
+            color: white; width: 100%; padding: 1rem;
+            border: none; border-radius: 12px; font-weight: 600; font-size: 1.1rem;
+            margin-top: 1.5rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px;
+            transition: transform 0.2s;
+        }
+        .save-fab:hover { transform: translateY(-2px); }
+
+        #toast {
+            position: fixed; bottom: 20px; right: 20px;
+            background: #1e293b; color: white; padding: 12px 20px;
+            border-radius: 10px; transform: translateY(100px); transition: 0.3s;
+            opacity: 0; z-index: 1000; pointer-events: none;
+        }
+        #toast.show { transform: translateY(0); opacity: 1; }
+        
+        .missing-alert {
+            background: #fef2f2; border: 1px solid #fee2e2; color: #991b1b;
+            padding: 10px; border-radius: 8px; font-size: 0.85rem; margin-bottom: 15px; display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="glassmorphic-bar">
+        <div class="container">
+            <div class="top-bar">
+                <div class="brand-section">
+                    <div class="brand-icon">
+                        <i data-lucide="receipt"></i>
+                    </div>
+                    <div class="brand-text">
+                        <h1>Configuración de Recibo</h1>
+                        <p>Diseño de Ticket</p>
+                    </div>
+                </div>
+                <a href="mini_market_pos.html" class="btn-back">
+                    <i data-lucide="arrow-left"></i> Volver al POS
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="module-grid">
+            
+            <div class="settings-area">
+                <div class="config-card">
+                    
+                    <div id="missingDataAlert" class="missing-alert">
+                        <strong>Atención:</strong> Datos de empresa no encontrados. Se muestran datos de ejemplo.
+                    </div>
+
+                    <div class="section-header">
+                        <h2 class="section-title">Opciones del Ticket</h2>
+                        <div class="switch-row" style="border: 2px solid #3b82f6; background: #eff6ff; padding: 10px; border-radius: 8px;">
+                            <div class="switch-label">
+                                <strong style="color:#1d4ed8;">Habilitar Impresión</strong>
+                                <span>Mostrar ticket al finalizar venta</span>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="enablePrint">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <form id="receiptForm" onsubmit="return false;">
+                        
+                        <details open>
+                            <summary>Cabecera e Identidad</summary>
+                            <div class="details-content">
+                                <div class="switch-row">
+                                    <div class="switch-label">
+                                        <strong>Logotipo</strong>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="showLogo">
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                                <div class="switch-row">
+                                    <div class="switch-label">
+                                        <strong>Datos de Empresa</strong>
+                                        <span>Nombre y Dirección</span>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="showBusinessData">
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                                <div class="switch-row">
+                                    <div class="switch-label">
+                                        <strong>CIF / RIF</strong>
+                                        <span>Identificación Fiscal</span>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="showTaxId">
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                            </div>
+                        </details>
+
+                        <details open>
+                            <summary>Información de la Venta</summary>
+                            <div class="details-content">
+                                <div class="switch-row">
+                                    <div class="switch-label">
+                                        <strong>Título del Documento</strong>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="showDocTitle">
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                                <div class="form-group" style="margin-top:10px;">
+                                    <input type="text" id="docTitleText" class="form-input" placeholder="Ej: Factura / Nota de Entrega">
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label class="form-label">Prefijo de Factura (Sincronizado con POS)</label>
+                                    <input type="text" id="invoicePrefix" class="form-input" placeholder="Ej: FAC-001-">
+                                </div>
+
+                                <div class="switch-row">
+                                    <div class="switch-label">
+                                        <strong>Datos del Cliente</strong>
+                                        <span>Nombre, CI/RIF (Si aplica)</span>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="showCustomerData">
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                                
+                                <div class="switch-row">
+                                    <div class="switch-label">
+                                        <strong>Número de Factura</strong>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="showInvoiceNum">
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+
+                                <div class="switch-row">
+                                    <div class="switch-label">
+                                        <strong>Vendedor / Atendido por</strong>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="showSeller">
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+
+                                <div class="switch-row">
+                                    <div class="switch-label">
+                                        <strong>Fecha y Hora</strong>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="showDateTime">
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                            </div>
+                        </details>
+
+                        <details>
+                            <summary>Montos, Impuestos y Pagos</summary>
+                            <div class="details-content">
+                                
+                                <div class="form-group">
+                                    <label class="form-label">Moneda Principal del Ticket</label>
+                                    <select id="primaryCurrency" class="form-select">
+                                        <option value="SALE">Moneda de la Venta (Dinámico)</option>
+                                        <option value="VES">Siempre Bolívares (VES)</option>
+                                    </select>
+                                    <small style="color:#64748b; font-size:0.75rem;">Determina en qué moneda se expresan los items.</small>
+                                </div>
+
+                                <div class="switch-row">
+                                    <div class="switch-label">
+                                        <strong>Desglose de Descuentos</strong>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="showDiscounts">
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+
+                                <div class="switch-row">
+                                    <div class="switch-label">
+                                        <strong>Desglose de Impuestos (IVA)</strong>
+                                        <span>Base Imponible / Cuota</span>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="showTaxes">
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+
+                                <div class="switch-row">
+                                    <div class="switch-label">
+                                        <strong>Detalle de Pagos y Cambio</strong>
+                                        <span>(Efectivo, Pago Móvil, Mixto...)</span>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="showPaymentDetails">
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+
+                                <div class="switch-row">
+                                    <div class="switch-label">
+                                        <strong>Doble Totalización (Ref)</strong>
+                                        <span>Mostrar total en USD y VES al final</span>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="showDualTotals">
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+
+                                <div class="switch-row">
+                                    <div class="switch-label">
+                                        <strong>Mostrar Tasa de Cambio</strong>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="showExchangeRate">
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                            </div>
+                        </details>
+
+                        <details>
+                            <summary>Pie de Página</summary>
+                            <div class="details-content">
+                                <div class="form-group">
+                                    <label class="form-label">Mensaje de Despedida</label>
+                                    <textarea id="footerMessage" class="form-textarea" rows="2" placeholder="¡Gracias por su compra!"></textarea>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label">Política / Notas</label>
+                                    <textarea id="policyText" class="form-textarea" rows="2" placeholder="Condiciones de garantía..."></textarea>
+                                </div>
+                            </div>
+                        </details>
+
+                    </form>
+
+                    <button class="save-fab" id="btnSave">
+                        <i data-lucide="save"></i> Guardar Configuración
+                    </button>
+                </div>
+            </div>
+
+            <div class="preview-container">
+                <div style="margin-bottom:10px; font-weight:600; color:#64748b;">VISTA PREVIA (Simulación Mixta)</div>
+                
+                <div class="receipt-paper" id="ticketPreview">
+                    <div class="receipt-header">
+                        <img src="" id="prevLogo" class="receipt-logo" style="display:none;">
+                        
+                        <div id="blockBusinessData">
+                            <h2 style="margin:5px 0; font-size:16px; font-weight:800;" id="prevCompanyName">NOMBRE EMPRESA</h2>
+                            <div id="prevAddress">Dirección de la empresa</div>
+                            <div id="prevTaxId">RIF: J-00000000</div>
+                        </div>
+                    </div>
+
+                    <div class="dashed-line"></div>
+
+                    <div id="blockCustomerData" class="receipt-block receipt-center" style="background:#f8fafc; padding:5px;">
+                        <div class="bold">Datos Del Cliente</div>
+                        <div>Maria Pérez</div>
+                        <div>V-12.345.678</div>
+                        <div>Caracas, Venezuela</div>
+                    </div>
+
+                    <div class="dashed-line" id="lineCustomer"></div>
+
+                    <div id="blockSaleInfo" class="receipt-center">
+                        <div class="bold" id="prevDocTitle" style="font-size:13px; margin-bottom:2px;">Factura</div>
+                        <div id="prevInvoiceNum">Nº: FAC-001-V-0045</div>
+                        <div id="prevDateTime">07/12/2025 10:30 AM <br> Caja Principal</div>
+                        <div id="prevSeller">Atendido por: Admin</div>
+                    </div>
+
+                    <div class="double-line"></div>
+
+                    <table class="ticket-table">
+                        <thead>
+                            <tr>
+                                <th style="width:10%">Cant</th>
+                                <th style="width:60%">Artículos</th>
+                                <th style="width:30%" class="col-price">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody id="previewItemsBody">
+                            </tbody>
+                    </table>
+
+                    <div class="dashed-line"></div>
+
+                    <div class="receipt-right">
+                        <div class="bold" style="font-size:14px;" id="prevMainTotal">TOTAL: $0.00</div>
+                    </div>
+                    
+                    <div id="blockDiscounts" class="receipt-right" style="font-size:10px; margin-top:2px;">
+                        <div>Descuento (5%): -<span id="prevDiscountVal">0.00</span></div>
+                    </div>
+
+                    <div id="blockTaxes">
+                        <table class="tax-table">
+                            <thead><tr><th>IVA (16%)</th><th>Base</th><th>Cuota</th></tr></thead>
+                            <tbody>
+                                <tr>
+                                    <td>G (General)</td>
+                                    <td id="prevTaxBase">0.00</td>
+                                    <td id="prevTaxAmount">0.00</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div id="blockPayment">
+                        <div class="payment-box">
+                            <div style="font-size:10px; font-weight:bold; margin-bottom:2px;">MÉTODOS DE PAGO:</div>
+                            <div class="receipt-row"><span>Efectivo ($):</span><span id="prevPayCash">10.00</span></div>
+                            <div class="receipt-row"><span>Pago Móvil (Bs):</span><span id="prevPayPM">100.00</span></div>
+                            <div class="dashed-line" style="margin:2px 0;"></div>
+                            <div class="receipt-row bold"><span>Su Cambio ($):</span><span id="prevChange">1.50</span></div>
+                        </div>
+                    </div>
+
+                    <div id="blockDualTotals" class="receipt-center" style="margin-top:5px; border:1px dashed #ccc; padding:2px;">
+                        <div id="prevExchangeRate">Tasa: 36.50 Bs/$</div>
+                        <div id="prevSecondaryTotal" class="bold">Total Ref: Bs. 000.00</div>
+                    </div>
+
+                    <div class="dashed-line"></div>
+
+                    <div class="receipt-footer">
+                        <div id="prevFooterMsg" class="bold" style="margin-bottom:5px;"></div>
+                        <div id="prevPolicy"></div>
+                    </div>
+                </div>
+
+                <div id="printDisabledMsg" style="margin-top:20px; color:#ef4444; font-weight:bold; display:none; background:white; padding:10px; border-radius:8px;">
+                    <i data-lucide="printer-off" style="vertical-align:middle;"></i> Impresión Desactivada
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast">Configuración guardada correctamente</div>
+
+    <script>
+        // Inicializar Iconos
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+
+        // --- ESTADO ---
+        let companyData = {};
+        const MOCK_EXCHANGE_RATE = 36.50; // Para simulación
+
+        const defaultReceiptConfig = {
+            enabled: true,
+            // Cabecera
+            showLogo: true,
+            showBusinessData: true,
+            showTaxId: true,
+            // Info Venta
+            showDocTitle: true,
+            docTitleText: "Factura",
+            invoicePrefix: "FAC-",
+            showCustomerData: true,
+            showInvoiceNum: true,
+            showSeller: true,
+            showDateTime: true,
+            // Totales
+            primaryCurrency: "SALE", // SALE (dinámico) o VES (fijo)
+            showDiscounts: true,
+            showTaxes: true,
+            showPaymentDetails: true,
+            showDualTotals: true,
+            showExchangeRate: true,
+            // Textos
+            footerMessage: "¡Gracias por su visita!",
+            policyText: "Conserve su ticket."
+        };
+
+        // --- INIT ---
+        document.addEventListener('DOMContentLoaded', () => {
+            initSystem();
+        });
+
+        function initSystem() {
+            loadCompanyData();
+            loadReceiptConfig();
+            bindEvents();
+            if(localStorage.getItem('darkMode') === 'enabled') document.body.classList.add('dark-mode');
+        }
+
+        // --- CARGA DE DATOS ---
+        function loadCompanyData() {
+            const stored = localStorage.getItem('companyData');
+            if (stored) {
+                try {
+                    companyData = JSON.parse(stored);
+                    document.getElementById('missingDataAlert').style.display = 'none';
+                } catch (e) { showMissingAlert(); }
+            } else {
+                showMissingAlert();
+                companyData = { 
+                    companyName: "TIENDA DE EJEMPLO C.A.", 
+                    rif: "J-12345678", 
+                    address: "Av. Principal, Edif. Central", 
+                    logo: null 
+                };
+            }
+        }
+
+        function showMissingAlert() {
+            const el = document.getElementById('missingDataAlert');
+            if(el) el.style.display = 'block';
+        }
+
+        function loadReceiptConfig() {
+            const storedConfig = localStorage.getItem('receiptSettings');
+            const config = storedConfig ? { ...defaultReceiptConfig, ...JSON.parse(storedConfig) } : defaultReceiptConfig;
+
+            // Mapear configuración a los inputs
+            setCheck('enablePrint', config.enabled);
+            
+            setCheck('showLogo', config.showLogo);
+            setCheck('showBusinessData', config.showBusinessData);
+            setCheck('showTaxId', config.showTaxId);
+            
+            setCheck('showDocTitle', config.showDocTitle);
+            setVal('docTitleText', config.docTitleText);
+            setVal('invoicePrefix', config.invoicePrefix);
+            
+            setCheck('showCustomerData', config.showCustomerData);
+            setCheck('showInvoiceNum', config.showInvoiceNum);
+            setCheck('showSeller', config.showSeller);
+            setCheck('showDateTime', config.showDateTime);
+            
+            setVal('primaryCurrency', config.primaryCurrency);
+            setCheck('showDiscounts', config.showDiscounts);
+            setCheck('showTaxes', config.showTaxes);
+            setCheck('showPaymentDetails', config.showPaymentDetails);
+            setCheck('showDualTotals', config.showDualTotals);
+            setCheck('showExchangeRate', config.showExchangeRate);
+            
+            setVal('footerMessage', config.footerMessage);
+            setVal('policyText', config.policyText);
+
+            updatePreview();
+        }
+
+        // --- DOM HELPERS ---
+        function setCheck(id, val) { const el = document.getElementById(id); if(el) el.checked = !!val; }
+        function setVal(id, val) { const el = document.getElementById(id); if(el) el.value = val || ""; }
+        function getCheck(id) { const el = document.getElementById(id); return el ? el.checked : false; }
+        function getVal(id) { const el = document.getElementById(id); return el ? el.value : ""; }
+        function toggleDisplay(id, show) { const el = document.getElementById(id); if(el) el.style.display = show ? 'block' : 'none'; }
+
+        // --- EVENTOS ---
+        function bindEvents() {
+            const inputs = document.querySelectorAll('input, textarea, select');
+            inputs.forEach(input => {
+                input.addEventListener('input', updatePreview);
+                input.addEventListener('change', updatePreview);
+            });
+            document.getElementById('btnSave').addEventListener('click', saveConfiguration);
+        }
+
+        // --- CORE: UPDATE PREVIEW ---
+        function updatePreview() {
+            const isEnabled = getCheck('enablePrint');
+            const paper = document.getElementById('ticketPreview');
+            const msg = document.getElementById('printDisabledMsg');
+            
+            if (!isEnabled) {
+                paper.style.opacity = "0.4"; paper.style.filter = "grayscale(100%)";
+                msg.style.display = "block";
+            } else {
+                paper.style.opacity = "1"; paper.style.filter = "none";
+                msg.style.display = "none";
+            }
+
+            // --- 1. CABECERA ---
+            const logoImg = document.getElementById('prevLogo');
+            if (getCheck('showLogo') && companyData.logo) {
+                logoImg.src = companyData.logo; logoImg.style.display = 'block';
+            } else { logoImg.style.display = 'none'; }
+
+            toggleDisplay('blockBusinessData', getCheck('showBusinessData'));
+            document.getElementById('prevCompanyName').textContent = companyData.companyName || companyData.tradeName || "NOMBRE";
+            document.getElementById('prevAddress').textContent = companyData.address || "Dirección...";
+            
+            toggleDisplay('prevTaxId', getCheck('showTaxId'));
+            document.getElementById('prevTaxId').textContent = `RIF: ${companyData.rif || "..."}`;
+
+            // --- 2. INFO VENTA ---
+            toggleDisplay('prevDocTitle', getCheck('showDocTitle'));
+            document.getElementById('prevDocTitle').textContent = getVal('docTitleText');
+            
+            const prefix = getVal('invoicePrefix');
+            document.getElementById('prevInvoiceNum').textContent = `Nº: ${prefix}V-0045`;
+            
+            toggleDisplay('blockCustomerData', getCheck('showCustomerData'));
+            toggleDisplay('lineCustomer', getCheck('showCustomerData'));
+            toggleDisplay('prevInvoiceNum', getCheck('showInvoiceNum'));
+            toggleDisplay('prevSeller', getCheck('showSeller'));
+            toggleDisplay('prevDateTime', getCheck('showDateTime'));
+
+            // --- 3. ITEMS Y MONEDA (SIMULACIÓN INTELIGENTE) ---
+            const mode = getVal('primaryCurrency'); // SALE (simulamos USD) o VES
+            const symbol = mode === 'VES' ? 'Bs.' : '$';
+            const rate = MOCK_EXCHANGE_RATE;
+            
+            // Simulación de valores base en USD
+            const item1Price = 2.50; // Harina
+            const item2Price = 5.00; // Queso (kg)
+            const subtotalUsd = (item1Price * 2) + (item2Price * 0.5); // 5 + 2.5 = 7.50
+            const discountUsd = 0.50;
+            const taxBaseUsd = 6.03; // Aprox
+            const taxAmountUsd = 0.97; // Aprox
+            const totalUsd = 7.00;
+
+            // Convertir si el modo es VES
+            const mult = mode === 'VES' ? rate : 1;
+            
+            // Renderizar Items
+            const tbody = document.getElementById('previewItemsBody');
+            tbody.innerHTML = `
+                <tr><td>2</td><td>HARINA PAN</td><td class="col-price">${symbol}${(item1Price * mult).toFixed(2)}</td></tr>
+                <tr><td>0.5</td><td>QUESO SEMIDURO</td><td class="col-price">${symbol}${(item2Price * mult).toFixed(2)}</td></tr>
+            `;
+
+            document.getElementById('prevMainTotal').textContent = `TOTAL: ${symbol}${(totalUsd * mult).toFixed(2)}`;
+            document.getElementById('prevDiscountVal').textContent = `${symbol}${(discountUsd * mult).toFixed(2)}`;
+
+            // --- 4. DETALLES FINALES ---
+            toggleDisplay('blockDiscounts', getCheck('showDiscounts'));
+            
+            toggleDisplay('blockTaxes', getCheck('showTaxes'));
+            document.getElementById('prevTaxBase').textContent = `${symbol}${(taxBaseUsd * mult).toFixed(2)}`;
+            document.getElementById('prevTaxAmount').textContent = `${symbol}${(taxAmountUsd * mult).toFixed(2)}`;
+
+            toggleDisplay('blockPayment', getCheck('showPaymentDetails'));
+            // Simulamos pago mixto en el preview
+            document.getElementById('prevPayCash').textContent = `${(5.00).toFixed(2)}`;
+            document.getElementById('prevPayPM').textContent = `${(73.00).toFixed(2)}`; // ~2 USD
+            document.getElementById('prevChange').textContent = `0.00`;
+
+            toggleDisplay('prevUsdRef', getCheck('showExchangeRate')); // Reutilizamos este switch para mostrar tasa
+            document.getElementById('prevExchangeRate').textContent = `Tasa: ${rate.toFixed(2)} Bs/$`;
+            
+            toggleDisplay('blockDualTotals', getCheck('showDualTotals'));
+            if (getCheck('showDualTotals')) {
+                const altSymbol = mode === 'VES' ? '$' : 'Bs.';
+                const altTotal = mode === 'VES' ? totalUsd : (totalUsd * rate);
+                document.getElementById('prevSecondaryTotal').textContent = `Total Ref: ${altSymbol}${altTotal.toFixed(2)}`;
+                document.getElementById('blockDualTotals').style.display = 'block';
+            } else {
+                document.getElementById('blockDualTotals').style.display = 'none';
+            }
+
+            // --- 5. PIE ---
+            document.getElementById('prevFooterMsg').textContent = getVal('footerMessage');
+            document.getElementById('prevPolicy').textContent = getVal('policyText');
+        }
+
+        // --- GUARDAR ---
+        function saveConfiguration() {
+            const config = {
+                enabled: getCheck('enablePrint'),
+                // Cabecera
+                showLogo: getCheck('showLogo'),
+                showBusinessData: getCheck('showBusinessData'),
+                showTaxId: getCheck('showTaxId'),
+                // Info
+                showDocTitle: getCheck('showDocTitle'),
+                docTitleText: getVal('docTitleText'),
+                invoicePrefix: getVal('invoicePrefix'),
+                showCustomerData: getCheck('showCustomerData'),
+                showInvoiceNum: getCheck('showInvoiceNum'),
+                showSeller: getCheck('showSeller'),
+                showDateTime: getCheck('showDateTime'),
+                // Detalles
+                primaryCurrency: getVal('primaryCurrency'),
+                showDiscounts: getCheck('showDiscounts'),
+                showTaxes: getCheck('showTaxes'),
+                showPaymentDetails: getCheck('showPaymentDetails'),
+                showDualTotals: getCheck('showDualTotals'),
+                showExchangeRate: getCheck('showExchangeRate'),
+                // Footer
+                footerMessage: getVal('footerMessage'),
+                policyText: getVal('policyText')
+            };
+
+            localStorage.setItem('receiptSettings', JSON.stringify(config));
+            
+            const t = document.getElementById('toast');
+            t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 3000);
+            
+            updatePreview();
+        }
+    </script>
+</body>
+</html>
