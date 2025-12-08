@@ -1369,9 +1369,13 @@
                 </label>
             </div>
             <div class="sale-id" id="saleId">V-0001</div>
+            <button class="back-btn" onclick="window.location.href='config_recibo.html'" style="background: #64748b; margin-right: 10px;">
+                <i class="fas fa-cog"></i> Config. Ticket
+            </button>
             <button class="back-btn" onclick="goBack()">
                 <i class="fas fa-arrow-left"></i>Menú
             </button>
+            
         </div>
     </header>
 
@@ -3054,6 +3058,10 @@ function filterAndDisplayProducts(searchTerm = '') {
                 // Actualizar inventario
                 updateInventory();
                 
+                // === AQUÍ AGREGAS LA LLAMADA ===
+                printReceipt(saleData); 
+                // ===============================
+
                 // Mostrar éxito
                 showToast('¡Venta procesada exitosamente!');
                 
@@ -3218,117 +3226,261 @@ function filterAndDisplayProducts(searchTerm = '') {
 
         // ===== FUNCIONES PARA CARRITOS EN ESPERA =====
 
-/**
- * Guarda el carrito actual en la "gaveta" (array heldCarts).
- */
-function holdCurrentCart() {
-    if (cart.length === 0) {
-        showToast('El carrito está vacío, no hay nada que guardar.');
-        return;
-    }
+        /**
+        * Guarda el carrito actual en la "gaveta" (array heldCarts).
+        */
+        function holdCurrentCart() {
+            if (cart.length === 0) {
+                showToast('El carrito está vacío, no hay nada que guardar.');
+                return;
+            }
 
-    const cartName = prompt('Ingresa un nombre para este carrito (ej: Cliente de la gorra roja)', `Carrito - ${new Date().toLocaleTimeString()}`);
+            const cartName = prompt('Ingresa un nombre para este carrito (ej: Cliente de la gorra roja)', `Carrito - ${new Date().toLocaleTimeString()}`);
 
-    if (cartName) {
-        const cartState = {
-            name: cartName,
-            cart: [...cart], // Importante: creamos una copia del carrito
-            discount: currentDiscount
-        };
-        heldCarts.push(cartState);
+            if (cartName) {
+                const cartState = {
+                    name: cartName,
+                    cart: [...cart], // Importante: creamos una copia del carrito
+                    discount: currentDiscount
+                };
+                heldCarts.push(cartState);
 
-        showToast(`Carrito "${cartName}" guardado.`);
-        resetSale(false); // Limpiamos el carrito actual sin generar nuevo ID de venta
-        updateHeldCartsIndicator();
-    }
-}
-
-/**
- * Muestra el modal con la lista de carritos guardados.
- */
-function openHeldCartsModal() {
-    if (heldCarts.length === 0) {
-        showToast('No hay carritos en espera.');
-        return;
-    }
-
-    const list = document.getElementById('heldCartsList');
-    list.innerHTML = '';
-
-    heldCarts.forEach((heldCart, index) => {
-        const total = heldCart.cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
-        const li = document.createElement('li');
-        li.className = 'held-cart-item';
-        li.innerHTML = `
-            <div class="held-cart-info">
-                <span class="held-cart-name">${heldCart.name}</span>
-                <span class="held-cart-details">${heldCart.cart.length} productos - Total (aprox): $${formatCurrency(total)}</span>
-            </div>
-            <div class="held-cart-actions">
-                <button class="restore-btn" onclick="restoreCart(${index})">Restaurar</button>
-                <button class="delete-held-btn" onclick="deleteHeldCart(${index})">Eliminar</button>
-            </div>
-        `;
-        list.appendChild(li);
-    });
-    document.getElementById('heldCartsModal').classList.add('active');
-}
-
-function closeHeldCartsModal() {
-    document.getElementById('heldCartsModal').classList.remove('active');
-}
-
-/**
- * Restaura un carrito guardado al área de trabajo principal.
- */
-function restoreCart(index) {
-    if (cart.length > 0) {
-        if (!confirm('¿Seguro? El carrito actual se reemplazará por el que vas a restaurar.')) {
-            return;
+                showToast(`Carrito "${cartName}" guardado.`);
+                resetSale(false); // Limpiamos el carrito actual sin generar nuevo ID de venta
+                updateHeldCartsIndicator();
+            }
         }
+
+        /**
+        * Muestra el modal con la lista de carritos guardados.
+        */
+        function openHeldCartsModal() {
+            if (heldCarts.length === 0) {
+                showToast('No hay carritos en espera.');
+                return;
+            }
+
+            const list = document.getElementById('heldCartsList');
+            list.innerHTML = '';
+
+            heldCarts.forEach((heldCart, index) => {
+                const total = heldCart.cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
+                const li = document.createElement('li');
+                li.className = 'held-cart-item';
+                li.innerHTML = `
+                    <div class="held-cart-info">
+                        <span class="held-cart-name">${heldCart.name}</span>
+                        <span class="held-cart-details">${heldCart.cart.length} productos - Total (aprox): $${formatCurrency(total)}</span>
+                    </div>
+                    <div class="held-cart-actions">
+                        <button class="restore-btn" onclick="restoreCart(${index})">Restaurar</button>
+                        <button class="delete-held-btn" onclick="deleteHeldCart(${index})">Eliminar</button>
+                    </div>
+                `;
+                list.appendChild(li);
+            });
+            document.getElementById('heldCartsModal').classList.add('active');
+        }
+
+        function closeHeldCartsModal() {
+            document.getElementById('heldCartsModal').classList.remove('active');
+        }
+
+        /**
+        * Restaura un carrito guardado al área de trabajo principal.
+        */
+        function restoreCart(index) {
+            if (cart.length > 0) {
+                if (!confirm('¿Seguro? El carrito actual se reemplazará por el que vas a restaurar.')) {
+                    return;
+                }
+            }
+
+            const cartToRestore = heldCarts[index];
+            cart = [...cartToRestore.cart];
+            currentDiscount = cartToRestore.discount;
+
+            heldCarts.splice(index, 1);
+
+            updateCartUI();
+            document.getElementById('discountInput').value = currentDiscount > 0 ? `${currentDiscount}%` : '';
+            showToast(`Carrito "${cartToRestore.name}" restaurado.`);
+            closeHeldCartsModal();
+            updateHeldCartsIndicator();
+        }
+
+        /**
+        * Elimina un carrito guardado sin restaurarlo.
+        */
+        function deleteHeldCart(index) {
+            const deletedCartName = heldCarts[index].name;
+            heldCarts.splice(index, 1);
+            showToast(`Carrito "${deletedCartName}" eliminado.`);
+
+            if (heldCarts.length === 0) {
+                closeHeldCartsModal();
+            } else {
+                openHeldCartsModal(); // Recargamos la lista del modal
+            }
+            updateHeldCartsIndicator();
+        }
+
+// ================================================================
+// ==== FUNCIÓN DE IMPRESIÓN (Con Cédula y Exento) ================
+// ================================================================
+function printReceipt(saleData) {
+    try {
+        const config = JSON.parse(localStorage.getItem('receiptSettings')) || { enabled: true };
+        const company = JSON.parse(localStorage.getItem('companyData')) || { companyName: 'MI NEGOCIO' };
+
+        if (!config.enabled) return;
+
+        // 1. OBTENER TASA Y FACTOR DE CORRECCIÓN
+        const rate = parseFloat(saleData.exchangeRate) || 1;
+        let multiplier = 1;
+        let symbol = '$';
+
+        // Si la venta se registró como Bolívares, ajustamos los totales (que están en USD)
+        if (saleData.currency === 'VES') {
+            multiplier = rate;
+            symbol = 'Bs.';
+        }
+
+        const fmt = (n) => new Intl.NumberFormat('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
+
+        // 2. VENDEDOR (Datos de Sesión Actual)
+        let sellerName = 'Cajero';
+        try {
+            // Buscamos el usuario logueado en el navegador (igual que en menu.html)
+            const sessionStr = sessionStorage.getItem('currentUser');
+            if (sessionStr) {
+                const user = JSON.parse(sessionStr);
+                // Construimos el nombre completo (Nombre + Apellido)
+                sellerName = `${user.firstName || ''} ${user.lastName || ''}`.trim();
+                
+                // Si no tiene nombre/apellido, probamos otros campos
+                if (!sellerName) sellerName = user.name || user.username || 'Cajero';
+            } else {
+                // Si por alguna razón no hay sesión, usamos el dato de la venta
+                sellerName = saleData.seller || 'Cajero';
+            }
+        } catch (e) { 
+            console.error(e);
+        }
+
+        // 3. GENERAR HTML
+        let html = `<html><head><title>Ticket</title><style>
+            body{font-family:'Courier New',monospace;font-size:11px;margin:0;padding:5px;width:290px;color:#000}
+            .c{text-align:center}.r{text-align:right}.b{font-weight:bold}
+            .line{border-bottom:1px dashed #000;margin:5px 0}
+            table{width:100%;font-size:11px;border-collapse:collapse}td{vertical-align:top}
+        </style></head><body>`;
+
+        // Cabecera
+        html += `<div class="c">`;
+        if (config.showLogo && company.logo) html += `<img src="${company.logo}" style="max-width:80px;filter:grayscale(100%);margin-bottom:5px"><br>`;
+        html += `<span class="b" style="font-size:13px">${company.companyName || 'TIENDA'}</span><br>`;
+        html += `RIF: ${company.rif || ''}<br>${company.address || ''}</div><div class="line"></div>`;
+
+        // Datos Venta
+        html += `<div><span class="b">NOTA DE ENTREGA</span><br>`;
+        html += `Nº: ${saleData.id}<br>`;
+        const d = new Date(saleData.timestamp);
+        html += `${d.toLocaleDateString('es-VE')} ${d.toLocaleTimeString('es-VE')}<br>`;
+        html += `Atendido por: ${sellerName}<br>`;
+        
+        // --- CORRECCIÓN 1: MOSTRAR CÉDULA/RIF ---
+        if (saleData.customer) {
+            html += `Cliente: ${saleData.customer.name || 'Contado'}<br>`;
+            if (saleData.customer.document) {
+                html += `CI/RIF: ${saleData.customer.document}<br>`;
+            }
+        }
+        html += `</div><div class="line"></div>`;
+
+        // Ítems
+        html += `<table><thead><tr><th width="15%">Cant</th><th>Articulo</th><th class="r">Total</th></tr></thead><tbody>`;
+        saleData.items.forEach(item => {
+            // No multiplicamos items porque ya vienen en la moneda correcta
+            const itemTotal = item.subtotal; 
+            const qty = item.product.isBulk ? parseFloat(item.quantity).toFixed(3) : Math.round(item.quantity);
+            
+            // --- CORRECCIÓN 2: MARCA DE EXENTO (E) ---
+            const exemptMark = item.product.isIvaExempt ? ' (E)' : '';
+            
+            html += `<tr><td>${qty}</td><td>${item.product.name}${exemptMark}</td><td class="r">${fmt(itemTotal)}</td></tr>`;
+        });
+        html += `</tbody></table><div class="line"></div>`;
+
+        // Totales (Aplicando multiplicador si es necesario)
+        const subtotalFinal = (saleData.totals.subtotal || 0) * multiplier;
+        const discountFinal = (saleData.totals.discount || 0) * multiplier;
+        const ivaFinal = (saleData.totals.iva || 0) * multiplier;
+        const totalFinal = (saleData.totals.total || 0) * multiplier;
+
+        html += `<div class="r">Subtotal: ${symbol} ${fmt(subtotalFinal)}</div>`;
+        if (discountFinal > 0) html += `<div class="r">Descuento: -${symbol} ${fmt(discountFinal)}</div>`;
+        
+        if (ivaFinal > 0) {
+            const baseImponible = subtotalFinal - discountFinal;
+            html += `<div class="r">Base Imponible: ${symbol} ${fmt(baseImponible)}</div>`;
+            html += `<div class="r">IVA (16%): ${symbol} ${fmt(ivaFinal)}</div>`;
+        }
+
+        html += `<div class="r" style="margin-top:5px;font-size:14px"><span class="b">TOTAL: ${symbol} ${fmt(totalFinal)}</span></div>`;
+
+        // Método de Pago
+        html += `<div style="border:1px solid #000;padding:3px;margin-top:5px">MÉTODO DE PAGO:<br>`;
+        let payMethod = (saleData.paymentMethod || 'POS').toUpperCase().replace('VES-', '').replace('USD-', '');
+        
+        if (saleData.paymentMethod === 'combined') {
+            html += `Divisa ($): ${new Intl.NumberFormat('en-US').format(saleData.combinedPayment?.paidUsd || 0)}<br>`;
+            html += `Bolívares: ${fmt(saleData.combinedPayment?.paidVes || 0)}`;
+        }
+
+        else if (saleData.paymentMethod === 'usd-cash') {
+            const paid = saleData.paymentDetails?.paidUsd || 0;
+            const change = saleData.paymentDetails?.changeUsd || 0;
+            html += `EFECTIVO USD:<br>`;
+            html += `Recibido: $${fmt(paid)}<br>`;
+            html += `Su Cambio: $${fmt(change)}`;
+        }
+
+        else {
+            html += `${payMethod}: ${symbol} ${fmt(totalFinal)}`;
+        }
+        html += `</div>`;
+
+        html += `<div class="c" style="margin-top:10px">Gracias por su compra<br>No se aceptan devoluciones</div></body></html>`;
+
+        const win = window.open('', '', 'height=600,width=400');
+        win.document.write(html);
+        win.document.close();
+        win.onload = () => { win.focus(); win.print(); };
+
+    } catch (e) {
+        alert("Error al imprimir: " + e.message);
     }
-
-    const cartToRestore = heldCarts[index];
-    cart = [...cartToRestore.cart];
-    currentDiscount = cartToRestore.discount;
-
-    heldCarts.splice(index, 1);
-
-    updateCartUI();
-    document.getElementById('discountInput').value = currentDiscount > 0 ? `${currentDiscount}%` : '';
-    showToast(`Carrito "${cartToRestore.name}" restaurado.`);
-    closeHeldCartsModal();
-    updateHeldCartsIndicator();
 }
 
-/**
- * Elimina un carrito guardado sin restaurarlo.
- */
-function deleteHeldCart(index) {
-    const deletedCartName = heldCarts[index].name;
-    heldCarts.splice(index, 1);
-    showToast(`Carrito "${deletedCartName}" eliminado.`);
 
-    if (heldCarts.length === 0) {
-        closeHeldCartsModal();
-    } else {
-        openHeldCartsModal(); // Recargamos la lista del modal
-    }
-    updateHeldCartsIndicator();
-}
 
-/**
- * Actualiza el contador visual en el botón de carritos guardados.
- */
-function updateHeldCartsIndicator() {
-    const badge = document.getElementById('heldCartsBadge');
-    if (heldCarts.length > 0) {
-        badge.textContent = heldCarts.length;
-        badge.style.display = 'flex';
-    } else {
-        badge.style.display = 'none';
-    }
-}
+
+
+
+
+        /**
+        * Actualiza el contador visual en el botón de carritos guardados.
+        */
+        function updateHeldCartsIndicator() {
+            const badge = document.getElementById('heldCartsBadge');
+            if (heldCarts.length > 0) {
+                badge.textContent = heldCarts.length;
+                badge.style.display = 'flex';
+            } else {
+                badge.style.display = 'none';
+            }
+        }
 
 
         // AÑADE ESTA NUEVA FUNCIÓN
