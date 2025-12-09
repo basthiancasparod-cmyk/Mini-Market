@@ -1554,7 +1554,13 @@
                         </div>
                         <div class="form-group">
                             <label class="form-label">Documento de Identidad</label>
-                            <input type="text" class="form-input" id="customerDocument" placeholder="V-12345678" pattern="[VEJGPvejpg]{1}[0-9]+" title="Ej: V12345678 o 12345678">
+                            <input type="text" class="form-input" id="customerDocument" 
+                                placeholder="V-12345678" 
+                                list="clientList"
+                                autocomplete="off"
+                                oninput="handleClientSearch(this.value)">
+                            
+                            <datalist id="clientList"></datalist>
                         </div>
                     </div>
                     <div class="form-row">
@@ -1746,6 +1752,7 @@
             renderProductList(); // Initial render of all products
             updateCartUI();
             setupEventListeners();
+            loadClientSuggestions();
             document.getElementById('filtersContainer').classList.add('collapsed');
             setupResizeHandle();
             document.getElementById('searchInput').focus();
@@ -1911,6 +1918,55 @@ function renderCategoryFilters() {
                 handleUsdCashPayment();
             });
         }
+
+        // ===== GESTIÓN DE CLIENTES (AUTOCOMPLETADO) =====
+let knownClients = []; // Variable para almacenar clientes en memoria
+
+function loadClientSuggestions() {
+    // 1. Leemos el historial de ventas (igual que en listado_clientes.html)
+    const sales = JSON.parse(localStorage.getItem('pos_sales') || '[]');
+    const uniqueClients = new Map();
+
+    // 2. Extraemos clientes únicos basados en su documento
+    sales.forEach(sale => {
+        if (sale.customer && sale.customer.document) {
+            // Guardamos el objeto cliente completo usando el documento como clave
+            // Esto sobrescribe con la versión más reciente si hay duplicados
+            uniqueClients.set(sale.customer.document, sale.customer);
+        }
+    });
+
+    // 3. Convertimos a array y guardamos en memoria
+    knownClients = Array.from(uniqueClients.values());
+
+    // 4. Llenamos el datalist para que aparezcan las sugerencias visuales
+    const dataList = document.getElementById('clientList');
+    dataList.innerHTML = ''; // Limpiar lista anterior
+
+    knownClients.forEach(client => {
+        const option = document.createElement('option');
+        option.value = client.document; // Lo que se escribe en el input
+        option.label = client.name;     // Lo que se ve como sugerencia
+        dataList.appendChild(option);
+    });
+}
+
+function handleClientSearch(documentValue) {
+    // 1. Limpiamos validaciones visuales previas
+    // (Tu validación de regex existente en setupEventListeners seguirá funcionando)
+
+    // 2. Buscamos si el documento escrito coincide exactamente con uno conocido
+    const foundClient = knownClients.find(c => c.document.toLowerCase() === documentValue.toLowerCase());
+
+    if (foundClient) {
+        // 3. Si existe, autocompletamos los campos
+        document.getElementById('customerName').value = foundClient.name || '';
+        document.getElementById('customerPhone').value = foundClient.phone || '';
+        document.getElementById('customerEmail').value = foundClient.email || '';
+        
+        showToast('Datos del cliente cargados');
+    }
+}
 
         function setupResizeHandle() {
             const resizeHandle = document.getElementById('resizeHandle');
