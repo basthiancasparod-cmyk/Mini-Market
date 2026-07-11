@@ -1953,6 +1953,56 @@
         .operation-card:hover .hover-text {
             opacity: 1;
         }
+
+        /* ================================
+           PRINT STYLES
+           ================================ */
+        @media print {
+            body {
+                background: white !important;
+                color: black !important;
+                overflow: visible !important;
+            }
+            .sidebar, .sidebar-overlay, .hamburger-btn,
+            .action-bar, .action-buttons, .section-header,
+            .search-container, .btn, .login-button,
+            .dark-mode-toggle, .loading-overlay,
+            .close-btn, .pagination {
+                display: none !important;
+            }
+            .main-content {
+                margin-left: 0 !important;
+                padding: 1rem !important;
+            }
+            .modal-content, .operations-modal-content {
+                box-shadow: none !important;
+                border: 1px solid #ccc !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                margin: 0 !important;
+            }
+            .module-card, .stat-card {
+                break-inside: avoid;
+                box-shadow: none !important;
+                border: 1px solid #ddd !important;
+            }
+        }
+
+        /* ================================
+           TOUCH OPTIMIZATIONS
+           ================================ */
+        .module-card, .stat-card, .btn, .login-button,
+        .sidebar-nav a, .hamburger-btn, .dark-mode-toggle {
+            touch-action: manipulation;
+        }
+        button:not(.no-touch), .btn, .btn-icon {
+            min-height: 44px;
+            min-width: 44px;
+        }
+        .inventory-table, .operations-modal-content,
+        .sidebar, .search-results {
+            -webkit-overflow-scrolling: touch;
+        }
     </style>
 </head>
 <body>

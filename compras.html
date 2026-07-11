@@ -1260,6 +1260,14 @@
                 width: calc(100% - 2rem);
             }
         }
+        @media print {
+            body { background: white !important; color: black !important; }
+            .top-bar, .action-bar, .btn, .dark-mode-toggle, .search-container { display: none !important; }
+            .main-content { padding: 1rem !important; }
+            .card, .data-table, .modal-content { break-inside: avoid; box-shadow: none !important; border: 1px solid #ddd !important; }
+        }
+        .btn, .card { touch-action: manipulation; }
+        .data-table-wrapper, .modal-content { -webkit-overflow-scrolling: touch; }
     </style>
 </head>
 <body>

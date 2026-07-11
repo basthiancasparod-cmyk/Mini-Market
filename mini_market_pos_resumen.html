@@ -1183,6 +1183,14 @@
             color: #cbd5e1;
         }
 
+        @media print {
+            body { background: white !important; color: black !important; }
+            .header, .dark-mode-toggle, .btn, button { display: none !important; }
+            .main-content { padding: 1rem !important; }
+            .card, .sale-card { break-inside: avoid; box-shadow: none !important; border: 1px solid #ddd !important; }
+        }
+        .btn, button, .card, .sale-card { touch-action: manipulation; }
+        .main-content, .card { -webkit-overflow-scrolling: touch; }
     </style>
 </head>
 <body>

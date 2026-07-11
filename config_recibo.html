@@ -192,6 +192,13 @@
             background: #fef2f2; border: 1px solid #fee2e2; color: #991b1b;
             padding: 10px; border-radius: 8px; font-size: 0.85rem; margin-bottom: 15px; display: none;
         }
+        @media print {
+            body { background: white !important; color: black !important; }
+            .top-bar, .btn, .dark-mode-toggle { display: none !important; }
+            .main-content { padding: 1rem !important; }
+            .receipt-preview { box-shadow: none !important; border: 1px solid #ddd !important; }
+        }
+        .btn { touch-action: manipulation; }
     </style>
 </head>
 <body>

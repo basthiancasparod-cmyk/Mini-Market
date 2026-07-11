@@ -1332,6 +1332,15 @@
             .left-panel, .right-panel { width: 100%; }
             .resize-handle { display: none; }
         }
+        @media print {
+            body { background: white !important; color: black !important; overflow: visible !important; }
+            .header, .btn, button, .resize-handle, .dark-mode-toggle { display: none !important; }
+            .container { flex-direction: column !important; height: auto !important; overflow: visible !important; }
+            .left-panel, .right-panel { width: 100% !important; }
+            .product-card, .ticket-section { break-inside: avoid; }
+        }
+        .btn, button, .product-card, .category-btn { touch-action: manipulation; }
+        .right-panel, .ticket-items { -webkit-overflow-scrolling: touch; }
     </style>
 </head>
 <body>

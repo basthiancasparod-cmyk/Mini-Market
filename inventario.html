@@ -1468,6 +1468,15 @@ body.dark-mode .dropdown-divider {
             }
         }
 
+        @media print {
+            body { background: white !important; color: black !important; }
+            .top-bar, .action-bar, .btn, .dark-mode-toggle { display: none !important; }
+            .main-content { padding: 1rem !important; }
+            .module-card, .data-table { break-inside: avoid; box-shadow: none !important; border: 1px solid #ddd !important; }
+        }
+        .btn, .module-card, .data-table th, .data-table td { touch-action: manipulation; }
+        button:not(.no-touch), .btn, .btn-icon { min-height: 44px; min-width: 44px; }
+        .data-table-wrapper, .modal-content { -webkit-overflow-scrolling: touch; }
     </style>
 </head>
 <body>

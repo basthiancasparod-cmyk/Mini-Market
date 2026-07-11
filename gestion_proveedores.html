@@ -1034,6 +1034,10 @@
             .form-grid {
                 gap: 1rem;
             }
+            .modal-content {
+                margin: 1rem;
+                width: calc(100% - 2rem);
+            }
         }
 
         /* Dark Mode Toggle Button */
@@ -1060,6 +1064,14 @@
         .dark-mode .dark-mode-toggle:hover {
             background: rgba(255, 255, 255, 0.1);
         }
+        @media print {
+            body { background: white !important; color: black !important; }
+            .top-bar, .action-bar, .btn, .dark-mode-toggle { display: none !important; }
+            .main-content { padding: 1rem !important; }
+            .data-table { box-shadow: none !important; border: 1px solid #ddd !important; }
+        }
+        .btn, .action-btn { touch-action: manipulation; }
+        .data-table-wrapper { -webkit-overflow-scrolling: touch; }
     </style>
 </head>
 <body>
