@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ciervo Administrativo - Sistema de Gestión Empresarial</title>
-    <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.1/dist/umd/lucide.js"></script>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net">
+    <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.1/dist/umd/lucide.js" defer></script>
     <style>
         /* ================================
            RESET Y CONFIGURACIÓN BASE
@@ -652,8 +653,8 @@
         }
 
         .module-card.active {
-            ring: 2px solid #3b82f6;
-            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+            outline: 2px solid #3b82f6;
+            outline-offset: 2px;
         }
 
         .module-gradient {
@@ -915,10 +916,12 @@
             color: #cbd5e1;
         }
 
-        .secondary-item.disabled {
+        .secondary-item.disabled,
+        .module-card.disabled,
+        .operation-card.disabled {
             opacity: 0.5;
             cursor: not-allowed;
-            pointer-events: none; /* Disable clicks */
+            pointer-events: none;
         }
 
         /* ================================
@@ -1651,6 +1654,30 @@
             100% { transform: rotate(360deg); }
         }
 
+        /* Toast Messages */
+        .toast {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            z-index: 9999;
+            padding: 0.75rem 1.25rem;
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
+            font-size: 0.85rem;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+            animation: slideInToast 0.3s ease-out;
+            max-width: 350px;
+        }
+        .toast-error { background: #ef4444; }
+        .toast-success { background: #10b981; }
+        .toast-info { background: #3b82f6; }
+        .toast-warning { background: #f59e0b; }
+        @keyframes slideInToast {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
         /* ================================
            RESPONSIVE DESIGN
            ================================ */
@@ -1750,7 +1777,7 @@
             box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.1);
         }
 
-        .modal-header {
+        .operations-modal-content .modal-header {
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
@@ -1761,7 +1788,7 @@
             border-radius: 12px 12px 0 0;
         }
 
-        body.dark-mode .modal-header {
+        body.dark-mode .operations-modal-content .modal-header {
             border-bottom: 1px solid #4a5568;
             background: linear-gradient(to right, #14532d, #10b981);
         }
@@ -1778,7 +1805,7 @@
             justify-content: center;
         }
 
-        .modal-title {
+        .operations-modal-content .modal-title {
             font-size: 1.5rem;
             font-weight: 600;
             margin: 0;
@@ -1790,7 +1817,7 @@
             font-size: 0.875rem;
         }
 
-        .close-button {
+        .operations-modal-content .close-button {
             background: none;
             border: none;
             color: white;
@@ -1802,11 +1829,11 @@
             justify-content: center;
         }
 
-        .close-button:hover {
+        .operations-modal-content .close-button:hover {
             background-color: rgba(255, 255, 255, 0.1);
         }
 
-        .modal-body {
+        .operations-modal-content .modal-body {
             padding: 1.5rem;
         }
 
@@ -2070,13 +2097,13 @@
                             <p id="user-role">Sesión activa</p>
                         </div>
                     </div>
-                    <button class="icon-button notification" onclick="toggleNotifications()">
+                    <button class="icon-button notification" onclick="toggleNotifications()" aria-label="Notificaciones">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/>
                             <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>
                         </svg>
                         <span class="notification-badge" id="notificationBadge" style="display: none;">0</span>
-                        <div class="notification-panel" id="notificationPanel">
+                        <div class="notification-panel" id="notificationPanel" aria-live="polite">
                             <h4>Notificaciones</h4>
                             <div id="notificationList">
                                 <!-- Notifications will be loaded here -->
@@ -2084,7 +2111,7 @@
                             <p class="notification-empty" id="notificationEmpty">No hay notificaciones pendientes.</p>
                         </div>
                     </button>
-                    <button class="icon-button theme-toggle" onclick="toggleDarkMode()">
+                    <button class="icon-button theme-toggle" onclick="toggleDarkMode()" aria-label="Cambiar modo oscuro">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sun-icon">
                             <circle cx="12" cy="12" r="4"/>
                             <path d="M12 2v2"/>
@@ -2100,7 +2127,7 @@
                             <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
                         </svg>
                     </button>
-                    <button class="icon-button logout" onclick="handleLogout()">
+                    <button class="icon-button logout" onclick="handleLogout()" aria-label="Cerrar sesión">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
                             <polyline points="16,17 21,12 16,7"/>
@@ -2129,10 +2156,10 @@
                         <p class="modal-subtitle">Selecciona el tipo de operación que deseas realizar</p>
                     </div>
                 </div>
-                <button class="close-button" onclick="closeOperationsModal()">
+                <button class="close-button" onclick="closeOperationsModal()" aria-label="Cerrar">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M18 6 6 18"/>
-                        <path d="m6 6 12 12"/>
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
                     </svg>
                 </button>
             </div>
@@ -2422,7 +2449,7 @@
                             <div class="secondary-item" id="companyItem" onclick="window.location.href='gestion_empresa.html'">
                                 <div class="secondary-icon" style="background: linear-gradient(to bottom right, #94a3b8, #6b7280, #52525b);">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                        <path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2-2v18Z"/>
+                            <path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/>
                                         <path d="M6 12H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h2"/>
                                         <path d="M18 9h2a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2h-2"/>
                                         <path d="M10 6h4"/>
@@ -2513,7 +2540,7 @@
 
                 <div class="action-bar">
                     <div class="search-container">
-                        <input type="text" id="searchInput" class="search-input" placeholder="Buscar producto por nombre o código...">
+                        <input type="text" id="searchInput" class="search-input" placeholder="Buscar producto por nombre o código..." aria-label="Buscar producto">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="search-icon">
                             <circle cx="11" cy="11" r="8"/>
                             <path d="M21 21l-4.3-4.3"/>
@@ -2647,10 +2674,10 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2 class="modal-title" id="modalTitle">Nuevo Producto</h2>
-                <button class="close-button" onclick="closeModal()">
+                <button class="close-button" onclick="closeModal()" aria-label="Cerrar">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M18 6 6 18"/>
-                        <path d="m6 6 12 12"/>
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
                     </svg>
                 </button>
             </div>
@@ -2716,10 +2743,10 @@
         <div class="modal-content" style="max-width: 450px;">
             <div class="modal-header">
                 <h2 class="modal-title">Confirmar Eliminación</h2>
-                <button class="close-button" onclick="closeDeleteModal()">
+                <button class="close-button" onclick="closeDeleteModal()" aria-label="Cerrar">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M18 6 6 18"/>
-                        <path d="m6 6 12 12"/>
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
                     </svg>
                 </button>
             </div>
@@ -2748,10 +2775,10 @@
         <div class="modal-content" style="max-width: 450px;">
             <div class="modal-header">
                 <h2 class="modal-title">Cerrar Sesión</h2>
-                <button class="close-button" onclick="closeLogoutModal()">
+                <button class="close-button" onclick="closeLogoutModal()" aria-label="Cerrar">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M18 6 6 18"/>
-                        <path d="m6 6 12 12"/>
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
                     </svg>
                 </button>
             </div>
@@ -3313,7 +3340,7 @@
                     // Ensure 'Realizar Nueva Venta' is enabled
                     if (document.getElementById('newSaleCard')) {
                         document.getElementById('newSaleCard').classList.remove('disabled');
-                        document.getElementById('newSaleCard').onclick = () => { window.location.href='Mini_Market_POS.html'; };
+                        document.getElementById('newSaleCard').onclick = () => { window.location.href='mini_market_pos.html'; };
                     }
 
                     // If the user clicks on "Operaciones" module card, ensure only "Realizar Nueva Venta" is clickable
@@ -3328,7 +3355,7 @@
                             }
                             if (document.getElementById('newSaleCard')) {
                                 document.getElementById('newSaleCard').classList.remove('disabled');
-                                document.getElementById('newSaleCard').onclick = () => { window.location.href='Mini_Market_POS.html'; };
+                                document.getElementById('newSaleCard').onclick = () => { window.location.href='mini_market_pos.html'; };
                             }
                         };
                     }
@@ -3944,14 +3971,32 @@
             }
 
             showNotification(message, type = 'info') {
-                // Simple alert for now - could be enhanced with a toast notification system
-                alert(message);
+                document.querySelectorAll('.toast').forEach(t => t.remove());
+                const toast = document.createElement('div');
+                toast.className = `toast toast-${type}`;
+                toast.setAttribute('role', 'alert');
+                toast.setAttribute('aria-live', 'assertive');
+                toast.textContent = message;
+                document.body.appendChild(toast);
+                setTimeout(() => toast.remove(), 5000);
             }
         }
 
         // ================================
         // GLOBAL FUNCTIONS & INITIALIZATION
         // ================================
+
+        // Global toast function
+        function showToast(message, type = 'info') {
+            document.querySelectorAll('.toast').forEach(t => t.remove());
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            toast.setAttribute('role', 'alert');
+            toast.setAttribute('aria-live', 'assertive');
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 5000);
+        }
 
         // Initialize global system manager
         let systemManager;
@@ -4010,7 +4055,7 @@
                 }
             } else {
                 // Si no hay datos de sesión, no debería estar aquí. Lo redirigimos al login.
-                alert("No se ha iniciado sesión. Redirigiendo al login.");
+                showToast("No se ha iniciado sesión. Redirigiendo al login.", 'error');
                 window.location.href = 'index.html';
             }
             // --- End of consolidated currentUser check ---
@@ -4079,18 +4124,18 @@
                     window.location.href = 'catalogo.html';
                     break;
                 case 'openTools':
-                    alert('Abriendo Herramientas');
+                    showToast('Abriendo Herramientas', 'info');
                     break;
                 case 'openTasa':
                     const userSettings = systemManager?.getData('userSettings');
                     if (userSettings?.role === 'Vendedor') {
-                        alert('Acceso denegado. Solo administradores pueden acceder a Cotizaciones en Tiempo Real.');
+                        showToast('Acceso denegado. Solo administradores.', 'error');
                         return;
                     }
-                    alert('Accediendo a Cotizaciones en Tiempo Real');
+                    showToast('Accediendo a Cotizaciones en Tiempo Real', 'info');
                     break;
                 default:
-                    console.log(`Ejecutando acción: ${action}`);
+
             }
         }
 
