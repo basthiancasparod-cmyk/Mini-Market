@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestión de Empresa - Ciervo Administrativo</title>
+    <script src="cloud-access.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.1/dist/umd/lucide.js"></script>
     <style>
@@ -883,6 +884,7 @@
 
                 <!-- Navigation Actions -->
                 <div class="nav-actions">
+                    <span id="firebaseDot" style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#6b7280;margin-right:4px;transition:background 0.3s" title="Conectando..."></span>
                     <!-- Theme Toggle Button -->
                     <button class="icon-button theme-toggle" onclick="toggleDarkMode()">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sun-icon">
@@ -1523,6 +1525,159 @@
             return industries[industryCode] || industryCode;
         }
 
+        // --- Firebase Initialization ---
+
+        const FIREBASE_CONFIG = {
+            apiKey: "AIzaSyCyaIC2-pCCQf_mJWGtG6v-0kA1l2Or2CQ",
+            authDomain: "mini-market-ciervo-index.firebaseapp.com",
+            databaseURL: "https://mini-market-ciervo-index-default-rtdb.firebaseio.com",
+            projectId: "mini-market-ciervo-index",
+            storageBucket: "mini-market-ciervo-index.firebasestorage.app",
+            messagingSenderId: "828978506509",
+            appId: "1:828978506509:web:52b6220033072038115e44"
+        };
+
+        let _firebaseDb = null;
+        let _firebaseInitPromise = null;
+        let _firebaseConnected = false;
+
+        function setFirebaseDot(color, title) {
+            const dot = document.getElementById('firebaseDot');
+            if (dot) { dot.style.background = color; dot.title = title; }
+        }
+
+        function loadFirebaseSDK() {
+            return new Promise((resolve, reject) => {
+                if (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length > 0) return resolve();
+                const scripts = [
+                    'https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js',
+                    'https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js'
+                ];
+                let loaded = 0;
+                scripts.forEach(src => {
+                    const s = document.createElement('script');
+                    s.src = src;
+                    s.onload = () => { if (++loaded === scripts.length) resolve(); };
+                    s.onerror = () => reject(new Error('Error al cargar ' + src));
+                    document.head.appendChild(s);
+                });
+            });
+        }
+
+        function sanitizeEmailForDb(email) {
+            return email.replace('@', '_at_').replace(/\./g, '_');
+        }
+
+        function getCurrentUserEmail() {
+            const fromStorage = sessionStorage.getItem('propietarioActual');
+            if (fromStorage) return fromStorage;
+            try {
+                const owner = JSON.parse(sessionStorage.getItem('currentOwner'));
+                if (owner && owner.email) return owner.email;
+            } catch (e) {}
+            try {
+                const session = JSON.parse(sessionStorage.getItem('currentUser'));
+                return session?.email || session?.username || '';
+            } catch (e) { return ''; }
+        }
+
+        async function setupConnectionMonitor(db) {
+            if (!await checkCloudAccess()) return;
+            db.ref('.info/connected').on('value', async (snap) => {
+                _firebaseConnected = snap.val();
+                if (_firebaseConnected) {
+                    setFirebaseDot('#22c55e', 'Firebase conectado');
+                    const pending = localStorage.getItem('_pendingFirebaseChanges_empresa');
+                    if (pending === 'true') {
+                        const data = localStorage.getItem('companyData');
+                        if (data) await syncToFirebase(JSON.parse(data));
+                    }
+                } else {
+                    setFirebaseDot('#ef4444', 'Firebase desconectado');
+                }
+            });
+        }
+
+        async function initFirebase() {
+            if (_firebaseDb) return _firebaseDb;
+            if (_firebaseInitPromise) return _firebaseInitPromise;
+            _firebaseInitPromise = (async () => {
+                if (location.protocol === 'file:') {
+                    setFirebaseDot('#f59e0b', 'Firebase no disponible (file://)');
+                    return null;
+                }
+                await loadFirebaseSDK();
+                if (!firebase.apps || firebase.apps.length === 0) firebase.initializeApp(FIREBASE_CONFIG);
+                const db = firebase.database();
+                _firebaseDb = db;
+                return _firebaseDb;
+            })();
+            _firebaseInitPromise.catch(() => { _firebaseInitPromise = null; _firebaseDb = null; setFirebaseDot('#ef4444', 'Error de conexión'); });
+            return _firebaseInitPromise;
+        }
+
+        function getEmpresaDbPath() {
+            const email = getCurrentUserEmail();
+            if (!email) return null;
+            return 'BBDD/' + sanitizeEmailForDb(email) + '/empresa';
+        }
+
+        let _cloudAccessChecked = false;
+        let _cloudAccess = false;
+
+        async function checkCloudAccess() {
+            if (_cloudAccessChecked) return _cloudAccess;
+            try {
+                const db = await initFirebase();
+                if (!db) return false;
+                const email = getCurrentUserEmail();
+                if (!email) { _cloudAccessChecked = true; _cloudAccess = false; return false; }
+                const snap = await db.ref('BBDD/' + sanitizeEmailForDb(email) + '/suscripcion/cloudSync').once('value');
+                _cloudAccess = snap.val() === true;
+            } catch (e) {
+                _cloudAccess = false;
+            }
+            _cloudAccessChecked = true;
+            return _cloudAccess;
+        }
+
+        async function syncToFirebase(data) {
+            try {
+                if (!await checkCloudAccess()) return false;
+                const db = await initFirebase();
+                if (!db) return false;
+                const path = getEmpresaDbPath();
+                if (!path) return false;
+                await db.ref(path).set(data);
+                localStorage.removeItem('_pendingFirebaseChanges_empresa');
+                return true;
+            } catch (e) {
+                console.error('Error syncing to Firebase:', e);
+                localStorage.setItem('_pendingFirebaseChanges_empresa', 'true');
+                return false;
+            }
+        }
+
+        async function loadFromFirebase() {
+            try {
+                if (!await checkCloudAccess()) return null;
+                const db = await initFirebase();
+                if (!db) return null;
+                const path = getEmpresaDbPath();
+                if (!path) return null;
+                const snap = await db.ref(path).once('value');
+                const val = snap.val();
+                if (val) {
+                    localStorage.setItem('companyData', JSON.stringify(val));
+                    return val;
+                }
+                return null;
+            } catch (e) {
+                console.error('Error loading from Firebase:', e);
+                return null;
+            }
+        }
+
         // --- Form Validation Logic ---
 
         const validationRules = {
@@ -1683,6 +1838,13 @@
                     showToast('Error al cargar los datos de la empresa.', 'error');
                 }
             }
+            loadFromFirebase().then(fbData => {
+                if (fbData && JSON.stringify(fbData) !== JSON.stringify(appState.companyData)) {
+                    appState.companyData = fbData;
+                    populateForm(fbData);
+                    showToast('Datos sincronizados desde la nube.', 'success');
+                }
+            });
         }
 
         function populateForm(data) {
@@ -1811,6 +1973,10 @@
 
             localStorage.setItem('companyData', JSON.stringify(companyInfo));
 
+            syncToFirebase(companyInfo).then(ok => {
+                if (!ok) showToast('Guardado local. Datos pendientes de sincronizar con la nube.', 'success');
+            });
+
             setTimeout(() => {
                 submitButton.classList.remove('loading');
                 submitButton.disabled = false;
@@ -1927,6 +2093,9 @@
             // Load existing data and initialize form state
             loadCompanyData();
             updateSubmitButtonState(); // Initial check for button state
+
+            // Initialize Firebase connection (will set dot to green/red/yellow)
+            initFirebase();
         });
     </script>
 </body>

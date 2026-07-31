@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cuentas por Cobrar y Pagar - Ciervo Administrativo</title>
+    <script src="cloud-access.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.1/dist/umd/lucide.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -213,6 +214,20 @@
 
         .btn-cancel:hover {
             background: #f1f5f9;
+        }
+
+        .btn-danger {
+            background: #dc2626;
+            color: white;
+        }
+        .btn-danger:hover {
+            background: #b91c1c;
+        }
+        body.dark-mode .btn-danger {
+            background: #b91c1c;
+        }
+        body.dark-mode .btn-danger:hover {
+            background: #dc2626;
         }
 
         .empty-state {
@@ -876,12 +891,16 @@
         }
 
         .reports-section {
-            display: none; /* Hidden by default */
+            display: none;
             margin-top: 2rem;
             padding: 2rem;
             background: white;
             border-radius: 24px;
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            min-height: 400px;
+        }
+        #cashFlowChart {
+            max-height: 500px;
         }
         body.dark-mode .reports-section {
             background: #2d3748;
@@ -904,6 +923,16 @@
         }
         .btn { touch-action: manipulation; }
         .data-table-wrapper { -webkit-overflow-scrolling: touch; }
+
+        .connection-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #94a3b8;
+            display: inline-block;
+            transition: background 0.3s;
+            flex-shrink: 0;
+        }
     </style>
 </head>
 <body>
@@ -939,6 +968,7 @@
                             <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
                         </svg>
                     </button>
+                    <span class="connection-dot" id="firebaseDot" title="Estado de conexión"></span>
                     <a href="menu.html" class="back-button">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M19 12H6m0 0l6 6m-6-6l6-6"/>
@@ -1193,7 +1223,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h3 class="modal-title" id="modalTitle">Nueva Cuenta</h3>
-                <button class="close-button" onclick="closeModal()">
+                <button class="close-button" onclick="closeModal()" aria-label="Cerrar modal">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M18 6 6 18"/>
                         <path d="m6 6 12 12"/>
@@ -1201,7 +1231,7 @@
                 </button>
             </div>
             <div class="modal-body">
-                <form id="accountForm" class="form-grid">
+                <form id="accountForm" class="form-grid" onsubmit="saveAccount(event)">
                     <div class="form-section">
                         <h4 class="form-section-title">Detalles de la Cuenta</h4>
                         <div class="form-group">
@@ -1255,7 +1285,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-cancel" onclick="closeModal()">Cancelar</button>
-                <button type="submit" class="btn btn-primary" onclick="saveAccount(event)" id="saveButton">Guardar Cuenta</button>
+                <button type="submit" class="btn btn-primary" id="saveButton">Guardar Cuenta</button>
             </div>
         </div>
     </div>
@@ -1265,7 +1295,7 @@
         <div class="modal-content" style="max-width: 400px;">
             <div class="modal-header">
                 <h3 class="modal-title">Registrar Pago</h3>
-                <button class="close-button" onclick="closePaymentModal()">
+                <button class="close-button" onclick="closePaymentModal()" aria-label="Cerrar modal">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M18 6 6 18"/>
                         <path d="m6 6 12 12"/>
@@ -1273,7 +1303,7 @@
                 </button>
             </div>
             <div class="modal-body">
-                <form id="paymentForm">
+                <form id="paymentForm" onsubmit="confirmPayment(); return false;">
                     <div class="form-group">
                         <label class="form-label" for="paymentAmount">Monto del Pago * ($)</label>
                         <input type="number" class="form-input" id="paymentAmount" min="0.01" step="0.01" required>
@@ -1293,7 +1323,7 @@
         <div class="modal-content" style="max-width: 400px;">
             <div class="modal-header">
                 <h3 class="modal-title">Confirmar Eliminación</h3>
-                <button class="close-button" onclick="closeDeleteModal()">
+                <button class="close-button" onclick="closeDeleteModal()" aria-label="Cerrar modal">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M18 6 6 18"/>
                         <path d="m6 6 12 12"/>
@@ -1306,27 +1336,188 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-cancel" onclick="closeDeleteModal()">Cancelar</button>
-                <button type="button" class="btn" style="background: #dc2626; color: white;" onclick="confirmDelete()">Eliminar</button>
+                <button type="button" class="btn btn-danger" onclick="confirmDelete()">Eliminar</button>
             </div>
         </div>
     </div>
 
     <script>
+        // --- Firebase Configuration ---
+        const FIREBASE_CONFIG = {
+            apiKey: "AIzaSyCyaIC2-pCCQf_mJWGtG6v-0kA1l2Or2CQ",
+            authDomain: "mini-market-ciervo-index.firebaseapp.com",
+            databaseURL: "https://mini-market-ciervo-index-default-rtdb.firebaseio.com",
+            projectId: "mini-market-ciervo-index",
+            storageBucket: "mini-market-ciervo-index.firebasestorage.app",
+            messagingSenderId: "828978506509",
+            appId: "1:828978506509:web:52b6220033072038115e44"
+        };
+
+        let _firebaseDb = null;
+        let _firebaseInitPromise = null;
+        let _firebaseConnected = false;
+
         // Global variables
-        let accounts = [];
+        let _accountsCache = [];
         let editingAccountId = null;
         let deletingAccountId = null;
-        let payingAccountId = null; // For partial payments
+        let payingAccountId = null;
         let nextAccountId = 1;
-        let currentSort = { key: null, direction: 'asc' }; // For table sorting
-        let cashFlowChartInstance = null; // To store the Chart.js instance
+        let currentSort = { key: null, direction: 'asc' };
+        let cashFlowChartInstance = null;
+
+        // --- Firebase Helpers ---
+        function setFirebaseDot(color, title) {
+            const dot = document.getElementById('firebaseDot');
+            if (dot) { dot.style.background = color; dot.title = title; }
+        }
+
+        function loadFirebaseSDK() {
+            return new Promise((resolve, reject) => {
+                if (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length > 0) return resolve();
+                const scripts = [
+                    'https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js',
+                    'https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js'
+                ];
+                let loaded = 0;
+                scripts.forEach(src => {
+                    const s = document.createElement('script');
+                    s.src = src;
+                    s.onload = () => { if (++loaded === scripts.length) resolve(); };
+                    s.onerror = () => reject(new Error('Error al cargar ' + src));
+                    document.head.appendChild(s);
+                });
+            });
+        }
+
+        function sanitizeEmailForDb(email) {
+            return email.replace('@', '_at_').replace(/\./g, '_');
+        }
+
+        function getCurrentUserEmail() {
+            const fromStorage = sessionStorage.getItem('propietarioActual');
+            if (fromStorage) return fromStorage;
+            try {
+                const owner = JSON.parse(sessionStorage.getItem('currentOwner'));
+                if (owner && owner.email) return owner.email;
+            } catch (e) {}
+            try {
+                const session = JSON.parse(sessionStorage.getItem('currentUser'));
+                return session?.email || session?.username || '';
+            } catch (e) { return ''; }
+        }
+
+        async function setupConnectionMonitor(db) {
+            if (!await checkCloudAccess()) return;
+            db.ref('.info/connected').on('value', async (snap) => {
+                _firebaseConnected = snap.val();
+                if (_firebaseConnected) {
+                    setFirebaseDot('#22c55e', 'Firebase conectado');
+                    const pending = localStorage.getItem('_pendingFirebaseChanges_cuentas');
+                    if (pending === 'true') {
+                        const data = localStorage.getItem('ciervo_accounts');
+                        if (data) await syncToFirebase(JSON.parse(data));
+                    }
+                } else {
+                    setFirebaseDot('#ef4444', 'Firebase desconectado');
+                }
+            });
+        }
+
+        async function initFirebase() {
+            if (_firebaseDb) return _firebaseDb;
+            if (_firebaseInitPromise) return _firebaseInitPromise;
+            _firebaseInitPromise = (async () => {
+                if (location.protocol === 'file:') {
+                    setFirebaseDot('#f59e0b', 'Firebase no disponible (file://)');
+                    return null;
+                }
+                await loadFirebaseSDK();
+                if (!firebase.apps || firebase.apps.length === 0) firebase.initializeApp(FIREBASE_CONFIG);
+                const db = firebase.database();
+                _firebaseDb = db;
+                return _firebaseDb;
+            })();
+            _firebaseInitPromise.catch(() => { _firebaseInitPromise = null; _firebaseDb = null; setFirebaseDot('#ef4444', 'Error de conexión'); });
+            return _firebaseInitPromise;
+        }
+
+        function getCuentasDbPath() {
+            const email = getCurrentUserEmail();
+            if (!email) return null;
+            return 'BBDD/' + sanitizeEmailForDb(email) + '/cuentas';
+        }
+
+        let _cloudAccessChecked = false;
+        let _cloudAccess = false;
+
+        async function checkCloudAccess() {
+            if (_cloudAccessChecked) return _cloudAccess;
+            try {
+                const db = await initFirebase();
+                if (!db) return false;
+                const email = getCurrentUserEmail();
+                if (!email) { _cloudAccessChecked = true; _cloudAccess = false; return false; }
+                const snap = await db.ref('BBDD/' + sanitizeEmailForDb(email) + '/suscripcion/cloudSync').once('value');
+                _cloudAccess = snap.val() === true;
+            } catch (e) {
+                _cloudAccess = false;
+            }
+            _cloudAccessChecked = true;
+            return _cloudAccess;
+        }
+
+        async function syncToFirebase(data) {
+            try {
+                if (!await checkCloudAccess()) return false;
+                const db = await initFirebase();
+                if (!db) return false;
+                const path = getCuentasDbPath();
+                if (!path) return false;
+                await db.ref(path).set(data);
+                localStorage.removeItem('_pendingFirebaseChanges_cuentas');
+                return true;
+            } catch (e) {
+                console.error('Error syncing to Firebase:', e);
+                localStorage.setItem('_pendingFirebaseChanges_cuentas', 'true');
+                return false;
+            }
+        }
+
+        async function loadFromFirebase() {
+            try {
+                if (!await checkCloudAccess()) return null;
+                const db = await initFirebase();
+                if (!db) return null;
+                const path = getCuentasDbPath();
+                if (!path) return null;
+                const snap = await db.ref(path).once('value');
+                const val = snap.val();
+                if (val) {
+                    localStorage.setItem('ciervo_accounts', JSON.stringify(val));
+                    return val;
+                }
+                return null;
+            } catch (e) {
+                console.error('Error loading from Firebase:', e);
+                return null;
+            }
+        }
+
+        function escapeHtml(str) {
+            if (str === null || str === undefined) return '';
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
 
         // Initialize the application
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', async function() {
             if (typeof lucide !== 'undefined') {
                 lucide.createIcons();
             }
             loadAccounts();
+            loadAccountsAsync();
             setupEventListeners();
             updateDashboard();
             applySavedTheme();
@@ -1349,7 +1540,6 @@
                 if (e.target === this) closePaymentModal();
             });
 
-            // Add event listeners for table sorting
             document.querySelectorAll('.data-table th[data-sort-key]').forEach(header => {
                 header.addEventListener('click', function() {
                     const sortKey = this.getAttribute('data-sort-key');
@@ -1363,33 +1553,49 @@
             const savedAccounts = localStorage.getItem('ciervo_accounts');
             if (savedAccounts) {
                 try {
-                    accounts = JSON.parse(savedAccounts);
-                    nextAccountId = accounts.length > 0 ? Math.max(...accounts.map(a => a.id)) + 1 : 1;
-                    updateAccountStatuses(); // Update statuses after loading
+                    _accountsCache = JSON.parse(savedAccounts);
+                    nextAccountId = _accountsCache.length > 0 ? Math.max(..._accountsCache.map(a => a.id)) + 1 : 1;
+                    updateAccountStatuses();
                 } catch (e) {
                     console.error("Error parsing accounts from localStorage:", e);
-                    accounts = []; // Fallback to empty array if data is corrupt
+                    _accountsCache = [];
                     nextAccountId = 1;
                 }
             } else {
-                // No hay datos guardados, inicializar como un array vacío.
-                accounts = [];
+                _accountsCache = [];
                 nextAccountId = 1;
             }
             renderAccounts();
         }
 
-        function saveAccounts() {
-            localStorage.setItem('ciervo_accounts', JSON.stringify(accounts));
+        async function loadAccountsAsync() {
+            const fbData = await loadFromFirebase();
+            if (fbData && Array.isArray(fbData) && fbData.length > 0) {
+                _accountsCache = fbData;
+                nextAccountId = _accountsCache.length > 0 ? Math.max(..._accountsCache.map(a => a.id)) + 1 : 1;
+                updateAccountStatuses();
+                saveAccountsCache();
+                renderAccounts();
+                updateDashboard();
+            }
+        }
+
+        function saveAccountsCache() {
+            localStorage.setItem('ciervo_accounts', JSON.stringify(_accountsCache));
+        }
+
+        async function persistAccounts() {
+            saveAccountsCache();
+            await syncToFirebase(_accountsCache);
         }
 
         function updateAccountStatuses() {
             const today = new Date().toISOString().split('T')[0];
-            let statusChanged = false; // Flag to track if any status was updated
+            let statusChanged = false;
 
-            accounts.forEach(a => {
-                const oldStatus = a.status; // Store old status to check for changes
-                if (oldStatus !== 'paid') { // Only re-evaluate if not already fully paid
+            _accountsCache.forEach(a => {
+                const oldStatus = a.status;
+                if (oldStatus !== 'paid') {
                     const totalPaid = a.payments.reduce((sum, p) => sum + p.amount, 0);
                     if (totalPaid >= a.amount) {
                         a.status = 'paid';
@@ -1404,8 +1610,8 @@
                 }
             });
 
-            if (statusChanged) { // Only save if there was an actual change in status
-                saveAccounts();
+            if (statusChanged) {
+                saveAccountsCache();
             }
         }
 
@@ -1421,7 +1627,7 @@
             const searchTerm = document.getElementById('searchInput').value.toLowerCase();
             const categoryFilter = document.getElementById('categoryFilter').value;
 
-            const filteredAccounts = accounts.filter(a => {
+            const filteredAccounts = _accountsCache.filter(a => {
                 const matchesSearch = a.description.toLowerCase().includes(searchTerm) ||
                                       a.contact.toLowerCase().includes(searchTerm) ||
                                       a.type.toLowerCase().includes(searchTerm);
@@ -1432,7 +1638,6 @@
             const filteredReceivable = filteredAccounts.filter(a => a.type === 'cobrar');
             const filteredPayable = filteredAccounts.filter(a => a.type === 'pagar');
 
-            // Apply sorting
             const sortedReceivable = [...filteredReceivable].sort((a, b) => sortCompare(a, b, currentSort.key, currentSort.direction));
             const sortedPayable = [...filteredPayable].sort((a, b) => sortCompare(a, b, currentSort.key, currentSort.direction));
 
@@ -1474,9 +1679,9 @@
 
             return `
                 <tr data-account-id="${account.id}">
-                    <td>${account.description}</td>
-                    <td>${account.contact}</td>
-                    <td>${account.category || 'N/A'}</td>
+                    <td>${escapeHtml(account.description)}</td>
+                    <td>${escapeHtml(account.contact)}</td>
+                    <td>${escapeHtml(account.category || 'N/A')}</td>
                     <td>\$${account.amount.toFixed(2)}</td>
                     <td>\$${pendingAmount.toFixed(2)}</td>
                     <td>${dueDate}</td>
@@ -1512,7 +1717,7 @@
         }
 
         function filterAccounts() {
-            renderAccounts(); // Re-render accounts with current filters
+            renderAccounts();
         }
 
         // Modal Functions
@@ -1523,17 +1728,17 @@
             const saveButton = document.getElementById('saveButton');
             const accountTypeSelect = document.getElementById('accountType');
             
-            resetForm(); // Always reset form and errors first
+            resetForm();
 
             if (mode === 'add') {
                 title.textContent = 'Nueva Cuenta';
                 saveButton.textContent = 'Guardar Cuenta';
                 if (type) {
                     accountTypeSelect.value = type;
-                    accountTypeSelect.disabled = false; // Enable for new accounts
+                    accountTypeSelect.disabled = false;
                 }
             } else {
-                const account = accounts.find(a => a.id === accountId);
+                const account = _accountsCache.find(a => a.id === accountId);
                 if (!account) {
                     console.error('Account not found for editing:', accountId);
                     closeModal();
@@ -1542,7 +1747,7 @@
                 title.textContent = 'Editar Cuenta';
                 saveButton.textContent = 'Actualizar Cuenta';
                 fillForm(account);
-                accountTypeSelect.disabled = true; // Disable type change when editing
+                accountTypeSelect.disabled = true;
             }
             
             modal.classList.add('show');
@@ -1610,7 +1815,7 @@
             return isValid;
         }
 
-        function saveAccount(event) {
+        async function saveAccount(event) {
             if (event) event.preventDefault();
             
             if (!validateForm()) {
@@ -1637,27 +1842,26 @@
             };
 
             if (editingAccountId) {
-                const index = accounts.findIndex(a => a.id === editingAccountId);
+                const index = _accountsCache.findIndex(a => a.id === editingAccountId);
                 if (index !== -1) {
-                    // Preserve payments and original status if not explicitly changed
-                    accountData.payments = accounts[index].payments || [];
-                    accountData.status = accounts[index].status; 
-                    
-                    accounts[index] = { ...accounts[index], ...accountData };
+                    accountData.payments = _accountsCache[index].payments || [];
+                    accountData.status = _accountsCache[index].status;
+                    _accountsCache[index] = { ..._accountsCache[index], ...accountData };
                     showNotification('Cuenta actualizada exitosamente', 'success');
                 } else {
                     showNotification('Error: Cuenta no encontrada para actualizar.', 'error');
                 }
             } else {
                 accountData.id = nextAccountId++;
-                accountData.payments = []; // Initialize payments array for new accounts
-                accounts.push(accountData);
+                accountData.payments = [];
+                _accountsCache.push(accountData);
                 showNotification('Cuenta agregada exitosamente', 'success');
             }
             
-            updateAccountStatuses(); // Re-evaluate status after save
+            updateAccountStatuses();
             renderAccounts();
             updateDashboard();
+            await persistAccounts();
             closeModal();
         }
 
@@ -1675,12 +1879,12 @@
             deletingAccountId = null;
         }
 
-        function confirmDelete() {
+        async function confirmDelete() {
             if (deletingAccountId) {
-                const initialLength = accounts.length;
-                accounts = accounts.filter(a => a.id !== deletingAccountId);
-                if (accounts.length < initialLength) {
-                    saveAccounts();
+                const initialLength = _accountsCache.length;
+                _accountsCache = _accountsCache.filter(a => a.id !== deletingAccountId);
+                if (_accountsCache.length < initialLength) {
+                    await persistAccounts();
                     renderAccounts();
                     updateDashboard();
                     showNotification('Cuenta eliminada exitosamente', 'success');
@@ -1694,7 +1898,7 @@
         // Partial Payment Functions
         function openPaymentModal(accountId) {
             payingAccountId = accountId;
-            const account = accounts.find(a => a.id === accountId);
+            const account = _accountsCache.find(a => a.id === accountId);
             if (!account) {
                 showNotification('Error: Cuenta no encontrada para registrar pago.', 'error');
                 return;
@@ -1713,9 +1917,11 @@
             document.getElementById('paymentModal').classList.remove('show');
             payingAccountId = null;
             document.getElementById('paymentForm').reset();
+            document.getElementById('paymentAmount-error').style.display = 'none';
+            document.getElementById('paymentAmount').classList.remove('invalid');
         }
 
-        function confirmPayment() {
+        async function confirmPayment() {
             const paymentInput = document.getElementById('paymentAmount');
             const paymentAmount = parseFloat(paymentInput.value);
             const errorMsg = document.getElementById('paymentAmount-error');
@@ -1729,7 +1935,7 @@
                 return;
             }
 
-            const account = accounts.find(a => a.id === payingAccountId);
+            const account = _accountsCache.find(a => a.id === payingAccountId);
             if (!account) {
                 showNotification('Error: Cuenta no encontrada para registrar pago.', 'error');
                 closePaymentModal();
@@ -1748,7 +1954,6 @@
 
             account.payments.push({ amount: paymentAmount, date: new Date().toISOString().split('T')[0] });
             
-            // Visual confirmation flash
             const row = document.querySelector(`tr[data-account-id="${payingAccountId}"]`);
             if (row) {
                 row.classList.add('row-paid-flash');
@@ -1757,8 +1962,8 @@
                 }, 700);
             }
 
-            updateAccountStatuses(); // This will mark as paid if fully paid
-            saveAccounts();
+            updateAccountStatuses();
+            await persistAccounts();
             renderAccounts();
             updateDashboard();
             showNotification('Pago registrado exitosamente.', 'success');
@@ -1772,8 +1977,8 @@
             let overdueReceivable = 0;
             let overduePayable = 0;
 
-            accounts.forEach(a => {
-                if (a.status !== 'paid') { // Only count active (pending/overdue) accounts
+            _accountsCache.forEach(a => {
+                if (a.status !== 'paid') {
                     const totalPaid = a.payments.reduce((sum, p) => sum + p.amount, 0);
                     const pendingAmount = a.amount - totalPaid;
 
@@ -1782,7 +1987,7 @@
                         if (a.status === 'overdue') {
                             overdueReceivable++;
                         }
-                    } else { // type === 'pagar'
+                    } else {
                         totalPayable += pendingAmount;
                         if (a.status === 'overdue') {
                             overduePayable++;
@@ -1799,12 +2004,12 @@
 
         // Utility Functions
         function exportAccounts() {
-            if (accounts.length === 0) {
+            if (_accountsCache.length === 0) {
                 showNotification('No hay cuentas para exportar.', 'info');
                 return;
             }
 
-            const data = accounts.map(a => {
+            const data = _accountsCache.map(a => {
                 const totalPaid = a.payments.reduce((sum, p) => sum + p.amount, 0);
                 const pendingAmount = a.amount - totalPaid;
                 return {
@@ -1919,12 +2124,12 @@
 
         function renderCashFlowChart() {
             if (cashFlowChartInstance) {
-                cashFlowChartInstance.destroy(); // Destroy previous chart instance
+                cashFlowChartInstance.destroy();
             }
 
-            const monthlyData = {}; // { 'YYYY-MM': { income: 0, expense: 0 } }
+            const monthlyData = {};
 
-            accounts.forEach(account => {
+            _accountsCache.forEach(account => {
                 if (account.status === 'paid') {
                     account.payments.forEach(payment => {
                         const paymentDate = new Date(payment.date);
@@ -1936,7 +2141,7 @@
 
                         if (account.type === 'cobrar') {
                             monthlyData[monthKey].income += payment.amount;
-                        } else { // pagar
+                        } else {
                             monthlyData[monthKey].expense += payment.amount;
                         }
                     });

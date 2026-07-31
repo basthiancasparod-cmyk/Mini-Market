@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestión de Compras - Ciervo Administrativo</title>
+    <script src="cloud-access.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.1/dist/umd/lucide.js"></script>
     <style>
@@ -1289,7 +1290,9 @@
                         <p>Sistema de Compras y Proveedores</p>
                     </div>
                 </div>
-                <div style="display: flex; gap: 1rem;">
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <span id="firebaseDot" style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #94a3b8;" title="Firebase: conectando..."></span>
+                    <span id="userEmailDisplay" style="font-size: 0.85rem; color: var(--text-secondary, #666); max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"></span>
                     <button class="theme-toggle-button" onclick="toggleTheme()">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sun-icon">
                             <circle cx="12" cy="12" r="4"/>
@@ -2072,6 +2075,33 @@
             updateDashboard();
             setDefaultDate();
             loadTheme();
+
+            // Mostrar email del usuario logueado
+            const email = getCurrentUserEmail();
+            const emailDisplay = document.getElementById('userEmailDisplay');
+            if (email && emailDisplay) {
+                emailDisplay.textContent = email;
+            }
+
+            // Sincronizar con Firebase en background
+            setTimeout(async () => {
+                if (!email) {
+                    setFirebaseDot('#f59e0b', 'Sin sesión: inicia sesión en index.html');
+                    return;
+                }
+                try {
+                    if (_pendingChanges) {
+                        await uploadToFirebase();
+                    } else {
+                        const existsInCloud = await syncFromFirebase();
+                        if (!existsInCloud) {
+                            await uploadToFirebase();
+                        }
+                    }
+                } catch (e) {
+                    setFirebaseDot('#ef4444', 'Error: ' + e.message);
+                }
+            }, 500);
         });
 
         function setupEventListeners() {
@@ -2141,10 +2171,18 @@
             renderAllTables();
         }
 
-        function saveData() {
+        async function saveData() {
             localStorage.setItem('ciervo_suppliers', JSON.stringify(suppliers));
             localStorage.setItem('ciervo_purchases', JSON.stringify(purchases));
             localStorage.setItem('ciervo_inventory_history', JSON.stringify(inventoryHistory));
+            try {
+                await firebaseSaveSuppliers(suppliers);
+                await firebaseSavePurchases(purchases);
+                await firebaseSaveHistory(inventoryHistory);
+            } catch (e) {
+                if (e.message.includes('file:')) showNotification(e.message, 'error');
+                else { _pendingChanges = true; localStorage.setItem('_pendingFirebaseChanges', 'true'); }
+            }
         }
 
         function loadSampleSuppliers() {
@@ -2191,6 +2229,233 @@
             localStorage.setItem('theme', isDark ? 'dark' : 'light');
             loadTheme();
         }
+        // ==================== REALTIME DATABASE STORAGE ====================
+        // Almacena bajo /BBDD/{email_sanitizado}/compras/ y /productos / categorias.
+        // El email se obtiene de sessionStorage (seteado por index.html al login).
+        // localStorage se usa como cache local.
+        // =====================================================================
+
+        const FIREBASE_CONFIG = {
+            apiKey: "AIzaSyCyaIC2-pCCQf_mJWGtG6v-0kA1l2Or2CQ",
+            authDomain: "mini-market-ciervo-index.firebaseapp.com",
+            databaseURL: "https://mini-market-ciervo-index-default-rtdb.firebaseio.com",
+            projectId: "mini-market-ciervo-index",
+            storageBucket: "mini-market-ciervo-index.firebasestorage.app",
+            messagingSenderId: "828978506509",
+            appId: "1:828978506509:web:52b6220033072038115e44"
+        };
+
+        function getCurrentUserEmail() {
+            const fromStorage = sessionStorage.getItem('propietarioActual');
+            if (fromStorage) return fromStorage;
+            try {
+                const owner = JSON.parse(sessionStorage.getItem('currentOwner'));
+                if (owner && owner.email) return owner.email;
+            } catch {}
+            return null;
+        }
+
+        function sanitizeEmailForDb(email) {
+            return email.replace('@', '_at_').replace(/\./g, '_');
+        }
+
+        function getUserDataPath() {
+            const email = getCurrentUserEmail();
+            if (!email) throw new Error('No hay sesión iniciada. Inicia sesión desde index.html.');
+            return 'BBDD/' + sanitizeEmailForDb(email);
+        }
+
+        let _cloudAccessChecked = false;
+        let _cloudAccess = false;
+
+        async function checkCloudAccess() {
+            if (_cloudAccessChecked) return _cloudAccess;
+            try {
+                const db = await initFirebase();
+                if (!db) return false;
+                const email = getCurrentUserEmail();
+                if (!email) { _cloudAccessChecked = true; _cloudAccess = false; return false; }
+                const snap = await db.ref('BBDD/' + sanitizeEmailForDb(email) + '/suscripcion/cloudSync').once('value');
+                _cloudAccess = snap.val() === true;
+            } catch (e) {
+                _cloudAccess = false;
+            }
+            _cloudAccessChecked = true;
+            return _cloudAccess;
+        }
+
+        let _firebaseDb = null;
+        let _firebaseInitPromise = null;
+        let _pendingChanges = localStorage.getItem('_pendingFirebaseChanges') === 'true';
+        let _firebaseConnected = false;
+
+        function loadFirebaseSDK() {
+            return new Promise((resolve, reject) => {
+                if (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length > 0) {
+                    return resolve();
+                }
+                const scripts = [
+                    'https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js',
+                    'https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js'
+                ];
+                let loaded = 0;
+                scripts.forEach(src => {
+                    const s = document.createElement('script');
+                    s.src = src;
+                    s.onload = () => { if (++loaded === scripts.length) resolve(); };
+                    s.onerror = () => reject(new Error('Error al cargar ' + src));
+                    document.head.appendChild(s);
+                });
+            });
+        }
+
+        function setFirebaseDot(color, title) {
+            const dot = document.getElementById('firebaseDot');
+            if (dot) { dot.style.background = color; dot.title = title; }
+        }
+
+        async function setupConnectionMonitor(db) {
+            if (!await checkCloudAccess()) return;
+            db.ref('.info/connected').on('value', async (snap) => {
+                const connected = snap.val();
+                _firebaseConnected = connected;
+                if (connected) {
+                    setFirebaseDot('#22c55e', 'Firebase conectado');
+                    if (_pendingChanges) {
+                        _pendingChanges = false;
+                        localStorage.removeItem('_pendingFirebaseChanges');
+                        try {
+                            await firebaseSaveSuppliers(suppliers);
+                            await firebaseSavePurchases(purchases);
+                            await firebaseSaveHistory(inventoryHistory);
+                        } catch (e) {
+                            _pendingChanges = true;
+                            localStorage.setItem('_pendingFirebaseChanges', 'true');
+                        }
+                    }
+                } else {
+                    setFirebaseDot('#ef4444', 'Firebase desconectado');
+                }
+            });
+        }
+
+        async function initFirebase() {
+            if (_firebaseDb) return _firebaseDb;
+            if (_firebaseInitPromise) return _firebaseInitPromise;
+
+            _firebaseInitPromise = (async () => {
+                if (location.protocol === 'file:') {
+                    throw new Error('Firebase no funciona con file://. Usa: python -m http.server 8080');
+                }
+                await loadFirebaseSDK();
+                if (!firebase.apps || firebase.apps.length === 0) {
+                    firebase.initializeApp(FIREBASE_CONFIG);
+                }
+                const db = firebase.database();
+                _firebaseDb = db;
+                return _firebaseDb;
+            })();
+
+            _firebaseInitPromise.catch(() => {
+                _firebaseInitPromise = null;
+                _firebaseDb = null;
+            });
+
+            return _firebaseInitPromise;
+        }
+
+        async function firebaseSaveSuppliers(data) {
+            if (!await checkCloudAccess()) return;
+            const db = await initFirebase();
+            const path = getUserDataPath();
+            await db.ref(path + '/compras/proveedores').set(data);
+        }
+
+        async function firebaseSavePurchases(data) {
+            if (!await checkCloudAccess()) return;
+            const db = await initFirebase();
+            const path = getUserDataPath();
+            await db.ref(path + '/compras/compras').set(data);
+        }
+
+        async function firebaseSaveHistory(data) {
+            if (!await checkCloudAccess()) return;
+            const db = await initFirebase();
+            const path = getUserDataPath();
+            await db.ref(path + '/compras/historial').set(data);
+        }
+
+        async function firebaseSaveProducts(data) {
+            if (!await checkCloudAccess()) return;
+            const db = await initFirebase();
+            const path = getUserDataPath();
+            await db.ref(path + '/productos').set(data);
+        }
+
+        async function firebaseSaveCategories(data) {
+            if (!await checkCloudAccess()) return;
+            const db = await initFirebase();
+            const path = getUserDataPath();
+            await db.ref(path + '/categorias').set(data);
+        }
+
+        async function firebaseLoadCompras() {
+            if (!await checkCloudAccess()) return null;
+            const db = await initFirebase();
+            const path = getUserDataPath();
+            const snap = await db.ref(path + '/compras').once('value');
+            return snap.val();
+        }
+
+        async function syncFromFirebase() {
+            try {
+                if (!await checkCloudAccess()) return false;
+                const data = await firebaseLoadCompras();
+                if (!data) return false;
+                let changed = false;
+                if (data.proveedores) {
+                    suppliers = data.proveedores;
+                    localStorage.setItem('ciervo_suppliers', JSON.stringify(suppliers));
+                    nextSupplierId = suppliers.length > 0 ? Math.max(...suppliers.map(s => s.id)) + 1 : 1;
+                    changed = true;
+                }
+                if (data.compras) {
+                    purchases = data.compras;
+                    localStorage.setItem('ciervo_purchases', JSON.stringify(purchases));
+                    nextPurchaseId = purchases.length > 0 ? Math.max(...purchases.map(p => p.id)) + 1 : 1;
+                    changed = true;
+                }
+                if (data.historial) {
+                    inventoryHistory = data.historial;
+                    localStorage.setItem('ciervo_inventory_history', JSON.stringify(inventoryHistory));
+                    changed = true;
+                }
+                if (changed) {
+                    renderAllTables();
+                    updateDashboard();
+                }
+                return changed;
+            } catch (e) {
+                console.warn('Firebase no disponible, usando datos locales:', e.message);
+                return false;
+            }
+        }
+
+        async function uploadToFirebase() {
+            try {
+                await initFirebase();
+                await firebaseSaveSuppliers(suppliers);
+                await firebaseSavePurchases(purchases);
+                await firebaseSaveHistory(inventoryHistory);
+                setFirebaseDot('#22c55e', 'Firebase conectado');
+            } catch (e) {
+                setFirebaseDot('#ef4444', 'Firebase: ' + e.message);
+                if (e.message.includes('file:')) showNotification(e.message, 'error');
+            }
+        }
+
+        // ==================== END FIREBASE STORAGE ====================
+
         // --- NUEVAS FUNCIONES DE PAGINACIÓN ---
         function changePage(tableName, direction) {
             paginationState[tableName].currentPage += direction;
@@ -2276,7 +2541,7 @@
                     iconBg = '#fef2f2'; iconColor = '#dc2626'; iconSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c0-1-1-2-1-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>';
                 }
 
-                return `<div style="display: flex; align-items: center; gap: 1rem; padding: 1rem; border-bottom: 1px solid #f1f5f9; ${activity.isModification ? 'background: #fffbeb;' : ''}"><div style="padding: 0.5rem; background: ${iconBg}; border-radius: 8px; color: ${iconColor};">${iconSvg}</div><div style="flex: 1;"><div style="font-weight: 500;">${activity.action}</div><div style="font-size: 0.875rem; color: #64748b;">${activity.productName} - Cantidad: ${activity.quantity} ${activity.supplierName ? `- Proveedor: ${activity.supplierName}` : ''}</div></div><div style="text-align: right; font-size: 0.75rem; color: #94a3b8;">${formattedDate} ${formattedTime}</div></div>`;
+                return `<div style="display: flex; align-items: center; gap: 1rem; padding: 1rem; border-bottom: 1px solid #f1f5f9; ${activity.isModification ? 'background: #fffbeb;' : ''}"><div style="padding: 0.5rem; background: ${iconBg}; border-radius: 8px; color: ${iconColor};">${iconSvg}</div><div style="flex: 1;"><div style="font-weight: 500;">${escapeHtml(activity.action)}</div><div style="font-size: 0.875rem; color: #64748b;">${escapeHtml(activity.productName)} - Cantidad: ${activity.quantity} ${activity.supplierName ? `- Proveedor: ${escapeHtml(activity.supplierName)}` : ''}</div></div><div style="text-align: right; font-size: 0.75rem; color: #94a3b8;">${formattedDate} ${formattedTime}</div></div>`;
             }).join('');
 
             container.innerHTML = `<div style="padding: 1rem;">${activitiesHTML}</div>`;
@@ -2315,9 +2580,9 @@
 
     tbody.innerHTML = paginatedData.map(s => `
         <tr>
-            <td><div>${s.name}</div><small>${s.email || ''}</small></td>
-            <td>${s.document || 'N/A'}</td><td>${s.phone || 'N/A'}</td>
-            <td style="max-width: 200px;">${s.address || 'N/A'}</td>
+            <td><div>${escapeHtml(s.name)}</div><small>${escapeHtml(s.email || '')}</small></td>
+            <td>${escapeHtml(s.document) || 'N/A'}</td><td>${escapeHtml(s.phone) || 'N/A'}</td>
+            <td style="max-width: 200px;">${escapeHtml(s.address) || 'N/A'}</td>
             <td>$${(s.totalPurchases || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
             <td>
                 <div style="display:flex;gap:0.5rem;">
@@ -2367,9 +2632,9 @@
             tbody.innerHTML = paginatedData.map(p => {
                 const supplier = suppliers.find(s => s.id === p.supplierId);
                 return `<tr>
-                    <td>${p.number || `#${String(p.id).padStart(6, '0')}`}</td>
+                    <td>${escapeHtml(p.number) || `#${String(p.id).padStart(6, '0')}`}</td>
                     <td>${new Date(p.date).toLocaleDateString()}</td>
-                    <td>${supplier ? supplier.name : 'Eliminado'}</td>
+                    <td>${supplier ? escapeHtml(supplier.name) : 'Eliminado'}</td>
                     <td>${p.items.length} prod.</td>
                     <td>$${p.total.toFixed(2)}</td>
                     <td>Completada</td>
@@ -2411,11 +2676,11 @@
             tbody.innerHTML = paginatedData.map(h => `
                 <tr class="${h.isModification ? 'history-modification' : ''}">
                     <td>${new Date(h.timestamp).toLocaleString()}</td>
-                    <td>${h.action}</td>
-                    <td>${h.productName}</td>
+                    <td>${escapeHtml(h.action)}</td>
+                    <td>${escapeHtml(h.productName)}</td>
                     <td>+${h.quantity}</td>
-                    <td>${h.supplierName || 'N/A'}</td>
-                    <td>${h.purchaseNumber || 'N/A'}</td>
+                    <td>${escapeHtml(h.supplierName) || 'N/A'}</td>
+                    <td>${escapeHtml(h.purchaseNumber) || 'N/A'}</td>
                 </tr>`).join('');
             updatePaginationUI('history', totalPages, filteredData.length);
         }
@@ -2483,8 +2748,9 @@
             const inventory = getInventoryFromStorage();
             const matchingProducts = inventory.filter(p => p.name.toLowerCase().includes(query) || (p.code && p.code.toLowerCase().includes(query)));
             
-            let html = matchingProducts.map(p => `<div class="product-search-item" onclick="selectExistingProduct(${p.id})"><div>${p.name}</div><small>${p.code || ''} - Stock: ${p.stock}</small></div>`).join('');
-            html += `<div class="product-search-item" onclick="createNewProduct('${document.getElementById('productSearch').value}')"><b style="color:#22c55e;">+ Crear nuevo producto: "${document.getElementById('productSearch').value}"</b></div>`;
+            let html = matchingProducts.map(p => `<div class="product-search-item" onclick="selectExistingProduct(${p.id})"><div>${escapeHtml(p.name)}</div><small>${escapeHtml(p.code) || ''} - Stock: ${p.stock}</small></div>`).join('');
+            const searchVal = escapeHtml(document.getElementById('productSearch').value);
+            html += `<div class="product-search-item" onclick="createNewProduct('${searchVal}')"><b style="color:#22c55e;">+ Crear nuevo producto: "${searchVal}"</b></div>`;
             resultsContainer.innerHTML = html;
             resultsContainer.style.display = 'block';
         }
@@ -2499,7 +2765,8 @@
             showPurchaseItemForm();
             
             document.getElementById('itemQuantity').value = '1';
-            document.getElementById('itemCost').value = currentSelectedProduct.cost || 0;
+            const defaultCost = currentSelectedProduct.isBulk ? (currentSelectedProduct.costPerUnit || 0) : (currentSelectedProduct.cost || 0);
+            document.getElementById('itemCost').value = defaultCost;
             document.getElementById('updatePrice').checked = false;
             calculateItemSubtotal();
         }
@@ -2570,23 +2837,30 @@
         }
 
         function calculateItemSubtotal() {
-            const quantity = parseFloat(document.getElementById('itemQuantity').value) || 0;
-            const cost = parseFloat(document.getElementById('itemCost').value) || 0;
+            const quantity = parseNumber(document.getElementById('itemQuantity').value) || 0;
+            const cost = parseNumber(document.getElementById('itemCost').value) || 0;
             const subtotal = quantity * cost;
             document.getElementById('itemSubtotal').value = subtotal.toFixed(2);
             document.getElementById('displayItemCost').textContent = `$${cost.toFixed(2)}`;
             
-            let margin = (currentProductData || currentSelectedProduct)?.margin ?? 30;
-            const salePrice = cost * (1 + margin / 100);
+            const product = currentProductData || currentSelectedProduct;
+            let salePrice;
+            if (product?.margin !== null && product?.margin !== undefined) {
+                salePrice = cost * (1 + product.margin / 100);
+            } else if (product?.profit) {
+                salePrice = cost + product.profit;
+            } else {
+                salePrice = cost * 1.3;
+            }
             document.getElementById('displaySalePrice').textContent = `$${salePrice.toFixed(2)}`;
         }
 
         function addItemToPurchase() {
             if (!currentProductData && !currentSelectedProduct) { showNotification('Selecciona o crea un producto primero', 'error'); return; }
 
-            const quantity = parseFloat(document.getElementById('itemQuantity').value);
-            const cost = parseFloat(document.getElementById('itemCost').value);
-            if (!quantity || quantity <= 0 || !cost || cost < 0) { showNotification('Ingresa una cantidad y costo válidos', 'error'); return; }
+            const quantity = parseNumber(document.getElementById('itemQuantity').value);
+            const cost = parseNumber(document.getElementById('itemCost').value);
+            if (!quantity || quantity <= 0 || cost < 0 || isNaN(cost)) { showNotification('Ingresa una cantidad y costo válidos', 'error'); return; }
             
             const product = currentProductData || currentSelectedProduct;
             const isNewProduct = !currentSelectedProduct;
@@ -2615,7 +2889,7 @@
             const hasItems = currentPurchaseItems.length > 0;
             
             container.style.display = hasItems ? 'block' : 'none';
-            tbody.innerHTML = hasItems ? currentPurchaseItems.map((item, index) => `<tr><td>${item.productName} ${item.isNew ? '<small style="color:green;">(Nuevo)</small>' : ''}</td><td>${item.quantity}</td><td>$${item.cost.toFixed(2)}</td><td>$${item.subtotal.toFixed(2)}</td><td><button class="btn-icon btn-delete" onclick="removeItemFromPurchase(${index})">...</button></td></tr>`).join('') : '';
+            tbody.innerHTML = hasItems ? currentPurchaseItems.map((item, index) => `<tr><td>${escapeHtml(item.productName)} ${item.isNew ? '<small style="color:green;">(Nuevo)</small>' : ''}</td><td>${item.quantity}</td><td>$${item.cost.toFixed(2)}</td><td>$${item.subtotal.toFixed(2)}</td><td><button class="btn-icon btn-delete" onclick="removeItemFromPurchase(${index})">...</button></td></tr>`).join('') : '';
             totalElement.textContent = `Total: $${currentPurchaseItems.reduce((sum, item) => sum + item.subtotal, 0).toFixed(2)}`;
         }
 
@@ -2659,6 +2933,16 @@
             showNotification(`Compra ${isEdit ? 'actualizada' : 'registrada'} exitosamente`, 'success');
         }
 
+        async function saveInventoryToStorage(inventory) {
+            localStorage.setItem('ciervo_inventory', JSON.stringify(inventory));
+            try {
+                await firebaseSaveProducts(inventory);
+            } catch (e) {
+                if (e.message.includes('file:')) showNotification(e.message, 'error');
+                else { _pendingChanges = true; localStorage.setItem('_pendingFirebaseChanges', 'true'); }
+            }
+        }
+
         function revertPurchaseImpact(purchase) {
             let inventory = getInventoryFromStorage();
             purchase.items.forEach(item => {
@@ -2668,7 +2952,7 @@
                 }
             });
             inventoryHistory = inventoryHistory.filter(entry => entry.purchaseId !== purchase.id);
-            localStorage.setItem('ciervo_inventory', JSON.stringify(inventory));
+            saveInventoryToStorage(inventory);
         }
 
         function updateInventoryFromPurchase(purchase, isEdit) {
@@ -2681,9 +2965,11 @@
         if (item.isNew && item.productData) {
             // Creamos un producto completamente nuevo y limpio.
             // Ignoramos cualquier posible producto antiguo con el mismo código.
+            const newId = nextProductId++;
+            item.productId = newId; // Actualizamos el ID en el item de la compra
             const newProduct = {
                 ...item.productData, // Usa todos los datos del formulario (incluida la categoría)
-                id: nextProductId++,  // Le asigna un ID único y nuevo
+                id: newId,            // Le asigna un ID único y nuevo
                 stock: 0              // El stock inicial es 0 antes de sumar la compra
             };
 
@@ -2702,21 +2988,27 @@
 
                 // Si se marcó, también actualizamos su precio de costo.
                 if (item.updatePrice) {
-                    product.cost = item.cost;
-                    // Recalculamos el precio de venta basado en el nuevo costo.
-                    if (product.margin !== null) {
-                        product.price = product.cost * (1 + product.margin / 100);
+                    if (product.isBulk) {
+                        product.costPerUnit = item.cost;
+                        const margin = product.margin ?? 30;
+                        product.pricePerUnit = product.costPerUnit * (1 + margin / 100);
+                        product.profitPerUnit = product.pricePerUnit - product.costPerUnit;
                     } else {
-                        product.price = product.cost + product.profit;
+                        product.cost = item.cost;
+                        if (product.margin !== null) {
+                            product.price = product.cost * (1 + product.margin / 100);
+                        } else {
+                            product.price = product.cost + product.profit;
+                        }
+                        product.profit = product.price - product.cost;
                     }
-                    product.profit = product.price - product.cost;
                 }
                 inventoryHistory.push({ timestamp: new Date().toISOString(), action: `Compra (Re-Stock)`, productName: product.name, productCode: product.code, quantity: item.quantity, supplierName: supplier?.name || 'N/A', purchaseId: purchase.id, purchaseNumber: purchase.number });
             }
         }
     });
 
-    localStorage.setItem('ciervo_inventory', JSON.stringify(inventory));
+    saveInventoryToStorage(inventory);
 }
 
         // --- INICIO: LÓGICA DEL NUEVO MODAL DE PRODUCTO ---
@@ -2765,6 +3057,10 @@
         showNotification('El costo debe ser mayor a cero.', 'error');
         return;
     }
+    if (!document.getElementById('productStock').value.trim() || parseNumber(document.getElementById('productStock').value) <= 0) {
+        showNotification('La cantidad debe ser mayor a cero.', 'error');
+        return;
+    }
 
     const isBulk = document.getElementById('isBulkProduct').checked;
 
@@ -2809,7 +3105,15 @@
         // --- INICIO: FUNCIONES DE VALIDACIÓN Y CÁLCULO (COPIADAS Y ADAPTADAS) ---
         function parseNumber(value) {
             if (typeof value === 'number') return value;
-            return parseFloat(String(value).replace(',', '.'));
+            const parsed = parseFloat(String(value ?? '').replace(',', '.'));
+            return isNaN(parsed) ? 0 : parsed;
+        }
+
+        function escapeHtml(str) {
+            if (str == null) return '';
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
         }
         function normalizeString(str) { return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase(); }
 
@@ -2934,7 +3238,7 @@
         function updateSupplierTotals(supplierId, amount) { const i = suppliers.findIndex(s => s.id === supplierId); if (i > -1) suppliers[i].totalPurchases = Math.max(0, (suppliers[i].totalPurchases || 0) + amount); }
 
         // --- INICIO: FUNCIONES DE ELIMINACIÓN, FILTROS Y UTILIDADES ---
-        function viewPurchase(id) { const p = purchases.find(pur => pur.id === id); if (!p) return; const s = suppliers.find(sup => sup.id === p.supplierId); document.getElementById('detailPurchaseNumber').textContent = p.number || `#${String(p.id).padStart(6, '0')}`; document.getElementById('detailPurchaseDate').textContent = new Date(p.date).toLocaleDateString(); document.getElementById('detailSupplier').textContent = s ? s.name : 'Eliminado'; document.getElementById('detailDocumentType').textContent = p.documentType || 'N/A'; document.getElementById('detailNotes').textContent = p.notes || 'Sin notas'; document.getElementById('detailProductsBody').innerHTML = p.items.map(item => `<tr><td>${item.productName}</td><td>${item.quantity}</td><td>$${item.cost.toFixed(2)}</td><td>$${item.subtotal.toFixed(2)}</td></tr>`).join(''); document.getElementById('detailTotal').textContent = `Total: $${p.total.toFixed(2)}`; document.getElementById('purchaseDetailModal').classList.add('show'); }
+        function viewPurchase(id) { const p = purchases.find(pur => pur.id === id); if (!p) return; const s = suppliers.find(sup => sup.id === p.supplierId); document.getElementById('detailPurchaseNumber').textContent = p.number || `#${String(p.id).padStart(6, '0')}`; document.getElementById('detailPurchaseDate').textContent = new Date(p.date).toLocaleDateString(); document.getElementById('detailSupplier').textContent = s ? s.name : 'Eliminado'; document.getElementById('detailDocumentType').textContent = p.documentType || 'N/A'; document.getElementById('detailNotes').textContent = p.notes || 'Sin notas'; document.getElementById('detailProductsBody').innerHTML = p.items.map(item => `<tr><td>${escapeHtml(item.productName)}</td><td>${item.quantity}</td><td>$${item.cost.toFixed(2)}</td><td>$${item.subtotal.toFixed(2)}</td></tr>`).join(''); document.getElementById('detailTotal').textContent = `Total: $${p.total.toFixed(2)}`; document.getElementById('purchaseDetailModal').classList.add('show'); }
         function closePurchaseDetailModal() { document.getElementById('purchaseDetailModal').classList.remove('show'); }
         function editPurchase(id) { openPurchaseModal('edit', id); }
         function deletePurchase(id) { const p = purchases.find(pur => pur.id === id); deleteTarget = { type: 'purchase', id }; document.getElementById('deleteMessage').textContent = `¿Eliminar compra ${p.number || `#${String(p.id).padStart(6, '0')}`}?`; document.getElementById('deleteModal').classList.add('show'); }
@@ -2953,7 +3257,7 @@
             paginationState.history.currentPage = 1;
             renderHistory(); 
         }
-        function showNotification(message, type = 'info') { const cont = document.getElementById('toastContainer'); const toast = document.createElement('div'); toast.className = `toast ${type}`; toast.innerHTML = `<span>${message}</span>`; cont.appendChild(toast); setTimeout(() => toast.remove(), 3000); }
+        function showNotification(message, type = 'info') { const cont = document.getElementById('toastContainer'); const toast = document.createElement('div'); toast.className = `toast ${type}`; const span = document.createElement('span'); span.textContent = message; toast.appendChild(span); cont.appendChild(toast); setTimeout(() => toast.remove(), 3000); }
         function convertToCSV(data) { const headers = Object.keys(data[0]); const rows = data.map(obj => headers.map(h => JSON.stringify(obj[h])).join(',')); return [headers.join(','), ...rows].join('\n'); }
         function downloadCSV(csv, filename) { const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' }); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = filename; link.click(); URL.revokeObjectURL(link.href); }
         function exportPurchases() { if(purchases.length === 0) { showNotification('No hay datos para exportar', 'info'); return; } const data = purchases.map(p => { const s = suppliers.find(sup => sup.id === p.supplierId); return { ID: p.id, Factura: p.number, Fecha: p.date, Proveedor: s?.name, Total: p.total }; }); downloadCSV(convertToCSV(data), 'compras.csv'); }

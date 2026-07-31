@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Resumen de Ventas - Mini Market POS</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="cloud-access.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
@@ -29,51 +29,50 @@
             color: #cbd5e1;
         }
 
-        /* Header */
-        .header {
+        /* Header - Glassmorphic Bar */
+        .glassmorphic-bar {
             position: sticky;
             top: 0;
-            z-index: 40;
-            background: rgba(255, 255, 255, 0.95);
+            z-index: 50;
+            background: rgba(255, 255, 255, 0.7);
             backdrop-filter: blur(16px);
             border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-            padding: 0.5rem 0;
-            transition: all 0.3s ease;
         }
 
-        .dark-mode .header {
-            background: rgba(15, 23, 42, 0.95);
+        .dark-mode .glassmorphic-bar {
+            background: rgba(26, 32, 44, 0.7);
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         }
 
-        .header-content {
+        .top-bar {
             max-width: 1400px;
             margin: 0 auto;
-            padding: 0 1rem;
+            padding: 1rem;
             display: flex;
             align-items: center;
             justify-content: space-between;
         }
 
-        .brand {
+        .brand-section {
             display: flex;
             align-items: center;
-            gap: 0.5rem;
+            gap: 1rem;
         }
 
         .brand-icon {
-            width: 32px;
-            height: 32px;
+            width: 48px;
+            height: 48px;
             background: linear-gradient(to bottom right, #3b82f6, #9333ea);
-            border-radius: 10px;
+            border-radius: 16px;
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 6px 10px -3px rgba(59, 130, 246, 0.25);
+            box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.25);
+            flex-shrink: 0;
         }
 
         .brand-text h1 {
-            font-size: 1rem;
+            font-size: 1.25rem;
             font-weight: bold;
             background: linear-gradient(to right, #1e293b, #64748b);
             background-clip: text;
@@ -82,58 +81,51 @@
         }
 
         .dark-mode .brand-text h1 {
-            background: linear-gradient(to right, #e2e8f0, #cbd5e1);
+            background: linear-gradient(to right, #e2e8f0, #cbd5e0);
             background-clip: text;
             -webkit-background-clip: text;
         }
 
         .brand-text p {
-            font-size: 0.7rem;
+            font-size: 0.875rem;
             color: #64748b;
         }
 
         .dark-mode .brand-text p {
-            color: #94a3b8;
+            color: #a0aec0;
         }
 
-        .header-btn {
+        .back-button {
             display: flex;
             align-items: center;
-            gap: 0.375rem;
-            padding: 0.375rem 0.625rem;
-            background: rgba(255, 255, 255, 0.6);
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            background: rgba(255, 255, 255, 0.5);
             border: none;
-            border-radius: 6px;
+            border-radius: 12px;
             color: #64748b;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.875rem;
             cursor: pointer;
             transition: all 0.2s;
             backdrop-filter: blur(8px);
-            font-size: 0.8rem;
         }
 
-         .dark-mode .header-btn {
-            background: rgba(15, 23, 42, 0.6);
-            color: #94a3b8;
-        }
-
-        .header-btn:hover {
-            background: rgba(255, 255, 255, 0.9);
+        .back-button:hover {
+            background: rgba(255, 255, 255, 0.8);
             color: #1e293b;
+            transform: translateX(-2px);
         }
 
-        .dark-mode .header-btn:hover {
-            background: rgba(15, 23, 42, 0.9);
+        .dark-mode .back-button {
+            background: rgba(45, 55, 72, 0.5);
+            color: #a0aec0;
+        }
+
+        .dark-mode .back-button:hover {
+            background: rgba(45, 55, 72, 0.8);
             color: #e2e8f0;
-        }
-
-        .header-btn.primary {
-            background: transparent;
-            color: gray;
-        }
-
-        .header-actions {
-            display: flex;
-            gap: 0.5rem;
         }
 
         /* Dashboard Cards */
@@ -172,7 +164,7 @@
         .metric-header {
             display: flex;
             align-items: center;
-            justify-content: between;
+            justify-content: space-between;
             margin-bottom: 0.75rem;
         }
 
@@ -526,7 +518,7 @@
             padding: 1rem;
             border-bottom: 1px solid #e2e8f0;
             display: flex;
-            justify-content: between;
+            justify-content: space-between;
             align-items: center;
             transition: all 0.3s ease;
         }
@@ -799,7 +791,7 @@
 
         .detail-item {
             display: flex;
-            justify-content: between;
+            justify-content: space-between;
             margin-bottom: 0.25rem;
             font-size: 0.8rem;
         }
@@ -844,6 +836,10 @@
             color: #374151;
             font-size: 0.8rem;
             border-bottom: 1px solid #e2e8f0;
+        }
+
+        .products-table th.amount-header {
+            text-align: right;
         }
 
         .dark-mode .products-table th {
@@ -896,7 +892,7 @@
         /* Pagination */
         .pagination {
             display: flex;
-            justify-content: between;
+            justify-content: space-between;
             align-items: center;
             padding: 1rem;
             background: #f8fafc;
@@ -1082,27 +1078,26 @@
         .theme-toggle {
             background: none;
             border: none;
-            color: #64748b;
             cursor: pointer;
-            font-size: 1.2rem;
+            font-size: 1.5rem;
+            color: #64748b;
+            transition: color 0.3s;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 0.5rem;
-            border-radius: 50%;
-            transition: all 0.3s ease;
-        }
-
-        .theme-toggle:hover {
-            background: #f1f5f9;
+            padding: 0.25rem;
         }
 
         .dark-mode .theme-toggle {
-            color: #94a3b8;
+            color: #e2e8f0;
+        }
+
+        .theme-toggle:hover {
+            color: #1e293b;
         }
 
         .dark-mode .theme-toggle:hover {
-            background: #334155;
+            color: #90cdf4;
         }
 
         /* Responsive */
@@ -1185,7 +1180,7 @@
 
         @media print {
             body { background: white !important; color: black !important; }
-            .header, .dark-mode-toggle, .btn, button { display: none !important; }
+            .glassmorphic-bar, .btn, button { display: none !important; }
             .main-content { padding: 1rem !important; }
             .card, .sale-card { break-inside: avoid; box-shadow: none !important; border: 1px solid #ddd !important; }
         }
@@ -1194,12 +1189,12 @@
     </style>
 </head>
 <body>
-    <!-- Header -->
-    <div class="header">
-        <div class="header-content">
-            <div class="brand">
+    <!-- Top Bar -->
+    <div class="glassmorphic-bar">
+        <div class="top-bar">
+            <div class="brand-section">
                 <div class="brand-icon">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M3 3v18h18"/>
                         <path d="M7 16l4-4 4 4 6-6"/>
                     </svg>
@@ -1209,14 +1204,31 @@
                     <p>Análisis y Reportes</p>
                 </div>
             </div>
-            <div class="header-actions">
-                <button class="theme-toggle" id="themeToggle">
-                    <i class="fas fa-moon"></i>
+            <div style="display: flex; align-items: center; gap: 1rem;">
+                <span id="firebaseDot" style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #6b7280;" title="Firebase"></span>
+                <span id="userEmailDisplay" style="font-size: 0.85rem; color: #64748b; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"></span>
+                <button class="theme-toggle" onclick="toggleDarkMode()" aria-label="Cambiar modo oscuro">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sun-icon">
+                        <circle cx="12" cy="12" r="4"/>
+                        <path d="M12 2v2"/>
+                        <path d="M12 20v2"/>
+                        <path d="m4.93 4.93 1.41 1.41"/>
+                        <path d="m17.66 17.66 1.41 1.41"/>
+                        <path d="M2 12h2"/>
+                        <path d="M20 12h2"/>
+                        <path d="m6.34 17.66-1.41 1.41"/>
+                        <path d="m19.07 4.93-1.41 1.41"/>
+                    </svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="moon-icon" style="display: none;">
+                        <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
+                    </svg>
                 </button>
-                    <a href="menu.html" class="back-button">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
-                        Volver al Menú
-                    </a>
+                <a href="menu.html" class="back-button">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M19 12H6m0 0l6 6m-6-6l6-6"/>
+                    </svg>
+                    <span>Volver al Menú</span>
+                </a>
             </div>
         </div>
     </div>
@@ -1264,7 +1276,8 @@
                 <div class="search-container">
                     <div class="search-field">
                         <input type="text" class="search-input" id="searchInput" 
-                               placeholder="ID de venta, nombre del cliente, documento, producto o fecha (YYYY-MM-DD)...">
+                               placeholder="ID de venta, nombre del cliente, documento, producto o fecha (YYYY-MM-DD)..."
+                               aria-label="Buscar ventas">
                         <svg xmlns="http://www.w3.org/2000/svg" class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <circle cx="11" cy="11" r="8"/>
                             <path d="m21 21-4.35-4.35"/>
@@ -1288,10 +1301,11 @@
                 <div class="filter-group">
                     <label class="filter-label">Método de Pago</label>
                     <select class="select-input" id="paymentFilter">
-                        <option value="">Todos</option>
-                        <option value="ves-cash">Efectivo VES</option>
-                        <option value="ves-pos">Punto de Venta</option>
-                        <option value="ves-mobile">Pago Móvil</option>
+                                <option value="">Todos</option>
+                                <option value="ves-cash">Efectivo VES</option>
+                                <option value="ves-pos">Punto de Venta</option>
+                                <option value="ves-cashea">Cashea</option>
+                                <option value="ves-mobile">Pago Móvil</option>
                         <option value="usd-cash">Efectivo USD</option>
                         <option value="ves-biopago">Biopago</option>
                         <option value="usd-zelle">Zelle</option>
@@ -1321,12 +1335,12 @@
                 <div class="filter-group">
                     <label class="filter-label">Filtros Rápidos</label>
                     <div class="quick-filters">
-                        <button class="quick-filter-btn active" onclick="setQuickFilter('all')">Todo</button>
-                        <button class="quick-filter-btn" onclick="setQuickFilter('today')">Hoy</button>
-                        <button class="quick-filter-btn" onclick="setQuickFilter('week')">Semana</button>
-                        <button class="quick-filter-btn" onclick="setQuickFilter('month')">Mes</button>
-                        <button class="quick-filter-btn" onclick="setQuickFilter('last7')">Últimos 7 días</button>
-                        <button class="quick-filter-btn" onclick="setQuickFilter('lastMonth')">Mes anterior</button>
+                        <button class="quick-filter-btn active" onclick="setQuickFilter('all', this)">Todo</button>
+                        <button class="quick-filter-btn" onclick="setQuickFilter('today', this)">Hoy</button>
+                        <button class="quick-filter-btn" onclick="setQuickFilter('week', this)">Semana</button>
+                        <button class="quick-filter-btn" onclick="setQuickFilter('month', this)">Mes</button>
+                        <button class="quick-filter-btn" onclick="setQuickFilter('last7', this)">Últimos 7 días</button>
+                        <button class="quick-filter-btn" onclick="setQuickFilter('lastMonth', this)">Mes anterior</button>
                     </div>
                 </div>
                 
@@ -1432,12 +1446,21 @@
             quickFilter: 'all'
         };
 
+        function escapeHtml(str) {
+            if (typeof str !== 'string') return str;
+            const div = document.createElement('div');
+            div.appendChild(document.createTextNode(str));
+            return div.innerHTML;
+        }
+
         // Initialize application
         document.addEventListener('DOMContentLoaded', function() {
-            loadSales(); // Esta función ahora iniciará todo el proceso.
-            initializeDateInputs();
-            setupEventListeners();
-            setupThemeToggle();
+            loadSales().then(() => {
+                initializeDateInputs();
+                setupEventListeners();
+                applySavedTheme();
+                updateUserEmail();
+            }).catch(e => console.error('Error initializing:', e));
         });
 
         function setupEventListeners() {
@@ -1461,36 +1484,49 @@
             document.getElementById('tagFilter').addEventListener('change', applyFilters);
         }
 
-        function setupThemeToggle() {
-            const themeToggle = document.getElementById('themeToggle');
-            const icon = themeToggle.querySelector('i');
-            
-            // Check for saved theme preference or respect OS preference
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark-mode');
+            const isDarkMode = document.body.classList.contains('dark-mode');
+            localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
+            updateThemeToggleIcons(isDarkMode);
+        }
+
+        function applySavedTheme() {
             const savedTheme = localStorage.getItem('theme');
             const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-            
-            if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+            const isDarkMode = savedTheme === 'dark' || (!savedTheme && prefersDark);
+            if (isDarkMode) {
                 document.body.classList.add('dark-mode');
-                icon.classList.remove('fa-moon');
-                icon.classList.add('fa-sun');
             } else {
                 document.body.classList.remove('dark-mode');
-                icon.classList.remove('fa-sun');
-                icon.classList.add('fa-moon');
             }
-            
-            themeToggle.addEventListener('click', () => {
-                document.body.classList.toggle('dark-mode');
-                if (document.body.classList.contains('dark-mode')) {
-                    icon.classList.remove('fa-moon');
-                    icon.classList.add('fa-sun');
-                    localStorage.setItem('theme', 'dark');
-                } else {
-                    icon.classList.remove('fa-sun');
-                    icon.classList.add('fa-moon');
-                    localStorage.setItem('theme', 'light');
-                }
-            });
+            updateThemeToggleIcons(isDarkMode);
+        }
+
+        function updateThemeToggleIcons(isDarkMode) {
+            const sunIcon = document.querySelector('.sun-icon');
+            const moonIcon = document.querySelector('.moon-icon');
+            if (isDarkMode) {
+                if (sunIcon) sunIcon.style.display = 'none';
+                if (moonIcon) moonIcon.style.display = 'inline-block';
+            } else {
+                if (sunIcon) sunIcon.style.display = 'inline-block';
+                if (moonIcon) moonIcon.style.display = 'none';
+            }
+        }
+
+        function updateUserEmail() {
+            const el = document.getElementById('userEmailDisplay');
+            if (!el) return;
+            const email = sessionStorage.getItem('propietarioActual');
+            if (email) {
+                el.textContent = email;
+            } else {
+                try {
+                    const owner = JSON.parse(sessionStorage.getItem('currentOwner'));
+                    if (owner && owner.email) el.textContent = owner.email;
+                } catch {}
+            }
         }
 
         function toggleAdvancedFilters() {
@@ -1514,29 +1550,30 @@
             document.getElementById('dateTo').value = today;
         }
 
-        function loadSales() {
+        async function loadSales() {
     try {
+        await syncFromFirebase();
+        setupRealtimeListener();
+
         const storedSales = localStorage.getItem('pos_sales');
         if (storedSales) {
             allSales = JSON.parse(storedSales);
         } else {
             allSales = [];
         }
-        
-        // ✨ CARGA EL INVENTARIO PARA CONSULTAS
+
         const storedInventory = localStorage.getItem('ciervo_inventory');
         if (storedInventory) {
             mainInventory = JSON.parse(storedInventory);
         } else {
             mainInventory = [];
         }
-
     } catch (e) {
-        console.error('Error loading data from localStorage:', e);
+        console.error('Error loading sales data:', e);
         allSales = [];
         mainInventory = [];
     }
-    
+
     allSales.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
     applyFilters();
 }
@@ -1638,11 +1675,8 @@
     document.querySelector('#salesChart').closest('.chart-card').querySelector('.chart-title').textContent = chartTitle;
 
     const labels = Object.keys(salesData).map(date => {
-        // Se ajusta la fecha para mostrarla correctamente sin problemas de zona horaria.
-        const d = new Date(date);
-        const userTimezoneOffset = d.getTimezoneOffset() * 60000;
-        const localDate = new Date(d.getTime() + userTimezoneOffset);
-        return localDate.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
+        const [y, m, d] = date.split('-');
+        return new Date(+y, +m - 1, +d).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
     });
 
     const vesData = Object.values(salesData).map(data => data.ves);
@@ -1760,9 +1794,9 @@
                             <div class="metric-title">${metric.title}</div>
                         </div>
                     </div>
-                    <div class="metric-value">${metric.value}</div>
-                    ${metric.subtitle ? `<div style="font-size: 0.75rem; color: #64748b; margin-bottom: 0.5rem;">${metric.subtitle}</div>` : ''}
-                    ${metric.change !== 0 ? `
+                    <div class="metric-value">${escapeHtml(metric.value)}</div>
+                    ${metric.subtitle ? `<div style="font-size: 0.75rem; color: #64748b; margin-bottom: 0.5rem;">${escapeHtml(metric.subtitle)}</div>` : ''}
+                    ${metric.change !== undefined && metric.change !== 0 ? `
                         <div class="metric-change ${metric.change > 0 ? 'positive' : 'negative'}">
                             <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 ${metric.change > 0 ? '<path d="m18 15-6-6-6 6"/>' : '<path d="m6 9 6 6 6-6"/>'}
@@ -1780,13 +1814,9 @@
             applyFilters();
         }
 
-        function setQuickFilter(filter) {
-    // Update button states
-    document.querySelectorAll('.quick-filter-btn').forEach(btn => btn.classList.remove('active'));
-    // Ensure event.target exists before using it
-    if (event && event.target) {
-        event.target.classList.add('active');
-    }
+        function setQuickFilter(filter, btn) {
+    document.querySelectorAll('.quick-filter-btn').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
 
     currentFilters.quickFilter = filter;
     currentPage = 1;
@@ -1971,11 +2001,20 @@ function applyFilters() {
             saleProfitInUSD += (unitPriceUSD - unitCostUSD) * item.quantity;
         });
 
-        // Asigna la venta y la ganancia al "bote" correcto según la moneda de la transacción.
-        if (sale.currency === 'VES') {
+        // Asigna la venta y la ganancia al bote correcto.
+        if (sale.paymentMethod === 'combined' && sale.combinedPayment) {
+            totalVesSales += sale.combinedPayment.paidVes;
+            totalUsdSales += sale.combinedPayment.paidUsd;
+            const totalPaidVes = sale.combinedPayment.paidVes + (sale.combinedPayment.paidUsd * exchangeRate);
+            if (totalPaidVes > 0) {
+                const vesRatio = sale.combinedPayment.paidVes / totalPaidVes;
+                totalVesProfit += saleProfitInUSD * exchangeRate * vesRatio;
+                totalUsdProfit += saleProfitInUSD * (1 - vesRatio);
+            }
+        } else if (sale.currency === 'VES') {
             totalVesSales += correctTotals.total;
             totalVesProfit += saleProfitInUSD * exchangeRate;
-        } else { // Si la moneda es USD
+        } else {
             totalUsdSales += correctTotals.total;
             totalUsdProfit += saleProfitInUSD;
         }
@@ -2120,12 +2159,12 @@ function applyFilters() {
         // ✨ FIN DE LA CORRECCIÓN VISUAL ✨
 
         return `
-            <div class="sale-item" id="sale-${sale.id}">
-                <div class="sale-summary" onclick="toggleSaleDetails('${sale.id}')">
-                    <div class="sale-id">${sale.id}</div>
+            <div class="sale-item" id="sale-${sale.id.replace(/[^a-zA-Z0-9_-]/g, '')}">
+                <div class="sale-summary" data-sid="${sale.id.replace(/[^a-zA-Z0-9_-]/g, '')}" onclick="toggleSaleDetails(this.dataset.sid)">
+                    <div class="sale-id">${escapeHtml(sale.id)}</div>
                     <div class="sale-info">
                         <div>
-                            <div class="sale-customer ${!sale.customer ? 'anonymous' : ''}">${customerName}</div>
+                            <div class="sale-customer ${!sale.customer ? 'anonymous' : ''}">${escapeHtml(customerName)}</div>
                             ${tags.length > 0 ? `
                                 <div class="sale-tags">
                                     ${tags.map(tag => `<span class="sale-tag ${tag.class}">${tag.text}</span>`).join('')}
@@ -2134,8 +2173,8 @@ function applyFilters() {
                         </div>
                         <div class="sale-date">${formattedDate}</div>
                         <div class="sale-payment">
-                            <span class="payment-method">${paymentMethodName}</span>
-                            <span>${sale.currency}</span>
+                            <span class="payment-method">${escapeHtml(paymentMethodName)}</span>
+                            <span>${escapeHtml(sale.currency)}</span>
                         </div>
                         <div class="sale-total both-currencies">
                             ${totalDisplayHtml}  </div>
@@ -2193,10 +2232,10 @@ function applyFilters() {
             <div class="customer-details">
                 <div class="detail-section-title">Información del Cliente</div>
                 ${customer ? `
-                    <div class="detail-item"><span class="detail-label">Nombre:</span><span class="detail-value">${customer.name}</span></div>
-                    <div class="detail-item"><span class="detail-label">Documento:</span><span class="detail-value">${customer.document}</span></div>
-                    <div class="detail-item"><span class="detail-label">Teléfono:</span><span class="detail-value">${customer.phone || 'N/A'}</span></div>
-                    <div class="detail-item"><span class="detail-label">Email:</span><span class="detail-value">${customer.email || 'N/A'}</span></div>
+                    <div class="detail-item"><span class="detail-label">Nombre:</span><span class="detail-value">${escapeHtml(customer.name)}</span></div>
+                    <div class="detail-item"><span class="detail-label">Documento:</span><span class="detail-value">${escapeHtml(customer.document)}</span></div>
+                    <div class="detail-item"><span class="detail-label">Teléfono:</span><span class="detail-value">${escapeHtml(customer.phone || 'N/A')}</span></div>
+                    <div class="detail-item"><span class="detail-label">Email:</span><span class="detail-value">${escapeHtml(customer.email || 'N/A')}</span></div>
                 ` : `
                     <div class="detail-item"><span class="detail-label">Cliente:</span><span class="detail-value">Anónimo</span></div>
                 `}
@@ -2212,7 +2251,7 @@ function applyFilters() {
                 ${sale.paymentMethod === 'ves-mobile' && sale.paymentDetails && sale.paymentDetails.reference ? `
                     <div class="detail-item">
                         <span class="detail-label">Referencia Pago Móvil:</span>
-                        <span class="detail-value">${sale.paymentDetails.reference}</span>
+                        <span class="detail-value">${escapeHtml(sale.paymentDetails.reference)}</span>
                     </div>
                 ` : ''}
 
@@ -2249,7 +2288,7 @@ function applyFilters() {
         </div>
         
         <table class="products-table">
-            <thead><tr><th>Producto</th><th>Cantidad</th><th>Precio Unitario</th><th>Costo Unitario</th><th>Subtotal</th><th>Ganancia</th></tr></thead>
+            <thead><tr><th>Producto</th><th>Cantidad</th><th class="amount-header">Precio Unitario</th><th class="amount-header">Costo Unitario</th><th class="amount-header">Subtotal</th><th class="amount-header">Ganancia</th></tr></thead>
             <tbody>
                 ${sale.items.map(item => {
                     let unitPriceUSD, unitPriceVES, unitCostUSD, unitCostVES, subtotalUSD, subtotalVES, profitUSD, profitVES;
@@ -2276,10 +2315,10 @@ function applyFilters() {
                     return `
                         <tr>
                             <td>
-                                <div class="product-name">${item.product.name} ${isExempt ? '(E)' : ''}</div>
-                                <div class="product-details-cell">${item.product.brand || 'N/A'} | ${item.product.code || 'N/A'} | ${getCategoryName(item.product.category)}</div>
+                                <div class="product-name">${escapeHtml(item.product.name)} ${isExempt ? '(E)' : ''}</div>
+                                <div class="product-details-cell">${escapeHtml(item.product.brand || 'N/A')} | ${escapeHtml(item.product.code || 'N/A')} | ${escapeHtml(getCategoryName(item.product.category))}</div>
                             </td>
-                            <td>${item.quantity} ${item.unit || 'unidades'}</td>
+                            <td>${item.quantity} ${escapeHtml(item.unit || 'unidades')}</td>
                             <td class="amount-cell">Bs. ${formatCurrency(unitPriceVES)} ($ ${formatCurrency(unitPriceUSD, 'USD')})</td>
                             <td class="amount-cell">Bs. ${formatCurrency(unitCostVES)} ($ ${formatCurrency(unitCostUSD, 'USD')})</td>
                             <td class="amount-cell">Bs. ${formatCurrency(subtotalVES)} ($ ${formatCurrency(subtotalUSD, 'USD')})</td>
@@ -2311,7 +2350,7 @@ function applyFilters() {
                         <div class="timeline-item">
                             <div class="timeline-date">${new Date(s.timestamp).toLocaleDateString('es-VE')}</div>
                             <div class="timeline-amount">Bs. ${formatCurrency(saleTotalInVES)} ($ ${formatCurrency(saleTotalInUSD, 'USD')})</div>
-                            <div style="font-size: 0.75rem; color: #64748b;">${s.id} - ${s.items.length} producto${s.items.length > 1 ? 's' : ''}</div>
+                            <div style="font-size: 0.75rem; color: #64748b;">${escapeHtml(s.id)} - ${s.items.length} producto${s.items.length > 1 ? 's' : ''}</div>
                         </div>
                     `;
                 }).join('')}
@@ -2384,6 +2423,7 @@ function applyFilters() {
             const methods = {
                 'ves-cash': 'Efectivo VES',
                 'ves-pos': 'Punto de Venta',
+                'ves-cashea': 'Cashea',
                 'ves-mobile': 'Pago Móvil',
                 'usd-cash': 'Efectivo USD',
                 'usd-zelle': 'Zelle',
@@ -2452,7 +2492,16 @@ function applyFilters() {
             const productName = item.product.name;
             productSales[productName] = (productSales[productName] || 0) + item.quantity;
         });
-        if (sale.currency === 'VES') {
+        if (sale.paymentMethod === 'combined' && sale.combinedPayment) {
+            totalVesSales += sale.combinedPayment.paidVes;
+            totalUsdSales += sale.combinedPayment.paidUsd;
+            const totalPaidVes = sale.combinedPayment.paidVes + (sale.combinedPayment.paidUsd * exchangeRate);
+            if (totalPaidVes > 0) {
+                const vesRatio = sale.combinedPayment.paidVes / totalPaidVes;
+                totalVesProfit += saleProfitInUSD * exchangeRate * vesRatio;
+                totalUsdProfit += saleProfitInUSD * (1 - vesRatio);
+            }
+        } else if (sale.currency === 'VES') {
             totalVesSales += correctTotals.total;
             totalVesProfit += saleProfitInUSD * exchangeRate;
         } else {
@@ -2604,7 +2653,7 @@ function applyFilters() {
         }
 
 function recalculateTotalFromItems(sale) {
-    if (!sale || !sale.items || !sale.items.length === 0) {
+    if (!sale || !sale.items || sale.items.length === 0) {
         return { subtotal: 0, discount: 0, iva: 0, total: 0 };
     }
 
@@ -2664,9 +2713,170 @@ function recalculateTotalFromItems(sale) {
             }, 3000);
         }
 
+        // ==================== FIREBASE STORAGE ====================
+        const FIREBASE_CONFIG = {
+            apiKey: "AIzaSyCyaIC2-pCCQf_mJWGtG6v-0kA1l2Or2CQ",
+            authDomain: "mini-market-ciervo-index.firebaseapp.com",
+            databaseURL: "https://mini-market-ciervo-index-default-rtdb.firebaseio.com",
+            projectId: "mini-market-ciervo-index",
+            storageBucket: "mini-market-ciervo-index.firebasestorage.app",
+            messagingSenderId: "828978506509",
+            appId: "1:828978506509:web:52b6220033072038115e44"
+        };
+
+        let _fbDb = null;
+        let _fbInitPromise = null;
+        let _fbConnected = false;
+
+        function getCurrentUserEmail() {
+            const fromStorage = sessionStorage.getItem('propietarioActual');
+            if (fromStorage) return fromStorage;
+            try {
+                const owner = JSON.parse(sessionStorage.getItem('currentOwner'));
+                if (owner && owner.email) return owner.email;
+            } catch {}
+            return null;
+        }
+
+        function sanitizeEmailForDb(email) {
+            return email.replace('@', '_at_').replace(/\./g, '_');
+        }
+
+        function getUserDataPath() {
+            const email = getCurrentUserEmail();
+            if (!email) throw new Error('No hay sesión iniciada.');
+            return 'BBDD/' + sanitizeEmailForDb(email);
+        }
+
+        let _cloudAccessChecked = false;
+        let _cloudAccess = false;
+
+        async function checkCloudAccess() {
+            if (_cloudAccessChecked) return _cloudAccess;
+            try {
+                const db = await initFirebase();
+                if (!db) return false;
+                const email = getCurrentUserEmail();
+                if (!email) { _cloudAccessChecked = true; _cloudAccess = false; return false; }
+                const snap = await db.ref('BBDD/' + sanitizeEmailForDb(email) + '/suscripcion/cloudSync').once('value');
+                _cloudAccess = snap.val() === true;
+            } catch (e) {
+                _cloudAccess = false;
+            }
+            _cloudAccessChecked = true;
+            return _cloudAccess;
+        }
+
+        function setFirebaseDot(color, title) {
+            const dot = document.getElementById('firebaseDot');
+            if (dot) { dot.style.background = color; dot.title = title; }
+        }
+
+        function loadFirebaseSDK() {
+            return new Promise((resolve, reject) => {
+                if (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length > 0) return resolve();
+                const scripts = [
+                    'https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js',
+                    'https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js'
+                ];
+                let loaded = 0;
+                scripts.forEach(src => {
+                    const s = document.createElement('script');
+                    s.src = src;
+                    s.onload = () => { if (++loaded === scripts.length) resolve(); };
+                    s.onerror = () => reject(new Error('Error al cargar ' + src));
+                    document.head.appendChild(s);
+                });
+            });
+        }
+
+        async function setupConnectionMonitor(db) {
+            if (!await checkCloudAccess()) return;
+            db.ref('.info/connected').on('value', (snap) => {
+                _fbConnected = snap.val();
+                if (_fbConnected) {
+                    setFirebaseDot('#22c55e', 'Firebase conectado');
+                } else {
+                    setFirebaseDot('#ef4444', 'Firebase desconectado');
+                }
+            });
+        }
+
+        async function initFirebase() {
+            if (_fbDb) return _fbDb;
+            if (_fbInitPromise) return _fbInitPromise;
+            _fbInitPromise = (async () => {
+                if (location.protocol === 'file:') throw new Error('Firebase no funciona con file://');
+                await loadFirebaseSDK();
+                if (!firebase.apps || firebase.apps.length === 0) firebase.initializeApp(FIREBASE_CONFIG);
+                const db = firebase.database();
+                _fbDb = db;
+                return _fbDb;
+            })();
+            _fbInitPromise.catch(() => { _fbInitPromise = null; _fbDb = null; });
+            return _fbInitPromise;
+        }
+
+        async function fbLoadAll() {
+            if (!await checkCloudAccess()) return null;
+            const db = await initFirebase();
+            const snap = await db.ref(getUserDataPath()).once('value');
+            return snap.val();
+        }
+
+        async function syncFromFirebase() {
+            try {
+                if (!await checkCloudAccess()) return false;
+                const data = await fbLoadAll();
+                if (!data) return false;
+                let changed = false;
+                if (data.productos) {
+                    localStorage.setItem('ciervo_inventory', JSON.stringify(data.productos));
+                    changed = true;
+                }
+                if (data.categorias) {
+                    localStorage.setItem('ciervo_categories', JSON.stringify(data.categorias));
+                    changed = true;
+                }
+                if (data.ventas && data.ventas.historial) {
+                    localStorage.setItem('pos_sales', JSON.stringify(data.ventas.historial));
+                    changed = true;
+                }
+                if (changed) {
+                    setFirebaseDot('#22c55e', 'Firebase conectado');
+                }
+                return changed;
+            } catch (e) {
+                console.warn('Firebase no disponible, usando datos locales:', e.message);
+                return false;
+            }
+        }
+
+        function setupRealtimeListener() {
+            checkCloudAccess().then(allowed => {
+                if (!allowed) return;
+            initFirebase().then(db => {
+                if (!db) return;
+                const email = getCurrentUserEmail();
+                if (!email) return;
+                const path = 'BBDD/' + sanitizeEmailForDb(email) + '/ventas/historial';
+                db.ref(path).on('value', snap => {
+                    const ventas = snap.val();
+                    if (ventas) {
+                        localStorage.setItem('pos_sales', JSON.stringify(ventas));
+                        allSales = ventas;
+                        allSales.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                        applyFilters();
+                        loadCharts();
+                    }
+                });
+            });
+            });
+        }
+        // ==================== END FIREBASE STORAGE ====================
+
         function goToPOS() {
-            // Redirección directa sin confirmación ni mensajes
-            window.location.href = 'mini_market_pos.html'; // Changed to mini_market_pos.html
+            window.location.href = 'mini_market_pos.html';
         }
 
     </script>

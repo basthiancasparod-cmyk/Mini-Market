@@ -4,11 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Control de Inventario - Ciervo Administrativo</title>
+    <script src="cloud-access.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.1/dist/umd/lucide.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net">
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+    <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.1/dist/umd/lucide.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
     <style>
         /* Base Styles */
         * {
@@ -368,56 +371,6 @@
         body.dark-mode .btn-delete:hover { background: #7a3d3d; }
         body.dark-mode .btn-adjust-stock { background: #4338ca; color: #c7d2fe; }
         body.dark-mode .btn-adjust-stock:hover { background: #3730a3; }
-
-
-        .modal-content {
-            background: white;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-        }
-
-        .modal-title {
-            color: #1e293b;
-        }
-
-        .close-button:hover {
-            background: #f1f5f9;
-        }
-
-        .form-input, .form-select, .form-textarea {
-            border: 1px solid #d1d5db;
-        }
-
-        .form-input:focus, .form-select:focus, .form-textarea:focus {
-            outline: none;
-        }
-
-        .form-input.invalid, .form-select.invalid, .form-textarea.invalid {
-            border-color: #ef4444; /* Red border for invalid fields */
-            box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.1);
-        }
-
-        .calculated-field {
-            cursor: not-allowed;
-        }
-
-        .btn-cancel {
-            background: #f8fafc;
-            color: #64748b;
-            border: 1px solid #e2e8f0;
-        }
-
-        .btn-cancel:hover {
-            background: #f1f5f9;
-        }
-
-        .empty-state {
-            color: #64748b;
-        }
-
-        .empty-state-icon {
-            background: #f1f5f9;
-            color: #94a3b8;
-        }
 
         /* General Layout */
         .container {
@@ -1244,7 +1197,7 @@ body.dark-mode .dropdown-divider {
         .report-table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 1rem;
+            font-size: 0.875rem;
         }
 
         .report-table th, .report-table td {
@@ -1498,7 +1451,9 @@ body.dark-mode .dropdown-divider {
                     </div>
                 </div>
                 <div style="display: flex; align-items: center; gap: 1rem;">
-                    <button class="theme-toggle" onclick="toggleDarkMode()" aria-label="Toggle dark mode">
+                    <span id="firebaseDot" style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #94a3b8;" title="Firebase: conectando..."></span>
+                    <span id="userEmailDisplay" style="font-size: 0.85rem; color: var(--text-secondary, #666); max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"></span>
+                    <button class="theme-toggle" onclick="toggleDarkMode()" aria-label="Cambiar modo oscuro">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sun-icon">
                             <circle cx="12" cy="12" r="4"/>
                             <path d="M12 2v2"/>
@@ -1546,7 +1501,7 @@ body.dark-mode .dropdown-divider {
         <div class="action-bar">
     <div class="search-filter-group">
         <div class="search-container">
-            <input type="text" class="search-input" placeholder="Buscar productos por nombre, marca, código..." id="searchInput">
+            <input type="text" class="search-input" placeholder="Buscar productos por nombre, marca, código..." id="searchInput" aria-label="Buscar productos">
             <svg xmlns="http://www.w3.org/2000/svg" class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="11" cy="11" r="8"></circle>
                 <path d="m21 21-4.35-4.35"></path>
@@ -1566,7 +1521,7 @@ body.dark-mode .dropdown-divider {
     </button>
 
     <div class="dropdown">
-        <button class="btn btn-secondary" onclick="toggleActionsDropdown()">
+        <button class="btn btn-secondary" onclick="toggleActionsDropdown()" aria-label="Menú de acciones">
             <span>Acciones</span>
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <polyline points="6 9 12 15 18 9"></polyline>
@@ -1724,7 +1679,7 @@ body.dark-mode .dropdown-divider {
         <div class="modal-content">
             <div class="modal-header">
                 <h3 class="modal-title" id="modalTitle">Nuevo Producto</h3>
-                <button class="close-button" onclick="closeModal()">
+                <button class="close-button" onclick="closeModal()" aria-label="Cerrar">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M18 6 6 18"/>
                         <path d="m6 6 12 12"/>
@@ -1866,7 +1821,7 @@ body.dark-mode .dropdown-divider {
         <div class="modal-content" style="max-width: 400px;">
             <div class="modal-header">
                 <h3 class="modal-title">Confirmar Eliminación</h3>
-                <button class="close-button" onclick="closeDeleteModal()">
+                <button class="close-button" onclick="closeDeleteModal()" aria-label="Cerrar">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M18 6 6 18"/>
                         <path d="m6 6 12 12"/>
@@ -1891,7 +1846,7 @@ body.dark-mode .dropdown-divider {
         <div class="modal-content">
             <div class="modal-header">
                 <h3 class="modal-title">Gestionar Categorías</h3>
-                <button class="close-button" onclick="closeCategoryModal()">
+                <button class="close-button" onclick="closeCategoryModal()" aria-label="Cerrar">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M18 6 6 18"/>
                         <path d="m6 6 12 12"/>
@@ -1921,7 +1876,7 @@ body.dark-mode .dropdown-divider {
         <div class="modal-content" style="max-width: 400px;">
             <div class="modal-header">
                 <h3 class="modal-title">Editar Categoría</h3>
-                <button class="close-button" onclick="closeEditCategoryModal()">
+                <button class="close-button" onclick="closeEditCategoryModal()" aria-label="Cerrar">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M18 6 6 18"/>
                         <path d="m6 6 12 12"/>
@@ -1946,7 +1901,7 @@ body.dark-mode .dropdown-divider {
         <div class="modal-content">
             <div class="modal-header">
                 <h3 class="modal-title">Edición en Lote (<span id="selectedProductCount">0</span> productos seleccionados)</h3>
-                <button class="close-button" onclick="closeBulkEditModal()">
+                <button class="close-button" onclick="closeBulkEditModal()" aria-label="Cerrar">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M18 6 6 18"/>
                         <path d="m6 6 12 12"/>
@@ -1994,7 +1949,7 @@ body.dark-mode .dropdown-divider {
         <div class="modal-content" style="max-width: 500px;">
             <div class="modal-header">
                 <h3 class="modal-title">Confirmar Edición en Lote</h3>
-                <button class="close-button" onclick="closeBulkEditConfirmModal()">
+                <button class="close-button" onclick="closeBulkEditConfirmModal()" aria-label="Cerrar">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M18 6 6 18"/>
                         <path d="m6 6 12 12"/>
@@ -2017,7 +1972,7 @@ body.dark-mode .dropdown-divider {
         <div class="modal-content">
             <div class="modal-header">
                 <h3 class="modal-title" id="stockAdjustmentTitle">Ajustar Stock de Producto</h3>
-                <button class="close-button" onclick="closeStockAdjustmentModal()">
+                <button class="close-button" onclick="closeStockAdjustmentModal()" aria-label="Cerrar">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M18 6 6 18"/>
                         <path d="m6 6 12 12"/>
@@ -2085,7 +2040,7 @@ body.dark-mode .dropdown-divider {
         <div class="modal-content">
             <div class="modal-header">
                 <h3 class="modal-title">Reportes de Inventario</h3>
-                <button class="close-button" onclick="closeReportsModal()">
+                <button class="close-button" onclick="closeReportsModal()" aria-label="Cerrar">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M18 6 6 18"/>
                         <path d="m6 6 12 12"/>
@@ -2183,6 +2138,7 @@ body.dark-mode .dropdown-divider {
                         </tbody>
                     </table>
                 </div>
+
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-cancel" onclick="closeReportsModal()">Cerrar</button>
@@ -2226,6 +2182,265 @@ body.dark-mode .dropdown-divider {
             return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
         }
 
+        // Helper function to escape HTML in user-provided strings
+        function escapeHtml(str) {
+            return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+        }
+
+        // ==================== REALTIME DATABASE STORAGE ====================
+        // Almacena bajo /BBDD/{email_sanitizado}/productos y /categorias.
+        // El email se obtiene de sessionStorage (seteado por index.html al login).
+        // localStorage se usa como cache local.
+        // =====================================================================
+
+        const FIREBASE_CONFIG = {
+            apiKey: "AIzaSyCyaIC2-pCCQf_mJWGtG6v-0kA1l2Or2CQ",
+            authDomain: "mini-market-ciervo-index.firebaseapp.com",
+            databaseURL: "https://mini-market-ciervo-index-default-rtdb.firebaseio.com",
+            projectId: "mini-market-ciervo-index",
+            storageBucket: "mini-market-ciervo-index.firebasestorage.app",
+            messagingSenderId: "828978506509",
+            appId: "1:828978506509:web:52b6220033072038115e44"
+        };
+
+        function getCurrentUserEmail() {
+            // Intentar desde sessionStorage (seteado por index.html)
+            const fromStorage = sessionStorage.getItem('propietarioActual');
+            if (fromStorage) return fromStorage;
+            // Fallback: leer del objeto currentOwner
+            try {
+                const owner = JSON.parse(sessionStorage.getItem('currentOwner'));
+                if (owner && owner.email) return owner.email;
+            } catch {}
+            return null;
+        }
+
+        function sanitizeEmailForDb(email) {
+            return email.replace('@', '_at_').replace(/\./g, '_');
+        }
+
+        function getUserDataPath() {
+            const email = getCurrentUserEmail();
+            if (!email) throw new Error('No hay sesión iniciada. Inicia sesión desde index.html.');
+            return 'BBDD/' + sanitizeEmailForDb(email);
+        }
+
+        let _cloudAccessChecked = false;
+        let _cloudAccess = false;
+
+        async function checkCloudAccess() {
+            if (_cloudAccessChecked) return _cloudAccess;
+            try {
+                const db = await initFirebase();
+                if (!db) return false;
+                const email = getCurrentUserEmail();
+                if (!email) { _cloudAccessChecked = true; _cloudAccess = false; return false; }
+                const snap = await db.ref('BBDD/' + sanitizeEmailForDb(email) + '/suscripcion/cloudSync').once('value');
+                _cloudAccess = snap.val() === true;
+            } catch (e) {
+                _cloudAccess = false;
+            }
+            _cloudAccessChecked = true;
+            return _cloudAccess;
+        }
+
+        let _firebaseDb = null;
+        let _firebaseInitPromise = null;
+        let _pendingChanges = localStorage.getItem('_pendingFirebaseChanges') === 'true';
+        let _firebaseConnected = false;
+
+        function loadFirebaseSDK() {
+            return new Promise((resolve, reject) => {
+                if (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length > 0) {
+                    return resolve();
+                }
+                const scripts = [
+                    'https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js',
+                    'https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js'
+                ];
+                let loaded = 0;
+                scripts.forEach(src => {
+                    const s = document.createElement('script');
+                    s.src = src;
+                    s.onload = () => { if (++loaded === scripts.length) resolve(); };
+                    s.onerror = () => reject(new Error('Error al cargar ' + src));
+                    document.head.appendChild(s);
+                });
+            });
+        }
+
+        function setFirebaseDot(color, title) {
+            const dot = document.getElementById('firebaseDot');
+            if (dot) { dot.style.background = color; dot.title = title; }
+        }
+
+        async function setupConnectionMonitor(db) {
+            if (!await checkCloudAccess()) return;
+            db.ref('.info/connected').on('value', async (snap) => {
+                const connected = snap.val();
+                _firebaseConnected = connected;
+                if (connected) {
+                    setFirebaseDot('#22c55e', 'Firebase conectado');
+                    if (!await checkCloudAccess()) return;
+                    if (_pendingChanges) {
+                        _pendingChanges = false;
+                        localStorage.removeItem('_pendingFirebaseChanges');
+                        try {
+                            await firebaseSaveProducts(products);
+                            await firebaseSaveCategories(categories);
+                        } catch (e) {
+                            _pendingChanges = true;
+                            localStorage.setItem('_pendingFirebaseChanges', 'true');
+                        }
+                    }
+                } else {
+                    setFirebaseDot('#ef4444', 'Firebase desconectado');
+                }
+            });
+        }
+
+        async function initFirebase() {
+            if (_firebaseDb) return _firebaseDb;
+            if (_firebaseInitPromise) return _firebaseInitPromise;
+
+            _firebaseInitPromise = (async () => {
+                if (location.protocol === 'file:') {
+                    throw new Error('Firebase no funciona con file://. Usa: python -m http.server 8080');
+                }
+                await loadFirebaseSDK();
+                if (!firebase.apps || firebase.apps.length === 0) {
+                    firebase.initializeApp(FIREBASE_CONFIG);
+                }
+                const db = firebase.database();
+                _firebaseDb = db;
+                return _firebaseDb;
+            })();
+
+            _firebaseInitPromise.catch(() => {
+                _firebaseInitPromise = null;
+                _firebaseDb = null;
+            });
+
+            return _firebaseInitPromise;
+        }
+
+        async function firebaseSaveProducts(data) {
+            if (!await checkCloudAccess()) return;
+            const db = await initFirebase();
+            const path = getUserDataPath();
+            await db.ref(path + '/productos').set(data);
+        }
+
+        async function firebaseSaveCategories(data) {
+            if (!await checkCloudAccess()) return;
+            const db = await initFirebase();
+            const path = getUserDataPath();
+            await db.ref(path + '/categorias').set(data);
+        }
+
+        async function firebaseLoadAll() {
+            if (!await checkCloudAccess()) return null;
+            const db = await initFirebase();
+            const path = getUserDataPath();
+            const snap = await db.ref(path).once('value');
+            return snap.val();
+        }
+
+        function mergeInventoryWithLocal(firebaseData) {
+            const localData = JSON.parse(localStorage.getItem('ciervo_inventory') || '[]');
+            return firebaseData.map(fbProd => {
+                const localProd = localData.find(p => String(p.id) === String(fbProd.id));
+                if (localProd) {
+                    return {
+                        ...fbProd,
+                        images: fbProd.images && fbProd.images.length ? fbProd.images : localProd.images || [],
+                        mainImageIndex: fbProd.mainImageIndex ?? localProd.mainImageIndex ?? 0,
+                        imageUrl: fbProd.imageUrl || localProd.imageUrl || '',
+                        description: localProd.description ?? fbProd.description ?? '',
+                        visible: localProd.visible ?? fbProd.visible ?? true,
+                        specs: { ...(fbProd.specs || {}), ...(localProd.specs || {}) }
+                    };
+                }
+                return fbProd;
+            });
+        }
+
+        async function syncFromFirebase() {
+            try {
+                if (!await checkCloudAccess()) return false;
+                const data = await firebaseLoadAll();
+                if (!data) return false;
+                let changed = false;
+                if (data.productos) {
+                    products = mergeInventoryWithLocal(data.productos);
+                    localStorage.setItem('ciervo_inventory', JSON.stringify(products));
+                    products.forEach(p => {
+                        if (!p.stockHistory) p.stockHistory = [{ date: new Date().toISOString().split('T')[0], reason: 'Initial Load', quantity: p.stock, finalStock: p.stock, notes: 'Stock inicial cargado' }];
+                        if (!p.priceHistory) p.priceHistory = [{ date: new Date().toISOString().split('T')[0], type: 'Initial Load', oldCost: p.isBulk ? p.costPerUnit : p.cost, newCost: p.isBulk ? p.costPerUnit : p.cost, oldPrice: p.isBulk ? p.pricePerUnit : p.price, newPrice: p.isBulk ? p.pricePerUnit : p.price }];
+                        if (typeof p.isIvaExempt === 'undefined') p.isIvaExempt = false;
+                    });
+                    nextProductId = products.length > 0 ? Math.max(...products.map(p => p.id)) + 1 : 1;
+                    changed = true;
+                }
+                if (data.categorias) {
+                    categories = data.categorias;
+                    localStorage.setItem('ciervo_categories', JSON.stringify(categories));
+                    changed = true;
+                }
+                if (changed) {
+                    renderProducts();
+                    updateDashboard();
+                    populateCategories(document.getElementById('isBulkProduct') ? document.getElementById('isBulkProduct').checked : false);
+                    populateCategoryFilter();
+                    renderCategoryList();
+                }
+                return changed;
+            } catch (e) {
+                console.warn('Firebase no disponible, usando datos locales:', e.message);
+                return false;
+            }
+        }
+
+        function setupRealtimeListeners() {
+            checkCloudAccess().then(allowed => {
+                if (!allowed) return;
+            initFirebase().then(db => {
+                if (!db) return;
+                const email = getCurrentUserEmail();
+                if (!email) return;
+                const basePath = 'BBDD/' + sanitizeEmailForDb(email);
+
+                db.ref(basePath + '/productos').on('value', snap => {
+                    const data = snap.val();
+                    if (!data) return;
+                    products = mergeInventoryWithLocal(data);
+                    products.forEach(p => {
+                        if (!p.stockHistory) p.stockHistory = [{ date: new Date().toISOString().split('T')[0], reason: 'Initial Load', quantity: p.stock, finalStock: p.stock, notes: 'Stock inicial cargado' }];
+                        if (!p.priceHistory) p.priceHistory = [{ date: new Date().toISOString().split('T')[0], type: 'Initial Load', oldCost: p.isBulk ? p.costPerUnit : p.cost, newCost: p.isBulk ? p.costPerUnit : p.cost, oldPrice: p.isBulk ? p.pricePerUnit : p.price, newPrice: p.isBulk ? p.pricePerUnit : p.price }];
+                        if (typeof p.isIvaExempt === 'undefined') p.isIvaExempt = false;
+                    });
+                    localStorage.setItem('ciervo_inventory', JSON.stringify(products));
+                    renderProducts();
+                    updateDashboard();
+                });
+            });
+            });
+        }
+
+        async function uploadToFirebase() {
+            try {
+                await initFirebase();
+                await firebaseSaveProducts(products);
+                await firebaseSaveCategories(categories);
+                setFirebaseDot('#22c55e', 'Firebase conectado');
+            } catch (e) {
+                setFirebaseDot('#ef4444', 'Firebase: ' + e.message);
+                if (e.message.includes('file:')) showNotification(e.message, 'error');
+            }
+        }
+
+        // ==================== END FIREBASE STORAGE ====================
+
         // Initialize the application
         document.addEventListener('DOMContentLoaded', function() {
             if (typeof lucide !== 'undefined') {
@@ -2240,6 +2455,37 @@ body.dark-mode .dropdown-divider {
             populateCategoryFilter();
             renderProducts();
             document.getElementById('searchInput').focus(); // Auto-focus search bar
+
+            // Mostrar email del usuario logueado
+            const email = getCurrentUserEmail();
+            const emailDisplay = document.getElementById('userEmailDisplay');
+            if (email && emailDisplay) {
+                emailDisplay.textContent = email;
+            }
+
+            // Sincronizar con Firebase en background (no bloquea la UI)
+            setTimeout(async () => {
+                if (!email) {
+                    setFirebaseDot('#f59e0b', 'Sin sesión: inicia sesión en index.html');
+                    return;
+                }
+                try {
+                    if (_pendingChanges) {
+                        // Hay cambios offline pendientes de la sesión anterior → subir antes de sync
+                        await uploadToFirebase();
+                    } else {
+                        const existsInCloud = await syncFromFirebase();
+                        if (existsInCloud) {
+                            if (_firebaseConnected) setFirebaseDot('#22c55e', 'Firebase conectado');
+                        } else {
+                            await uploadToFirebase();
+                        }
+                    }
+                } catch (e) {
+                    setFirebaseDot('#ef4444', 'Error: ' + e.message);
+                }
+                setupRealtimeListeners();
+            }, 500);
         });
 
         function setupEventListeners() {
@@ -2304,6 +2550,14 @@ body.dark-mode .dropdown-divider {
 
     document.getElementById('reportsModal').addEventListener('click', function(e) {
         if (e.target === this) closeReportsModal();
+    });
+
+    document.getElementById('categoryModal').addEventListener('click', function(e) {
+        if (e.target === this) closeCategoryModal();
+    });
+
+    document.getElementById('editCategoryModal').addEventListener('click', function(e) {
+        if (e.target === this) closeEditCategoryModal();
     });
 
     document.getElementById('prevPage').addEventListener('click', () => changePage(-1));
@@ -2465,8 +2719,13 @@ function handleStockKeydown(event) {
             }
         }
 
-        function saveCategories() {
+        async function saveCategories() {
             localStorage.setItem('ciervo_categories', JSON.stringify(categories));
+            try { await firebaseSaveCategories(categories); }
+            catch (e) {
+                if (e.message.includes('file:')) showNotification(e.message, 'error');
+                else { _pendingChanges = true; localStorage.setItem('_pendingFirebaseChanges', 'true'); }
+            }
         }
 
         function openCategoryModal() {
@@ -2483,23 +2742,21 @@ function handleStockKeydown(event) {
             categoryList.innerHTML = '';
             categories.filter(cat => cat.value !== "").forEach(cat => {
                 const li = document.createElement('li');
-                li.innerHTML = `
-                    <span>${cat.text} ${cat.isBulk ? '(Granel)' : ''}</span>
-                    <div>
-                        <button onclick="openEditCategoryModal('${cat.value}')" style="color: #2563eb; margin-right: 0.5rem;">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                            </svg>
-                        </button>
-                        <button onclick="removeCategory('${cat.value}')">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M18 6 6 18"/>
-                                <path d="m6 6 12 12"/>
-                            </svg>
-                        </button>
-                    </div>
-                `;
+                const span = document.createElement('span');
+                span.textContent = cat.text + (cat.isBulk ? ' (Granel)' : '');
+                li.appendChild(span);
+                const div = document.createElement('div');
+                const editBtn = document.createElement('button');
+                editBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>';
+                editBtn.style.color = '#2563eb';
+                editBtn.style.marginRight = '0.5rem';
+                editBtn.addEventListener('click', () => openEditCategoryModal(cat.value));
+                div.appendChild(editBtn);
+                const deleteBtn = document.createElement('button');
+                deleteBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>';
+                deleteBtn.addEventListener('click', () => removeCategory(cat.value));
+                div.appendChild(deleteBtn);
+                li.appendChild(div);
                 categoryList.appendChild(li);
             });
         }
@@ -2588,6 +2845,7 @@ function handleStockKeydown(event) {
             renderCategoryList();
             populateCategories(document.getElementById('isBulkProduct').checked);
             populateCategoryFilter();
+            renderProducts();
             showNotification('Categoría eliminada exitosamente', 'success');
         }
 
@@ -2601,7 +2859,12 @@ function handleStockKeydown(event) {
                 option.textContent = cat.text;
                 categoryFilterSelect.appendChild(option);
             });
-            categoryFilterSelect.value = currentFilter;
+            if (currentFilter && [...categoryFilterSelect.options].some(o => o.value === currentFilter)) {
+                categoryFilterSelect.value = currentFilter;
+            } else {
+                categoryFilterSelect.value = '';
+                selectedCategoryFilter = '';
+            }
         }
 
         // Product Management Functions
@@ -2641,8 +2904,13 @@ function handleStockKeydown(event) {
             renderProducts();
         }
 
-        function saveProducts() {
+        async function saveProducts() {
             localStorage.setItem('ciervo_inventory', JSON.stringify(products));
+            try { await firebaseSaveProducts(products); }
+            catch (e) {
+                if (e.message.includes('file:')) showNotification(e.message, 'error');
+                else { _pendingChanges = true; localStorage.setItem('_pendingFirebaseChanges', 'true'); }
+            }
         }
 
         function loadSampleData() {
@@ -2756,29 +3024,24 @@ function handleStockKeydown(event) {
                 const stockLevel = getStockLevel(product);
                 const stockBadgeClass = `stock-${stockLevel}`;
                 
-                const stockDisplay = product.isBulk ? `${product.stock.toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 3 })} ${product.unit}` : `${product.stock} unidades`;
-                const costDisplay = product.isBulk ? `$${(product.costPerUnit || 0).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/${product.unit}` : `$${(product.cost || 0).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                const unitEscaped = escapeHtml(product.unit);
+                const stockDisplay = product.isBulk ? `${product.stock.toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 3 })} ${unitEscaped}` : `${product.stock} unidades`;
+                const costDisplay = product.isBulk ? `$${(product.costPerUnit || 0).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/${unitEscaped}` : `$${(product.cost || 0).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
                 const marginValue = product.margin !== null ? product.margin : (product.profit / (product.cost || product.costPerUnit || 1)) * 100;
                 const marginDisplay = `${marginValue.toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}%`;
-                const priceDisplay = product.isBulk ? `$${(product.pricePerUnit || 0).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/${product.unit}` : `$${(product.price || 0).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-                const profitDisplay = product.isBulk ? `$${(product.profitPerUnit || 0).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/${product.unit}` : `$${(product.profit || 0).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                const priceDisplay = product.isBulk ? `$${(product.pricePerUnit || 0).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/${unitEscaped}` : `$${(product.price || 0).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                const profitDisplay = product.isBulk ? `$${(product.profitPerUnit || 0).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/${unitEscaped}` : `$${(product.profit || 0).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
                 const isSelected = selectedProductIds.has(product.id);
 
                 // --- LÓGICA DE IMAGEN NUEVA ---
-                // Definimos el icono por defecto (el SVG que ya tenías)
-                const defaultIconSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>`;
-                
                 let imageContent;
 
-                // Verificamos si existe la URL de la imagen
                 if (product.imageUrl && product.imageUrl.trim() !== "") {
-                    // Si existe, ponemos la etiqueta IMG. 
-                    // El truco 'onerror' hace que si el link está roto, se reemplace automáticamente por el icono SVG.
-                    imageContent = `<img src="${product.imageUrl}" class="product-real-img" onerror="this.parentNode.innerHTML='${defaultIconSvg.replace(/"/g, "'")}'">`;
+                    const safeUrl = product.imageUrl.replace(/['"]/g, '').replace(/</g, '%3C').replace(/>/g, '%3E');
+                    imageContent = `<img src="${safeUrl}" class="product-real-img" data-img-fallback="true">`;
                 } else {
-                    // Si no existe, usamos el icono SVG por defecto
-                    imageContent = defaultIconSvg;
+                    imageContent = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>`;
                 }
 
                 return `
@@ -2792,9 +3055,9 @@ function handleStockKeydown(event) {
                                     ${imageContent}
                                 </div>
                                 <div class="product-details">
-                                    <h4>${product.isIvaExempt ? product.name + ' (E)' : product.name}</h4>
-                                    <p>${product.code || 'Sin código'}</p>
-                                    ${product.description ? `<p style="font-size: 0.75rem; margin-top: 0.25rem;">${product.description.length > 50 ? product.description.substring(0, 50) + '...' : product.description}</p>` : ''}
+                                    <h4>${escapeHtml(product.isIvaExempt ? product.name + ' (E)' : product.name)}</h4>
+                                    <p>${escapeHtml(product.code || 'Sin código')}</p>
+                                    ${product.description ? `<p style="font-size: 0.75rem; margin-top: 0.25rem;">${escapeHtml(product.description.length > 50 ? product.description.substring(0, 50) + '...' : product.description)}</p>` : ''}
                                 </div>
                             </div>
                         </td>
@@ -2808,7 +3071,7 @@ function handleStockKeydown(event) {
                                 </svg>
                                 ${stockDisplay}
                             </span>
-                            <button class="btn-icon btn-adjust-stock" onclick="openStockAdjustmentModal(${product.id})" title="Ajustar Stock" style="margin-top: 0.5rem;">
+                            <button class="btn-icon btn-adjust-stock" onclick="openStockAdjustmentModal(${product.id})" title="Ajustar Stock" aria-label="Ajustar stock" style="margin-top: 0.5rem;">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <path d="M12 5v14"/>
                                     <path d="M5 12h14"/>
@@ -2826,23 +3089,23 @@ function handleStockKeydown(event) {
                             <div class="price-cost">+${profitDisplay}</div>
                         </td>
                         <td>
-                            <span style="font-weight: 500;">${product.brand || 'Sin marca'}</span>
+                            <span style="font-weight: 500;">${escapeHtml(product.brand || 'Sin marca')}</span>
                         </td>
                         <td>
-                            <span style="font-weight: 500;">${product.category || 'Sin Categoría'}</span>
+                            <span style="font-weight: 500;">${escapeHtml(product.category || 'Sin Categoría')}</span>
                         </td>
                         <td>
                             <span style="font-weight: 500;">${product.isBulk ? 'Granel' : 'Unidad'}</span>
                         </td>
                         <td>
                             <div class="action-buttons-cell">
-                                <button class="btn-icon btn-edit" onclick="editProduct(${product.id})" title="Editar">
+                                <button class="btn-icon btn-edit" onclick="editProduct(${product.id})" title="Editar" aria-label="Editar producto">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                                         <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
                                     </svg>
                                 </button>
-                                <button class="btn-icon btn-delete" onclick="deleteProduct(${product.id})" title="Eliminar">
+                                <button class="btn-icon btn-delete" onclick="deleteProduct(${product.id})" title="Eliminar" aria-label="Eliminar producto">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                         <path d="M3 6h18"/>
                                         <path d="M19 6v14c0 1-1 2-2 2H7c0-1-1-2-1-2V6"/>
@@ -2858,6 +3121,22 @@ function handleStockKeydown(event) {
             if (typeof lucide !== 'undefined') {
                 lucide.createIcons();
             }
+            document.querySelectorAll('.product-real-img[data-img-fallback]').forEach(img => {
+                img.addEventListener('error', function() {
+                    this.style.display = 'none';
+                    const fallback = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                    fallback.setAttribute('width', '20');
+                    fallback.setAttribute('height', '20');
+                    fallback.setAttribute('viewBox', '0 0 24 24');
+                    fallback.setAttribute('fill', 'none');
+                    fallback.setAttribute('stroke', 'currentColor');
+                    fallback.setAttribute('stroke-width', '2');
+                    fallback.setAttribute('stroke-linecap', 'round');
+                    fallback.setAttribute('stroke-linejoin', 'round');
+                    fallback.innerHTML = '<rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>';
+                    this.parentNode.appendChild(fallback);
+                }, { once: true });
+            });
             updatePagination(totalPages, filteredProducts.length);
             updateBulkEditButtonState();
             updateSelectAllCheckbox();
@@ -3060,23 +3339,30 @@ function handleStockKeydown(event) {
                 return;
             }
 
-            // New validation for bulk cost adjustment resulting in negative cost
-            if (action === 'adjustCostFixed') {
-                let willResultInNegativeCost = false;
-                selectedProductIds.forEach(productId => {
-                    const product = products.find(p => p.id === productId);
-                    if (product) {
-                        const currentCost = product.isBulk ? product.costPerUnit : product.cost;
-                        if (currentCost + value < 0) {
-                            willResultInNegativeCost = true;
-                        }
+            // Validation for bulk adjustments that could result in negative cost or price
+            let willResultInInvalid = false;
+            selectedProductIds.forEach(productId => {
+                const product = products.find(p => p.id === productId);
+                if (product) {
+                    const currentCost = product.isBulk ? product.costPerUnit : product.cost;
+                    const currentPrice = product.isBulk ? product.pricePerUnit : product.price;
+                    const currentProfit = product.isBulk ? product.profitPerUnit : product.profit;
+
+                    if (action === 'adjustCostFixed' && currentCost + value < 0) {
+                        willResultInInvalid = true;
+                    } else if (action === 'adjustCostPercentage' && currentCost * (1 + value / 100) < 0) {
+                        willResultInInvalid = true;
+                    } else if (action === 'adjustMargin' && currentCost * (1 + value / 100) < 0) {
+                        willResultInInvalid = true;
+                    } else if (action === 'adjustProfitFixed' && currentCost + value < 0) {
+                        willResultInInvalid = true;
                     }
-                });
-                if (willResultInNegativeCost) {
-                    showNotification('La edición en lote resultaría en un costo negativo para uno o más productos. Por favor, ajusta el valor.', 'error');
-                    document.getElementById('bulkEditValue').classList.add('invalid');
-                    return;
                 }
+            });
+            if (willResultInInvalid) {
+                showNotification('La edición en lote resultaría en un costo o precio negativo para uno o más productos. Por favor, ajusta el valor.', 'error');
+                document.getElementById('bulkEditValue').classList.add('invalid');
+                return;
             }
 
 
@@ -3262,7 +3548,7 @@ function handleStockKeydown(event) {
             } else {
                 const product = products.find(p => p.id === productId);
                 if (!product) {
-                    console.error('Product not found for editing:', productId);
+                    showNotification('Producto no encontrado para editar.', 'error');
                     closeModal();
                     return;
                 }
@@ -3323,9 +3609,9 @@ function handleStockKeydown(event) {
 
             toggleBulkFields();
 
-            document.getElementById('productStock').value = product.stock;
-            document.getElementById('productMinStock').value = product.minStock;
-            document.getElementById('productCost').value = product.isBulk ? product.costPerUnit : product.cost;
+            document.getElementById('productStock').value = product.stock ?? 0;
+            document.getElementById('productMinStock').value = product.minStock ?? 5;
+            document.getElementById('productCost').value = product.isBulk ? (product.costPerUnit ?? 0) : (product.cost ?? 0);
             
             if (product.isBulk) {
                 document.getElementById('productUnit').value = product.unit || 'kg';
@@ -3577,28 +3863,28 @@ function handleStockKeydown(event) {
                 productData.margin = null;
             }
 
-            if (productData.stock < 0) { // Removed !editingProductId condition
-                showNotification('El stock actual no puede ser negativo.', 'error');
+            if (isNaN(productData.stock) || productData.stock < 0) {
+                showNotification('El stock actual no es válido.', 'error');
                 document.getElementById('productStock').classList.add('invalid');
                 return;
             }
-            if (productData.minStock < 0) {
-                showNotification('El stock mínimo no puede ser negativo.', 'error');
+            if (isNaN(productData.minStock) || productData.minStock < 0) {
+                showNotification('El stock mínimo no es válido.', 'error');
                 document.getElementById('productMinStock').classList.add('invalid');
                 return;
             }
-            if (cost < 0) {
-                showNotification('El precio de costo no puede ser negativo.', 'error');
+            if (isNaN(cost) || cost < 0) {
+                showNotification('El precio de costo no es válido.', 'error');
                 document.getElementById('productCost').classList.add('invalid');
                 return;
             }
-            if (radioMargin.checked && margin < -100) {
-                showNotification('El margen de ganancia no puede ser menor a -100%.', 'error');
+            if (radioMargin.checked && (isNaN(margin) || margin < -100)) {
+                showNotification('El margen de ganancia no es válido.', 'error');
                 document.getElementById('productMargin').classList.add('invalid');
                 return;
             }
-            if (!radioMargin.checked && directProfit < 0) {
-                showNotification('La ganancia por unidad no puede ser negativa.', 'error');
+            if (!radioMargin.checked && (isNaN(directProfit) || directProfit < 0)) {
+                showNotification('La ganancia por unidad no es válida.', 'error');
                 document.getElementById('productProfitInput').classList.add('invalid');
                 return;
             }
@@ -3847,19 +4133,20 @@ function handleStockKeydown(event) {
 
             history.sort((a, b) => new Date(b.date) - new Date(a.date));
 
+            const unitEscaped = escapeHtml(unit);
             history.forEach(entry => {
                 const row = tbody.insertRow();
                 const quantityClass = entry.quantity > 0 ? 'positive-change' : 'negative-change';
                 const quantityDisplay = isBulk ? 
-                    `${entry.quantity > 0 ? '+' : ''}${entry.quantity.toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 3 })} ${unit}` : 
+                    `${entry.quantity > 0 ? '+' : ''}${entry.quantity.toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 3 })} ${unitEscaped}` : 
                     `${entry.quantity > 0 ? '+' : ''}${entry.quantity} unidades`;
                 const finalStockDisplay = isBulk ? 
-                    `${entry.finalStock.toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 3 })} ${unit}` : 
+                    `${entry.finalStock.toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 3 })} ${unitEscaped}` : 
                     `${entry.finalStock} unidades`;
 
                 row.innerHTML = `
                     <td>${new Date(entry.date).toLocaleDateString('es-ES')}</td>
-                    <td>${entry.reason}</td>
+                    <td>${escapeHtml(entry.reason)}</td>
                     <td class="${quantityClass}">${quantityDisplay}</td>
                     <td>${finalStockDisplay}</td>
                 `;
@@ -3986,13 +4273,14 @@ function handleStockKeydown(event) {
 
             lowStockProducts.forEach(p => {
                 const row = lowStockBody.insertRow();
-                const stockDisplay = p.isBulk ? `${p.stock.toLocaleString('es-ES', { maximumFractionDigits: 3 })} ${p.unit}` : `${p.stock} unidades`;
-                const minStockDisplay = p.isBulk ? `${p.minStock.toLocaleString('es-ES', { maximumFractionDigits: 3 })} ${p.unit}` : `${p.minStock} unidades`;
+                const unitEscaped = escapeHtml(p.unit);
+                const stockDisplay = p.isBulk ? `${p.stock.toLocaleString('es-ES', { maximumFractionDigits: 3 })} ${unitEscaped}` : `${p.stock} unidades`;
+                const minStockDisplay = p.isBulk ? `${p.minStock.toLocaleString('es-ES', { maximumFractionDigits: 3 })} ${unitEscaped}` : `${p.minStock} unidades`;
                 row.innerHTML = `
-                    <td>${p.name} (${p.code || 'N/A'})</td>
+                    <td>${escapeHtml(p.name)} (${escapeHtml(p.code || 'N/A')})</td>
                     <td>${stockDisplay}</td>
                     <td>${minStockDisplay}</td>
-                    <td>${p.category || 'Sin Categoría'}</td>
+                    <td>${escapeHtml(p.category || 'Sin Categoría')}</td>
                 `;
             });
         }
@@ -4023,7 +4311,7 @@ function handleStockKeydown(event) {
                 const data = categoryData[categoryName];
                 const row = categoryValuationBody.insertRow();
                 row.innerHTML = `
-                    <td>${categoryName}</td>
+                    <td>${escapeHtml(categoryName)}</td>
                     <td>$${data.totalValue.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                     <td>${data.productCount}</td>
                 `;
@@ -4069,18 +4357,19 @@ function handleStockKeydown(event) {
 
             movements.forEach(movement => {
                 const row = movementReportBody.insertRow();
+                const unitEscaped = escapeHtml(movement.unit);
                 const quantityDisplay = movement.isBulk ? 
-                    `${movement.quantity > 0 ? '+' : ''}${movement.quantity.toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 3 })} ${movement.unit}` : 
+                    `${movement.quantity > 0 ? '+' : ''}${movement.quantity.toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 3 })} ${unitEscaped}` : 
                     `${movement.quantity > 0 ? '+' : ''}${movement.quantity} unidades`;
                 const finalStockDisplay = movement.isBulk ? 
-                    `${movement.finalStock.toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 3 })} ${movement.unit}` : 
+                    `${movement.finalStock.toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 3 })} ${unitEscaped}` : 
                     `${movement.finalStock} unidades`;
                 const quantityClass = movement.quantity > 0 ? 'positive-change' : 'negative-change';
 
                 row.innerHTML = `
                     <td>${new Date(movement.date).toLocaleDateString('es-ES')}</td>
-                    <td>${movement.productName} (${movement.productCode || 'N/A'})</td>
-                    <td>${movement.reason}</td>
+                    <td>${escapeHtml(movement.productName)} (${escapeHtml(movement.productCode || 'N/A')})</td>
+                    <td>${escapeHtml(movement.reason)}</td>
                     <td class="${quantityClass}">${quantityDisplay}</td>
                     <td>${finalStockDisplay}</td>
                 `;
@@ -4251,19 +4540,11 @@ function toggleActionsDropdown() {
  * Cierra el menú desplegable si el usuario hace clic fuera de él.
  * Es importante para que el menú no se quede abierto permanentemente.
  */
-window.onclick = function(event) {
-    // Primero, nos aseguramos de no estar haciendo clic dentro del propio menú o en su botón.
+document.addEventListener('click', function(event) {
     if (!event.target.closest('.dropdown')) {
-        var dropdowns = document.getElementsByClassName("dropdown-content");
-        for (var i = 0; i < dropdowns.length; i++) {
-            var openDropdown = dropdowns[i];
-            // Si el menú está abierto (tiene la clase 'show'), la eliminamos para ocultarlo.
-            if (openDropdown.classList.contains('show')) {
-                openDropdown.classList.remove('show');
-            }
-        }
+        document.querySelectorAll('.dropdown-content.show').forEach(d => d.classList.remove('show'));
     }
-}
+});
 
 /**
  * FUNCIÓN QUE FALTA: Convierte texto como "10 unidades" o "1.5 kg" a un número.

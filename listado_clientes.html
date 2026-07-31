@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Listado de Clientes - Ciervo Administrativo</title>
+    <script src="cloud-access.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.1/dist/umd/lucide.js"></script>
     <style>
@@ -537,6 +538,16 @@
             background: rgba(255, 255, 255, 0.1);
         }
 
+        .connection-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #94a3b8;
+            display: inline-block;
+            transition: background 0.3s;
+            flex-shrink: 0;
+        }
+
         /* Pagination Styles */
         .pagination-controls {
             display: flex;
@@ -814,6 +825,7 @@
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sun-icon"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="M4.93 4.93l1.41 1.41"/><path d="M17.66 17.66l1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="M4.93 19.07l1.41-1.41"/><path d="M17.66 6.34l1.41-1.41"/></svg>
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="moon-icon hidden"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
                     </button>
+                    <span class="connection-dot" id="firebaseDot" title="Estado de conexión"></span>
                     <a href="menu.html" class="back-button">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
                         Volver al Menú
@@ -944,13 +956,132 @@
     </div>
 
     <script>
-        let allClientsData = []; // Stores all clients after initial load
-        let filteredClientsData = []; // Stores clients after search/filter
-        let currentPage = 1;
-        const clientsPerPage = 10; // Number of clients to display per page
+        const FIREBASE_CONFIG = {
+            apiKey: "AIzaSyCyaIC2-pCCQf_mJWGtG6v-0kA1l2Or2CQ",
+            authDomain: "mini-market-ciervo-index.firebaseapp.com",
+            databaseURL: "https://mini-market-ciervo-index-default-rtdb.firebaseio.com",
+            projectId: "mini-market-ciervo-index",
+            storageBucket: "mini-market-ciervo-index.firebasestorage.app",
+            messagingSenderId: "828978506509",
+            appId: "1:828978506509:web:52b6220033072038115e44"
+        };
 
-        document.addEventListener('DOMContentLoaded', function() {
-            // Initialize Lucide icons
+        function getCurrentUserEmail() {
+            const fromStorage = sessionStorage.getItem('propietarioActual');
+            if (fromStorage) return fromStorage;
+            try {
+                const owner = JSON.parse(sessionStorage.getItem('currentOwner'));
+                if (owner && owner.email) return owner.email;
+            } catch {}
+            return null;
+        }
+
+        function sanitizeEmailForDb(email) {
+            return email.replace('@', '_at_').replace(/\./g, '_');
+        }
+
+        function getUserDataPath() {
+            const email = getCurrentUserEmail();
+            if (!email) throw new Error('No hay sesión iniciada. Inicia sesión desde index.html.');
+            return 'BBDD/' + sanitizeEmailForDb(email);
+        }
+
+        let _cloudAccessChecked = false;
+        let _cloudAccess = false;
+
+        async function checkCloudAccess() {
+            if (_cloudAccessChecked) return _cloudAccess;
+            try {
+                const db = await initFirebase();
+                if (!db) return false;
+                const email = getCurrentUserEmail();
+                if (!email) { _cloudAccessChecked = true; _cloudAccess = false; return false; }
+                const snap = await db.ref('BBDD/' + sanitizeEmailForDb(email) + '/suscripcion/cloudSync').once('value');
+                _cloudAccess = snap.val() === true;
+            } catch (e) {
+                _cloudAccess = false;
+            }
+            _cloudAccessChecked = true;
+            return _cloudAccess;
+        }
+
+        let _firebaseDb = null;
+        let _firebaseInitPromise = null;
+        let _firebaseConnected = false;
+        let allClientsData = [];
+        let filteredClientsData = [];
+        let currentPage = 1;
+        const clientsPerPage = 10;
+
+        function loadFirebaseSDK() {
+            return new Promise((resolve, reject) => {
+                if (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length > 0) {
+                    return resolve();
+                }
+                const scripts = [
+                    'https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js',
+                    'https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js'
+                ];
+                let loaded = 0;
+                scripts.forEach(src => {
+                    const s = document.createElement('script');
+                    s.src = src;
+                    s.onload = () => { if (++loaded === scripts.length) resolve(); };
+                    s.onerror = () => reject(new Error('Error al cargar ' + src));
+                    document.head.appendChild(s);
+                });
+            });
+        }
+
+        function setFirebaseDot(color, title) {
+            const dot = document.getElementById('firebaseDot');
+            if (dot) { dot.style.background = color; dot.title = title; }
+        }
+
+        async function setupConnectionMonitor(db) {
+            if (!await checkCloudAccess()) return;
+            db.ref('.info/connected').on('value', (snap) => {
+                const connected = snap.val();
+                _firebaseConnected = connected;
+                if (connected) {
+                    setFirebaseDot('#22c55e', 'Firebase conectado');
+                } else {
+                    setFirebaseDot('#ef4444', 'Firebase desconectado');
+                }
+            });
+        }
+
+        async function initFirebase() {
+            if (_firebaseDb) return _firebaseDb;
+            if (_firebaseInitPromise) return _firebaseInitPromise;
+
+            _firebaseInitPromise = (async () => {
+                if (location.protocol === 'file:') {
+                    throw new Error('Firebase no funciona con file://. Usa: python -m http.server 8080');
+                }
+                await loadFirebaseSDK();
+                if (!firebase.apps || firebase.apps.length === 0) {
+                    firebase.initializeApp(FIREBASE_CONFIG);
+                }
+                const db = firebase.database();
+                _firebaseDb = db;
+                return _firebaseDb;
+            })();
+
+            _firebaseInitPromise.catch(() => {
+                _firebaseInitPromise = null;
+                _firebaseDb = null;
+            });
+
+            return _firebaseInitPromise;
+        }
+
+        document.addEventListener('DOMContentLoaded', async function() {
+            if (window.location.protocol === 'file:') {
+                document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:#64748b;text-align:center;padding:2rem;"><div><h2 style="margin-bottom:1rem;">Firebase no disponible</h2><p>Esta p&aacute;gina necesita conexi&oacute;n a Firebase y no funciona desde el protocolo file://</p><p style="margin-top:1rem;">Usa un servidor local o abre desde un dominio https.</p></div></div>';
+                return;
+            }
+
             if (typeof lucide !== 'undefined') {
                 lucide.createIcons();
             } else {
@@ -960,27 +1091,40 @@
                     }
                 }, 100);
             }
-            
-            // Load all clients once
-            allClientsData = getClients();
-            filterAndRenderClients(); // Initial render with all clients
 
-            // Add event listeners for search and filters
+            try {
+                if (!await checkCloudAccess()) {
+                    allClientsData = processClientsData(JSON.parse(localStorage.getItem('ciervo_clients') || '[]'));
+                    filterAndRenderClients();
+                } else {
+                const db = await initFirebase();
+                const path = getUserDataPath();
+                db.ref(path + '/clientes').on('value', (snap) => {
+                    allClientsData = processClientsData(snap.val());
+                    filterAndRenderClients();
+                }, (err) => {
+                    console.error("Error cargando clientes:", err);
+                });
+                }
+            } catch (e) {
+                console.error("Error al inicializar Firebase:", e.message);
+            }
+
             const searchInput = document.getElementById('clientSearch');
             const documentTypeFilter = document.getElementById('documentTypeFilter');
             const prevPageButton = document.getElementById('prevPage');
             const nextPageButton = document.getElementById('nextPage');
             const exportClientsButton = document.getElementById('exportClientsButton');
-            
+
             if (searchInput) {
                 searchInput.addEventListener('input', () => {
-                    currentPage = 1; // Reset to first page on new search/filter
+                    currentPage = 1;
                     filterAndRenderClients();
                 });
             }
             if (documentTypeFilter) {
                 documentTypeFilter.addEventListener('change', () => {
-                    currentPage = 1; // Reset to first page on new search/filter
+                    currentPage = 1;
                     filterAndRenderClients();
                 });
             }
@@ -1007,15 +1151,13 @@
                 exportClientsButton.addEventListener('click', exportClientsToCSV);
             }
 
-            // Modal event listeners
             const editClientModal = document.getElementById('editClientModal');
             const closeModalButton = document.getElementById('closeModalButton');
             const cancelEditButton = document.getElementById('cancelEditButton');
             const editClientForm = document.getElementById('editClientForm');
 
-            // Corrected modal closing logic
             function closeEditModal() {
-                editClientModal.classList.remove('visible'); // Use 'visible' class for showing/hiding
+                editClientModal.classList.remove('visible');
             }
 
             if (closeModalButton) {
@@ -1024,7 +1166,6 @@
             if (cancelEditButton) {
                 cancelEditButton.addEventListener('click', closeEditModal);
             }
-            // Close modal if clicking outside the content
             editClientModal.addEventListener('click', (event) => {
                 if (event.target === editClientModal) {
                     closeEditModal();
@@ -1035,11 +1176,22 @@
                 editClientForm.addEventListener('submit', handleEditClientSubmit);
             }
 
-            // Initialize dark mode
             initDarkMode();
         });
 
-        // Dark Mode Functionality
+        function processClientsData(data) {
+            if (!data) return [];
+            return Object.keys(data).map(key => ({
+                _key: key,
+                id: key,
+                name: data[key].name || 'N/A',
+                document: data[key].document || 'N/A',
+                phone: data[key].phone || 'N/A',
+                email: data[key].email || 'N/A',
+                lastSaleDate: data[key].lastSaleDate || Date.now()
+            })).sort((a, b) => new Date(b.lastSaleDate) - new Date(a.lastSaleDate));
+        }
+
         function initDarkMode() {
             const darkModeToggle = document.getElementById('darkModeToggle');
             const sunIcon = darkModeToggle.querySelector('.sun-icon');
@@ -1071,91 +1223,49 @@
             });
         }
 
-        // Function to get clients from localStorage
-        function getClients() {
+        async function saveClient(updatedClient) {
+            const idx = allClientsData.findIndex(c => c.id === updatedClient.id);
+            if (idx === -1) return;
+            allClientsData[idx] = updatedClient;
+
             try {
-                const sales = JSON.parse(localStorage.getItem('pos_sales') || '[]');
-                const uniqueClients = new Map(); // To store unique clients by document or name-phone
-
-                sales.forEach(sale => {
-                    if (sale.customer && (sale.customer.name || sale.customer.document || sale.customer.phone || sale.customer.email)) {
-                        const hasData = sale.customer.name || sale.customer.document || sale.customer.phone || sale.customer.email;
-                        
-                        if (hasData) {
-                            const documentId = sale.customer.document;
-                            const fallbackId = `${sale.customer.name || ''}-${sale.customer.phone || ''}`;
-                            const clientId = documentId || fallbackId;
-
-                            if (clientId) {
-                                // If client already exists, update lastSaleDate if current sale is more recent
-                                if (uniqueClients.has(clientId)) {
-                                    const existingClient = uniqueClients.get(clientId);
-                                    if (new Date(sale.timestamp) > new Date(existingClient.lastSaleDate)) {
-                                        existingClient.lastSaleDate = sale.timestamp;
-                                    }
-                                } else {
-                                    uniqueClients.set(clientId, {
-                                        id: Date.now() + Math.random().toString(36).substr(2, 9), // More robust unique ID
-                                        name: sale.customer.name || 'N/A',
-                                        document: documentId || 'N/A',
-                                        phone: sale.customer.phone || 'N/A',
-                                        email: sale.customer.email || 'N/A',
-                                        lastSaleDate: sale.timestamp
-                                    });
-                                }
-                            }
-                        }
-                    }
+                if (!await checkCloudAccess()) {
+                    localStorage.setItem('ciervo_clients', JSON.stringify(allClientsData));
+                    return;
+                }
+                const db = await initFirebase();
+                const path = getUserDataPath();
+                await db.ref(path + '/clientes/' + updatedClient._key).update({
+                    name: updatedClient.name,
+                    document: updatedClient.document,
+                    phone: updatedClient.phone,
+                    email: updatedClient.email
                 });
-
-                // Convert Map values to an array
-                const clientsArray = Array.from(uniqueClients.values());
-
-                // Sort clients by last sale date (most recent first)
-                clientsArray.sort((a, b) => new Date(b.lastSaleDate) - new Date(a.lastSaleDate));
-
-                return clientsArray;
             } catch (e) {
-                console.error("Error parsing sales from localStorage:", e);
-                return [];
+                console.error("Error guardando cliente:", e.message);
             }
+            filterAndRenderClients();
         }
 
-        // Function to save clients to localStorage (simulated, as clients are derived from sales)
-        // For editing, we'll update the client data in allClientsData and re-render.
-        // A real-world scenario would involve updating the original sales data or having a separate client database.
-        function saveClient(updatedClient) {
-            const index = allClientsData.findIndex(client => client.id === updatedClient.id);
-            if (index !== -1) {
-                allClientsData[index] = updatedClient;
-                // In a real application, you would also update the underlying sales data
-                // or a dedicated clients array in localStorage.
-                // For this simulation, we just update the in-memory allClientsData.
-                filterAndRenderClients(); // Re-render the table with updated data
-            }
-        }
-
-        // Filter clients based on search and document type, then render
         function filterAndRenderClients() {
             const searchTerm = document.getElementById('clientSearch').value.toLowerCase();
             const documentTypeFilterValue = document.getElementById('documentTypeFilter').value.toLowerCase();
-            
+
             filteredClientsData = allClientsData.filter(client => {
                 const matchesSearch = client.name.toLowerCase().includes(searchTerm) ||
                                     client.document.toLowerCase().includes(searchTerm) ||
                                     client.phone.toLowerCase().includes(searchTerm) ||
                                     client.email.toLowerCase().includes(searchTerm);
-                
-                const matchesDocumentType = !documentTypeFilterValue || 
+
+                const matchesDocumentType = !documentTypeFilterValue ||
                                             (client.document !== 'N/A' && client.document.charAt(0).toLowerCase() === documentTypeFilterValue);
-                
+
                 return matchesSearch && matchesDocumentType;
             });
-            
+
             renderClientsTable(filteredClientsData);
         }
 
-        // Render clients in the table with pagination
         function renderClientsTable(clientsToRender) {
             const tableBody = document.getElementById('clientsTableBody');
             const noClientsMessage = document.getElementById('noClientsMessage');
@@ -1213,7 +1323,6 @@
                 `;
             }).join('');
 
-            // Add event listeners to edit buttons
             document.querySelectorAll('.edit-client-button').forEach(button => {
                 button.addEventListener('click', (event) => {
                     const clientId = event.currentTarget.dataset.clientId;
@@ -1221,14 +1330,12 @@
                 });
             });
 
-            // Update pagination controls
             const totalPages = Math.ceil(clientsToRender.length / clientsPerPage);
             paginationInfo.textContent = `Página ${currentPage} de ${totalPages}`;
             prevPageButton.disabled = currentPage === 1;
             nextPageButton.disabled = currentPage === totalPages;
         }
 
-        // Function to open the edit client modal
         function openEditClientModal(clientId) {
             const client = allClientsData.find(c => c.id === clientId);
             if (client) {
@@ -1237,30 +1344,28 @@
                 document.getElementById('editClientDocument').value = client.document !== 'N/A' ? client.document : '';
                 document.getElementById('editClientPhone').value = client.phone !== 'N/A' ? client.phone : '';
                 document.getElementById('editClientEmail').value = client.email !== 'N/A' ? client.email : '';
-                
-                // Use 'visible' class to show the modal
                 document.getElementById('editClientModal').classList.add('visible');
             }
         }
 
-        // Function to handle edit client form submission
         function handleEditClientSubmit(event) {
             event.preventDefault();
+            const currentId = document.getElementById('editClientId').value;
+            const original = allClientsData.find(c => c.id === currentId);
             const updatedClient = {
-                id: document.getElementById('editClientId').value,
+                _key: currentId,
+                id: currentId,
                 name: document.getElementById('editClientName').value || 'N/A',
                 document: document.getElementById('editClientDocument').value || 'N/A',
                 phone: document.getElementById('editClientPhone').value || 'N/A',
                 email: document.getElementById('editClientEmail').value || 'N/A',
-                // lastSaleDate remains unchanged as it's derived from sales
-                lastSaleDate: allClientsData.find(c => c.id === document.getElementById('editClientId').value).lastSaleDate
+                lastSaleDate: original ? original.lastSaleDate : Date.now()
             };
 
             saveClient(updatedClient);
-            document.getElementById('editClientModal').classList.remove('visible'); // Close modal after saving
+            document.getElementById('editClientModal').classList.remove('visible');
         }
 
-        // Function to export clients to CSV
         function exportClientsToCSV() {
             if (filteredClientsData.length === 0) {
                 alert("No hay clientes para exportar.");
@@ -1283,7 +1388,7 @@
 
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement("a");
-            if (link.download !== undefined) { // feature detection
+            if (link.download !== undefined) {
                 const url = URL.createObjectURL(blob);
                 link.setAttribute("href", url);
                 link.setAttribute("download", "listado_clientes.csv");

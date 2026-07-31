@@ -1483,12 +1483,16 @@
                     localStorage.removeItem('rememberedEmail');
                 }
 
+		// CREAR ESTRUCTURA EN FIREBASE SI NO EXISTE
+await ensureUserCloudStructure();
+
                 // **LÓGICA CLAVE DE REDIRECCIÓN**
                 const operatorsSnapshot = await withTimeout(db.ref('operadores').orderByChild('propietario').equalTo(email).once('value'));
                 
                 // Guardamos datos del propietario para usarlo en otras páginas
                 sessionStorage.setItem('propietarioActual', email);
                 sessionStorage.setItem('currentOwner', JSON.stringify({ email: email, id: ownerData.id }));
+
 
                 if (operatorsSnapshot.exists()) {
                     // Si existen operadores, mostramos el formulario de login para ellos
@@ -1630,6 +1634,41 @@
             // Mover el foco al campo de email
             if (emailField) setTimeout(() => emailField.focus(), 100);
         }
+
+/**
+ * Crea automáticamente la estructura BBDD/{email}/suscripcion/cloudSync = false
+ * si el usuario no existe aún en Firebase. Así el admin puede activarlo manualmente.
+ */
+async function ensureUserCloudStructure() {
+    const email = sessionStorage.getItem('propietarioActual');
+    if (!email) {
+        console.warn('[CloudInit] No hay email en sesión.');
+        return;
+    }
+
+    try {
+        const safeEmail = email.replace('@', '_at_').replace(/\./g, '_');
+        const userPath = 'BBDD/' + safeEmail;
+
+        const snap = await db.ref(userPath).once('value');
+
+        if (!snap.exists()) {
+            console.log(`[CloudInit] Creando estructura para: ${email}`);
+            await db.ref(`${userPath}/suscripcion/cloudSync`).set(false);
+        } else if (snap.child('suscripcion/cloudSync').val() === null) {
+            // Si el nodo existe pero le falta suscripcion (usuarios antiguos)
+            await db.ref(`${userPath}/suscripcion/cloudSync`).set(false);
+            console.log(`[CloudInit] Nodo suscripcion creado para estructura existente: ${email}`);
+        }
+        
+        // Limpiamos cache de cloud-access.js para que lea el valor fresco
+        sessionStorage.removeItem('cloudSync');
+        sessionStorage.removeItem('cloudSyncEmail');
+        
+    } catch (error) {
+        console.error('[CloudInit] Error al inicializar estructura:', error);
+    }
+}
 
         /**
          * Configura todos los event listeners para los elementos de la interfaz.

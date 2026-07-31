@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>POS - Mini Market</title>
+    <script src="cloud-access.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         /* Estilos CSS existentes */
@@ -122,6 +123,9 @@
             background: rgba(255, 255, 255, 0.1);
         }
 
+        .hidden {
+            display: none !important;
+        }
         .product-item.hidden {
             display: none;
         }
@@ -461,6 +465,96 @@
         }
         .stock-indicator.low { background: #ef4444; }
         .stock-indicator.medium { background: #f59e0b; }
+
+        /* ====== CONTEXT MENU ====== */
+        .context-menu {
+            position: fixed;
+            z-index: 9999;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+            min-width: 280px;
+            max-width: 360px;
+            padding: 0;
+            opacity: 0;
+            visibility: hidden;
+            transform: scale(0.95);
+            transition: opacity 0.15s, transform 0.15s, visibility 0.15s;
+            pointer-events: none;
+        }
+        .context-menu.visible {
+            opacity: 1;
+            visibility: visible;
+            transform: scale(1);
+            pointer-events: auto;
+        }
+        .context-menu-header {
+            padding: 14px 16px 8px;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .context-menu-header .cm-name {
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: #1e293b;
+        }
+        .context-menu-header .cm-code {
+            font-size: 0.75rem;
+            color: #64748b;
+            margin-top: 2px;
+        }
+        .context-menu-body {
+            padding: 10px 16px 14px;
+        }
+        .context-menu-body .cm-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 0;
+            font-size: 0.8rem;
+            border-bottom: 1px solid #f8fafc;
+        }
+        .context-menu-body .cm-row:last-child {
+            border-bottom: none;
+        }
+        .context-menu-body .cm-label {
+            color: #64748b;
+            font-weight: 500;
+        }
+        .context-menu-body .cm-value {
+            color: #1e293b;
+            text-align: right;
+            max-width: 180px;
+            word-break: break-word;
+        }
+        .context-menu-body .cm-desc {
+            font-size: 0.8rem;
+            color: #475569;
+            margin-top: 6px;
+            padding: 6px 8px;
+            background: #f8fafc;
+            border-radius: 6px;
+            line-height: 1.4;
+        }
+        .context-menu-body .cm-specs-title {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin: 8px 0 4px;
+        }
+        .dark-mode .context-menu {
+            background: #2d3748;
+            border-color: #4a5568;
+        }
+        .dark-mode .context-menu-header { border-color: #4a5568; }
+        .dark-mode .context-menu-header .cm-name { color: #e2e8f0; }
+        .dark-mode .context-menu-header .cm-code { color: #a0aec0; }
+        .dark-mode .context-menu-body .cm-row { border-color: #4a5568; }
+        .dark-mode .context-menu-body .cm-label { color: #a0aec0; }
+        .dark-mode .context-menu-body .cm-value { color: #e2e8f0; }
+        .dark-mode .context-menu-body .cm-desc { background: #4a5568; color: #cbd5e1; }
+        .dark-mode .context-menu-body .cm-specs-title { color: #718096; }
 
         /* ====== CARRITO ====== */
         .cart-section {
@@ -1360,6 +1454,7 @@
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sun-icon"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="M4.93 4.93l1.41 1.41"/><path d="M17.66 17.66l1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="M4.93 19.07l1.41-1.41"/><path d="M17.66 6.34l1.41-1.41"/></svg>
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="moon-icon hidden"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
             </button>
+            <span id="firebaseDot" style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #94a3b8; margin-right: 8px;" title="Firebase: conectando..."></span>
             <div class="exchange-rate">
                 <i class="fas fa-exchange-alt"></i>
                 <span id="currentRate">36.50 Bs/$</span>
@@ -1417,6 +1512,27 @@
                 
                 <div class="products-list" id="productsList">
                     <!-- Productos se cargan dinámicamente -->
+                </div>
+                <!-- Context Menu -->
+                <div class="context-menu" id="productContextMenu">
+                    <div class="context-menu-header">
+                        <div class="cm-name" id="cmName"></div>
+                        <div class="cm-code" id="cmCode"></div>
+                    </div>
+                    <div class="context-menu-body">
+                        <div class="cm-row"><span class="cm-label">Precio USD</span><span class="cm-value" id="cmPriceUsd"></span></div>
+                        <div class="cm-row"><span class="cm-label">Precio Bs.</span><span class="cm-value" id="cmPriceVes"></span></div>
+                        <div class="cm-row"><span class="cm-label">Stock</span><span class="cm-value" id="cmStock"></span></div>
+                        <div class="cm-row"><span class="cm-label">Categoría</span><span class="cm-value" id="cmCategory"></span></div>
+                        <div class="cm-row"><span class="cm-label">Código</span><span class="cm-value" id="cmCode2"></span></div>
+                        <div id="cmDescContainer" style="display:none;">
+                            <div class="cm-desc" id="cmDescription"></div>
+                        </div>
+                        <div id="cmSpecsContainer" style="display:none;">
+                            <div class="cm-specs-title">Especificaciones</div>
+                            <div id="cmSpecsList"></div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -1558,10 +1674,6 @@
                 <div class="section-content" id="customerDataSection">
                     <div class="form-row">
                         <div class="form-group">
-                            <label class="form-label">Nombre y Apellido</label>
-                            <input type="text" class="form-input" id="customerName" placeholder="Nombre completo" pattern="[A-Za-zñÑáéíóúÁÉÍÓÚ\s]+" title="Solo letras y espacios">
-                        </div>
-                        <div class="form-group">
                             <label class="form-label">Documento de Identidad</label>
                             <input type="text" class="form-input" id="customerDocument" 
                                 placeholder="V-12345678" 
@@ -1570,6 +1682,10 @@
                                 oninput="handleClientSearch(this.value)">
                             
                             <datalist id="clientList"></datalist>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Nombre y Apellido</label>
+                            <input type="text" class="form-input" id="customerName" placeholder="Nombre completo" pattern="[A-Za-zñÑáéíóúÁÉÍÓÚ\s]+" title="Solo letras y espacios">
                         </div>
                     </div>
                     <div class="form-row">
@@ -1717,11 +1833,11 @@
         let scannerActive = false;
         let currentDiscount = 0;
         let applyIVA = true; // Variable para controlar si se aplica el IVA
-        let saleId = generateSaleId();
-        let inventoryProducts = []; // This will now be loaded from localStorage
+        let saleId = peekSaleId();
+        let inventoryProducts = []; // Loaded from localStorage + Firebase
         let confirmCallback = null;
         let totalsDetailsCollapsed = true; // Estado inicial: colapsado
-        let heldCarts = []; // <-- AÑADIR ESTA LÍNEA
+        let heldCarts = loadHeldCarts(); // Persistido en localStorage
 
         // Datos del cliente y pago
         let customerData = null;
@@ -1733,6 +1849,7 @@
                 { id: 'ves-cash', name: 'Efectivo', icon: '💵' },
                 { id: 'ves-mobile', name: 'Pago Móvil', icon: '📱' },
                 { id: 'ves-biopago', name: 'Biopago', icon: '☝️' },
+                { id: 'ves-cashea', name: 'Cashea', icon: '<svg viewBox="0 0 24 24" width="26" height="26"><circle cx="12" cy="12" r="11" fill="#FFD700"/><text x="12" y="17" text-anchor="middle" font-size="13" font-weight="bold" fill="white" font-family="Arial,sans-serif">C</text></svg>' },
                 { id: 'combined', name: 'Combinado USD/VES', icon: '🔄' }
             ],
             USD: [
@@ -1749,6 +1866,33 @@
             }
             const cleanedValue = value.replace(',', '.');
             return parseFloat(cleanedValue);
+        }
+
+        function escapeHtml(str) {
+            if (str == null) return '';
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        function peekSaleId() {
+            const currentId = parseInt(localStorage.getItem('pos_last_sale_number') || '0');
+            return `V-${currentId.toString().padStart(4, '0')}`;
+        }
+
+        function commitSaleId() {
+            const currentId = parseInt(localStorage.getItem('pos_last_sale_number') || '0');
+            const nextId = currentId + 1;
+            localStorage.setItem('pos_last_sale_number', nextId.toString());
+            return `V-${currentId.toString().padStart(4, '0')}`;
+        }
+
+        function loadHeldCarts() {
+            const saved = localStorage.getItem('pos_held_carts');
+            if (saved) {
+                try { return JSON.parse(saved); } catch(e) { /* fall through */ }
+            }
+            return [];
         }
 
         // ===== INICIALIZACIÓN =====
@@ -1772,6 +1916,13 @@
             // Inicializar modo oscuro
             initDarkMode();
 
+            // Verificar sesión
+            const currentUser = sessionStorage.getItem('currentUser');
+            if (!currentUser) {
+                alert("No se ha iniciado sesión. Redirigiendo al login.");
+                window.location.href = 'index.html';
+            }
+
             // Inicializar el estado del switch de IVA
             const savedIvaState = localStorage.getItem('pos_apply_iva');
             if (savedIvaState !== null) {
@@ -1781,9 +1932,51 @@
             document.getElementById('ivaToggle').addEventListener('change', function() {
                 applyIVA = this.checked;
                 localStorage.setItem('pos_apply_iva', applyIVA);
-                updateTotals(); // Recalcular totales al cambiar el estado del IVA
-                updateCartUI(); // Actualizar precios en el carrito
+                updateTotals();
+                updateCartUI();
             });
+
+            // Sincronizar con Firebase
+            setTimeout(async () => {
+    const email = getCurrentUserEmail();
+    if (!email) {
+        setFirebaseDot('#f59e0b', 'Sin sesión: inicia sesión en index.html');
+        return;
+    }
+    try {
+        // 1. NUEVO: Creamos la estructura base si no existe
+        await ensureUserCloudStructure();
+        
+        // 2. Lógica original de sincronización
+        if (_fbPending) {
+            await uploadToFirebase();
+        } else {
+            const existsInCloud = await syncFromFirebase();
+            if (existsInCloud) {
+                if (_fbConnected) setFirebaseDot('#22c55e', 'Firebase conectado');
+                loadInventoryProducts();
+                loadCategories();
+                renderCategoryFilters();
+                renderProductList();
+                loadClientSuggestions();
+                saleId = peekSaleId();
+                document.getElementById('saleId').textContent = saleId;
+            } else {
+                // Si tiene cloudSync activado pero no había datos previos en la nube,
+                // subimos lo que tenga en localStorage.
+                if (await checkCloudAccess()) {
+                    await uploadToFirebase();
+                    const localInv = localStorage.getItem('ciervo_inventory');
+                    if (localInv) await fbSaveProductos(JSON.parse(localInv));
+                }
+            }
+        }
+    } catch (e) {
+        setFirebaseDot('#ef4444', 'Error: ' + e.message);
+    }
+    fbLoadCompanyData();
+    setupRealtimeListeners();
+}, 500);
         });
 
         // AÑADE ESTE BLOQUE DE CÓDIGO
@@ -1825,8 +2018,9 @@ function renderCategoryFilters() {
 
     // 1. Creamos y añadimos el botón "Todos", que siempre debe estar
     const allButton = document.createElement('button');
-    allButton.className = 'filter-btn active'; // "Todos" empieza activo
+    allButton.className = 'filter-btn active';
     allButton.textContent = 'Todos';
+    allButton.dataset.category = 'all';
     allButton.onclick = () => setFilter('all');
     container.appendChild(allButton);
 
@@ -1835,7 +2029,8 @@ function renderCategoryFilters() {
         const categoryButton = document.createElement('button');
         categoryButton.className = 'filter-btn';
         categoryButton.textContent = category.text;
-        categoryButton.onclick = () => setFilter(category.text);
+        categoryButton.dataset.category = category.value;
+        categoryButton.onclick = () => setFilter(category.value);
         container.appendChild(categoryButton);
     });
 }
@@ -1897,14 +2092,15 @@ function renderCategoryFilters() {
             document.getElementById('customerName').addEventListener('input', function(e) {
                 this.value = this.value.replace(/[^A-Za-zñÑáéíóúÁÉÍÓÚ\s]/g, '');
             });
+            const normalizeDoc = (val) => val.replace(/[^VEJGPvejpg0-9]/g, '');
             document.getElementById('customerDocument').addEventListener('input', function(e) {
-                this.value = this.value.replace(/[^VEJGPvejpg0-9]/g, '');
+                this.value = normalizeDoc(this.value);
                 if (this.value.length > 0 && !/^[VEJGPvejpg]/.test(this.value)) {
-                    this.value = ''; // Clear if first char is not a letter
+                    this.value = '';
                 }
-                if (this.value.length > 1) {
-                    this.value = this.value.charAt(0) + this.value.substring(1).replace(/[^0-9]/g, '');
-                }
+            });
+            document.getElementById('customerDocument').addEventListener('change', function(e) {
+                handleClientSearch(this.value);
             });
             document.getElementById('customerPhone').addEventListener('input', function(e) {
                 this.value = this.value.replace(/[^0-9]/g, '');
@@ -1932,8 +2128,7 @@ function renderCategoryFilters() {
 let knownClients = []; // Variable para almacenar clientes en memoria
 
 function loadClientSuggestions() {
-    // 1. Leemos el historial de ventas (igual que en listado_clientes.html)
-    const sales = JSON.parse(localStorage.getItem('pos_sales') || '[]');
+    const sales = ventas;
     const uniqueClients = new Map();
 
     // 2. Extraemos clientes únicos basados en su documento
@@ -1961,19 +2156,23 @@ function loadClientSuggestions() {
 }
 
 function handleClientSearch(documentValue) {
-    // 1. Limpiamos validaciones visuales previas
-    // (Tu validación de regex existente en setupEventListeners seguirá funcionando)
+    if (!documentValue) return;
 
-    // 2. Buscamos si el documento escrito coincide exactamente con uno conocido
-    const foundClient = knownClients.find(c => c.document.toLowerCase() === documentValue.toLowerCase());
+    const normalize = (s) => s.replace(/[^a-z0-9]/gi, '').toLowerCase();
+    const query = normalize(documentValue);
+
+    // Solo autocompletar si es coincidencia EXACTA de documento
+    const foundClient = knownClients.find(c => normalize(c.document) === query);
 
     if (foundClient) {
-        // 3. Si existe, autocompletamos los campos
         document.getElementById('customerName').value = foundClient.name || '';
         document.getElementById('customerPhone').value = foundClient.phone || '';
         document.getElementById('customerEmail').value = foundClient.email || '';
-        
-        showToast('Datos del cliente cargados');
+    } else {
+        // Si no hay coincidencia exacta, limpiar los campos para evitar mezclar datos viejos
+        document.getElementById('customerName').value = '';
+        document.getElementById('customerPhone').value = '';
+        document.getElementById('customerEmail').value = '';
     }
 }
 
@@ -2046,12 +2245,6 @@ function handleClientSearch(documentValue) {
         }
 
         // ===== FUNCIONES PRINCIPALES =====
-        function generateSaleId() {
-            const savedSales = JSON.parse(localStorage.getItem('pos_sales') || '[]');
-            const nextId = savedSales.length + 1;
-            return `V-${nextId.toString().padStart(4, '0')}`;
-        }
-
         function loadSavedSettings() {
             const savedRate = localStorage.getItem('pos_exchange_rate');
             if (savedRate) {
@@ -2060,21 +2253,28 @@ function handleClientSearch(documentValue) {
             }
         }
 
+        function saveHeldCarts() {
+            localStorage.setItem('pos_held_carts', JSON.stringify(heldCarts));
+        }
+
         function loadInventoryProducts() {
             const savedProducts = localStorage.getItem('ciervo_inventory');
             if (savedProducts) {
                 try {
                     inventoryProducts = JSON.parse(savedProducts);
-                    // Ensure all products have necessary properties for POS
                     inventoryProducts = inventoryProducts.map(product => {
-                        // Default values for new bulk properties if not present
+                        product.id = product.id != null ? String(product.id) : `prod-${Date.now()}-${Math.random()}`;
                         product.isBulk = product.isBulk || false;
-                        product.unit = product.unit || 'unidades'; // Default unit for non-bulk
-                        product.pricePerUnit = product.pricePerUnit || product.price; // Use 'price' as pricePerUnit for non-bulk
-                        product.costPerUnit = product.costPerUnit || product.cost; // Use 'cost' as costPerUnit for non-bulk
-                        product.profitPerUnit = product.profitPerUnit || product.profit; // Use 'profit' as profitPerUnit for non-bulk
+                        product.unit = product.unit || 'unidades';
+                        product.pricePerUnit = product.pricePerUnit || product.price;
+                        product.costPerUnit = product.costPerUnit || product.cost;
+                        product.profitPerUnit = product.profitPerUnit || product.profit;
+                        product.images = product.images || [];
+                        product.mainImageIndex = product.mainImageIndex ?? 0;
+                        product.description = product.description || '';
+                        product.visible = product.visible ?? true;
+                        product.specs = product.specs || {};
 
-                        // Assign emoji based on category
                         let emoji = '📦';
                         if (product.category) {
                             const cat = product.category.toLowerCase();
@@ -2097,7 +2297,7 @@ function handleClientSearch(documentValue) {
                     showToast('Error al cargar el inventario');
                 }
             } else {
-                inventoryProducts = []; // No inventory found
+                inventoryProducts = [];
                 showToast('No se encontró inventario. Agregue productos desde el módulo de inventario.');
             }
         }
@@ -2157,7 +2357,6 @@ function handleClientSearch(documentValue) {
                 }
                 // --- FIN: Lógica para "Producto Varios" ---
 
-                // Si el texto no empieza con "+", la búsqueda normal continúa como siempre...
                 const productByCode = findProductByCode(searchTerm);
                 if (productByCode) {
                     openQuantityModal(productByCode.id);
@@ -2166,12 +2365,17 @@ function handleClientSearch(documentValue) {
                     return;
                 }
 
+                if (scannerActive) {
+                    showToast('Código no encontrado en el inventario.');
+                    return;
+                }
+
                 const visibleProducts = document.querySelectorAll('.products-list .product-item:not(.hidden)');
                 if (visibleProducts.length === 1) {
                     const uniqueProductElement = visibleProducts[0];
-                    const productId = parseInt(uniqueProductElement.dataset.productId);
+                    const productId = uniqueProductElement.dataset.productId;
 
-                    if (!isNaN(productId)) {
+                    if (productId) {
                         openQuantityModal(productId);
                         searchInput.value = '';
                         searchProducts();
@@ -2204,12 +2408,12 @@ function handleClientSearch(documentValue) {
         function setFilter(category) {
             currentFilter = category;
             document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
-            // Find the button that matches the category and add 'active' class
-            const targetButton = Array.from(document.querySelectorAll('.filter-btn')).find(btn => btn.textContent.includes(category));
+            const targetButton = Array.from(document.querySelectorAll('.filter-btn')).find(btn => btn.dataset.category === category);
             if (targetButton) {
                 targetButton.classList.add('active');
             } else if (category === 'all') {
-                document.querySelector('.filter-btn').classList.add('active'); // 'Todos' button
+                const allBtn = document.querySelector('.filter-btn[data-category="all"]');
+                if (allBtn) allBtn.classList.add('active');
             }
             filterAndDisplayProducts(document.getElementById('searchInput').value.toLowerCase());
         }
@@ -2222,37 +2426,40 @@ function renderProductList() {
     list.innerHTML = inventoryProducts.map(product => {
         const stockLevel = getStockLevel(product);
         
-        // Precios
         const priceUsd = product.isBulk ? product.pricePerUnit : product.price;
         const priceVes = priceUsd * exchangeRate;
 
         const unitDisplay = product.isBulk ? `/${product.unit}` : '';
         const stockDisplay = product.isBulk ? `${product.stock.toFixed(3)} ${product.unit}` : `${product.stock} unidades`;
         
-        // --- LÓGICA DE IMAGEN VS EMOJI ---
-        // Si existe imageUrl, creamos una etiqueta <img>. Si no, ponemos el emoji.
-        // El 'onerror' sirve por si el link de la imagen se rompe, vuelve a mostrar el emoji.
+        const safeName = escapeHtml(product.name);
+        const safeCode = escapeHtml(product.code || '');
+        const safeBrand = escapeHtml(product.brand || '');
+        const safeCategory = escapeHtml(product.category || '');
+        const safeEmoji = escapeHtml(product.emoji || '');
+        
         let iconHtml;
         if (product.imageUrl && product.imageUrl.trim() !== "") {
-            iconHtml = `<img src="${product.imageUrl}" class="product-real-img" onerror="this.onerror=null; this.parentNode.innerHTML='${product.emoji}';">`;
+            const safeUrl = escapeHtml(product.imageUrl);
+            iconHtml = `<img src="${safeUrl}" class="product-real-img" onerror="this.onerror=null; this.parentNode.innerHTML='${safeEmoji}';">`;
         } else {
-            iconHtml = product.emoji; // Mantiene el emoji por defecto si no hay foto
+            iconHtml = safeEmoji;
         }
-        // ----------------------------------
 
         return `
             <div class="product-item" data-product-id="${product.id}" 
-                 data-product-name="${product.name.toLowerCase()}" 
-                 data-product-code="${(product.code || '').toLowerCase()}"
-                 data-product-brand="${(product.brand || '').toLowerCase()}"
-                 data-product-category="${(product.category || '').toLowerCase()}"
-                 onclick="openQuantityModal(${product.id})">
+                 data-product-name="${safeName.toLowerCase()}" 
+                 data-product-code="${safeCode.toLowerCase()}"
+                 data-product-brand="${safeBrand.toLowerCase()}"
+                 data-product-category="${safeCategory.toLowerCase()}"
+                 onclick="openQuantityModal('${product.id}')"
+                 oncontextmenu="showProductContextMenu(event,'${product.id}')">
                 
                 <div class="product-icon">${iconHtml}</div>
                 
                 <div class="product-info">
-                    <div class="product-name">${product.name} ${product.isIvaExempt ? '<span style="font-weight:400; color:#059669;">(E)</span>' : ''}</div>
-                    <div class="product-code">${product.code}</div>
+                    <div class="product-name">${safeName} ${product.isIvaExempt ? '<span style="font-weight:400; color:#059669;">(E)</span>' : ''}</div>
+                    <div class="product-code">${safeCode}</div>
                     <div class="product-prices">
                         <span class="price-usd">$ ${formatCurrency(priceUsd)}${unitDisplay}</span>
                         <span class="price-ves">Bs. ${formatCurrency(priceVes)}${unitDisplay}</span>
@@ -2267,6 +2474,70 @@ function renderProductList() {
     
     filterAndDisplayProducts();
 }
+
+function showProductContextMenu(event, productId) {
+    event.preventDefault();
+    const p = inventoryProducts.find(prod => prod.id == productId);
+    if (!p) return;
+
+    const priceUsd = p.isBulk ? p.pricePerUnit : p.price;
+    const priceVes = priceUsd * exchangeRate;
+    const unitDisplay = p.isBulk ? ` /${p.unit}` : '';
+    const stockDisplay = p.isBulk ? `${p.stock.toFixed(3)} ${p.unit}` : `${p.stock} unidades`;
+
+    document.getElementById('cmName').textContent = p.name;
+    document.getElementById('cmCode').textContent = p.code || 'S/C';
+    document.getElementById('cmPriceUsd').textContent = `$ ${formatCurrency(priceUsd)}${unitDisplay}`;
+    document.getElementById('cmPriceVes').textContent = `Bs. ${formatCurrency(priceVes)}${unitDisplay}`;
+    document.getElementById('cmStock').textContent = stockDisplay;
+    document.getElementById('cmCategory').textContent = p.category || 'General';
+    document.getElementById('cmCode2').textContent = p.code || '—';
+
+    const descEl = document.getElementById('cmDescContainer');
+    if (p.description) {
+        descEl.style.display = 'block';
+        document.getElementById('cmDescription').textContent = p.description;
+    } else {
+        descEl.style.display = 'none';
+    }
+
+    const specsEl = document.getElementById('cmSpecsContainer');
+    const specsList = document.getElementById('cmSpecsList');
+    const specs = p.specs || {};
+    const specEntries = Object.entries(specs).filter(([,v]) => v);
+    if (specEntries.length) {
+        specsEl.style.display = 'block';
+        specsList.innerHTML = specEntries.map(([k, v]) =>
+            `<div class="cm-row"><span class="cm-label">${k.charAt(0).toUpperCase() + k.slice(1)}</span><span class="cm-value">${v}</span></div>`
+        ).join('');
+    } else {
+        specsEl.style.display = 'none';
+    }
+
+    const menu = document.getElementById('productContextMenu');
+    const x = Math.min(event.clientX, window.innerWidth - 370);
+    const y = Math.min(event.clientY, window.innerHeight - 400);
+    menu.style.left = x + 'px';
+    menu.style.top = y + 'px';
+    menu.classList.add('visible');
+}
+
+function hideProductContextMenu() {
+    document.getElementById('productContextMenu').classList.remove('visible');
+}
+
+document.addEventListener('click', function(e) {
+    const menu = document.getElementById('productContextMenu');
+    if (menu && !menu.contains(e.target)) {
+        menu.classList.remove('visible');
+    }
+});
+
+document.addEventListener('contextmenu', function(e) {
+    if (!e.target.closest('.product-item')) {
+        document.getElementById('productContextMenu')?.classList.remove('visible');
+    }
+});
 
         // mini_market_pos.html - REEMPLAZAR ESTA FUNCIÓN
 
@@ -2296,7 +2567,7 @@ function filterAndDisplayProducts(searchTerm = '') {
         
         const matchesFilter = currentFilter === 'all' || productCategory.includes(currentFilter.toLowerCase());
 
-        const productId = parseInt(item.dataset.productId);
+        const productId = item.dataset.productId;
         const productInInventory = inventoryProducts.find(p => p.id === productId);
         const hasStock = productInInventory && productInInventory.stock > 0;
 
@@ -2326,7 +2597,7 @@ function filterAndDisplayProducts(searchTerm = '') {
         // ===== MODAL DE CANTIDAD =====
         function openQuantityModal(productId) {
             const product = inventoryProducts.find(p => p.id === productId);
-            if (!product || product.stock <= 0) {
+            if (!product || !(product.stock > 0)) {
                 showToast('Producto sin stock disponible');
                 return;
             }
@@ -2528,7 +2799,12 @@ function filterAndDisplayProducts(searchTerm = '') {
                 processBtn.disabled = true;
             } else {
                 cartItems.innerHTML = cart.map(item => {
-                    // Determine the correct price per unit based on product type
+                    const safeName = escapeHtml(item.product.name);
+                    const safeCode = escapeHtml(item.product.code || '');
+                    const safeBrand = escapeHtml(item.product.brand || '');
+                    const safeEmoji = escapeHtml(item.product.emoji || '');
+                    const safeUnit = escapeHtml(item.unit || '');
+
                     const basePrice = item.product.isBulk ? item.product.pricePerUnit : item.product.price;
                     
                     const price = currentCurrency === 'VES' ? basePrice * exchangeRate : basePrice;
@@ -2536,32 +2812,26 @@ function filterAndDisplayProducts(searchTerm = '') {
                     const symbol = currentCurrency === 'VES' ? 'Bs. ' : '$ ';
                     
                     const quantityDisplay = item.product.isBulk ? item.quantity.toFixed(3) : item.quantity;
-                    const unitLabel = item.product.isBulk ? item.unit : 'unidades';
-                    const unitPriceLabel = item.product.isBulk ? `/${item.unit}` : ' c/u';
+                    const unitLabel = item.product.isBulk ? safeUnit : 'unidades';
+                    const unitPriceLabel = item.product.isBulk ? `/${safeUnit}` : ' c/u';
 
-                    // Calculate price with IVA if applyIVA is true
                     const priceWithIVA = applyIVA ? price * 1.16 : price;
-                    // const subtotalWithIVA = applyIVA ? subtotal * 1.16 : subtotal; // Not used directly in UI here
 
                     let cartIconHtml;
             
-                    // Verificamos si tiene imagen y no está vacía
                     if (item.product.imageUrl && item.product.imageUrl.trim() !== "") {
-                        // Si tiene imagen, creamos la etiqueta <img>
-                        // Usamos la clase 'product-real-img' que definimos en el paso anterior
-                        // El 'onerror' es un truco: si la imagen falla, se reemplaza a sí misma por el emoji original
-                        cartIconHtml = `<img src="${item.product.imageUrl}" class="product-real-img" onerror="this.onerror=null; this.parentNode.innerHTML='${item.product.emoji}';">`;
+                        const safeUrl = escapeHtml(item.product.imageUrl);
+                        cartIconHtml = `<img src="${safeUrl}" class="product-real-img" onerror="this.onerror=null; this.parentNode.innerHTML='${safeEmoji}';">`;
                     } else {
-                        // Si no tiene imagen, usamos el emoji
-                        cartIconHtml = item.product.emoji;
+                        cartIconHtml = safeEmoji;
                     }
 
                     return `
                         <div class="cart-item">
                             <div class="cart-item-icon">${cartIconHtml}</div>
                             <div class="cart-item-details">
-                                <div class="cart-item-name">${item.product.name} ${item.product.isIvaExempt ? '<span style="font-weight:400; color:#059669;">(E)</span>' : ''}</div>
-                                <div class="cart-item-info">${item.product.brand} - ${item.product.code}</div>
+                                <div class="cart-item-name">${safeName} ${item.product.isIvaExempt ? '<span style="font-weight:400; color:#059669;">(E)</span>' : ''}</div>
+                                <div class="cart-item-info">${safeBrand} - ${safeCode}</div>
                                 <div class="cart-item-pricing">
                                     <span class="unit-price">${symbol}${formatCurrency(price)}${unitPriceLabel}</span>
                                     ${applyIVA && !item.product.isIvaExempt ? `<span class="price-with-iva">(${symbol}${formatCurrency(priceWithIVA)}${unitPriceLabel} con IVA)</span>` : ''}
@@ -2569,9 +2839,9 @@ function filterAndDisplayProducts(searchTerm = '') {
                                 </div>
                             </div>
                             <div class="quantity-controls">
-                                <button class="qty-btn" onclick="updateQuantity(${item.product.id}, ${item.quantity - (item.product.isBulk ? 0.001 : 1)})">-</button>
+                                <button class="qty-btn" onclick="updateQuantity('${item.product.id}', ${item.quantity - (item.product.isBulk ? 0.001 : 1)})">-</button>
                                 <span class="qty-display">${quantityDisplay} ${unitLabel}</span>
-                                <button class="qty-btn" onclick="updateQuantity(${item.product.id}, ${item.quantity + (item.product.isBulk ? 0.001 : 1)})">+</button>
+                                <button class="qty-btn" onclick="updateQuantity('${item.product.id}', ${item.quantity + (item.product.isBulk ? 0.001 : 1)})">+</button>
                                 <button class="remove-btn" onclick="removeFromCart('${item.product.id}')">
                                     <i class="fas fa-trash"></i>
                                 </button>
@@ -2754,6 +3024,9 @@ function filterAndDisplayProducts(searchTerm = '') {
             
             // Cargar métodos de pago
             loadModalPaymentMethods();
+
+            // Refrescar lista de clientes conocidos
+            loadClientSuggestions();
             
             // Actualizar totales en el modal
             updateModalTotals();
@@ -2857,23 +3130,39 @@ function filterAndDisplayProducts(searchTerm = '') {
         }
 
         function calculateFinalTotalInUsd() {
-            const subtotal = calculateSubtotal(); // This subtotal is in currentCurrency
+            let subtotalIvaApplicable = 0;
+            let subtotalIvaExempt = 0;
+
+            cart.forEach(item => {
+                const basePrice = item.product.isBulk ? item.product.pricePerUnit : item.product.price;
+                const price = currentCurrency === 'VES' ? basePrice * exchangeRate : basePrice;
+                const itemTotal = price * item.quantity;
+                if (item.product.isIvaExempt) {
+                    subtotalIvaExempt += itemTotal;
+                } else {
+                    subtotalIvaApplicable += itemTotal;
+                }
+            });
+
+            const subtotal = subtotalIvaApplicable + subtotalIvaExempt;
             const discountAmount = subtotal * (currentDiscount / 100);
-            const afterDiscount = subtotal - discountAmount;
-            let total = afterDiscount;
-            
+            const discountRatio = (subtotal > 0) ? (discountAmount / subtotal) : 0;
+            const afterDiscountIvaApplicable = subtotalIvaApplicable * (1 - discountRatio);
+
+            let iva = 0;
             if (applyIVA) {
-                total = afterDiscount * 1.16;
+                iva = afterDiscountIvaApplicable * 0.16;
             }
-            
-            // Convert to USD if currentCurrency is VES
+
+            const total = subtotal - discountAmount + iva;
+
             return (currentCurrency === 'VES') ? total / exchangeRate : total;
         }
 
         function handleUsdCashPayment() {
             const totalSaleUsd = calculateFinalTotalInUsd();
             const paidUsdCashInput = document.getElementById('paidUsdCash');
-            const paidUsd = parseInt(paidUsdCashInput.value) || 0;
+            const paidUsd = parseNumber(paidUsdCashInput.value) || 0;
             const messageContainer = document.getElementById('usdCashMessageContainer');
             const confirmBtn = document.getElementById('confirmSaleBtn');
 
@@ -2919,11 +3208,10 @@ function filterAndDisplayProducts(searchTerm = '') {
             const messageContainer = document.getElementById('combinedPaymentMessageContainer');
             const confirmBtn = document.getElementById('confirmSaleBtn');
 
-            messageContainer.innerHTML = ''; // Clear previous messages
+            messageContainer.innerHTML = '';
 
-            // Corrected: Use parseInt for paidUsd
-            let paidUsd = parseInt(paidUsdCombinedInput.value) || 0;
-            
+            let paidUsd = parseNumber(paidUsdCombinedInput.value) || 0;
+
             if (paidUsd > totalSaleUsd) {
                 messageContainer.innerHTML = `
                     <div class="payment-message warning">
@@ -2985,19 +3273,6 @@ function filterAndDisplayProducts(searchTerm = '') {
             document.getElementById('modalTotal').textContent = symbol + formatCurrency(total);
         }
 
-        function calculateFinalTotal() {
-            const subtotal = calculateSubtotal();
-            const discountAmount = subtotal * (currentDiscount / 100);
-            const afterDiscount = subtotal - discountAmount;
-            let total = afterDiscount;
-            
-            if (applyIVA) {
-                total = afterDiscount * 1.16;
-            }
-            
-            return total;
-        }
-
         function updateConfirmButton() {
             const btn = document.getElementById('confirmSaleBtn');
             
@@ -3010,21 +3285,20 @@ function filterAndDisplayProducts(searchTerm = '') {
             switch (selectedPaymentMethod) {
                 case 'usd-cash':
                     const totalSaleUsd = calculateFinalTotalInUsd();
-                    const paidUsd = parseInt(document.getElementById('paidUsdCash').value) || 0;
+                    const paidUsd = parseNumber(document.getElementById('paidUsdCash').value) || 0;
                     btn.disabled = (paidUsd < totalSaleUsd);
                     break;
                 case 'combined':
                     const totalSaleUsdCombined = calculateFinalTotalInUsd();
-                    const paidUsdCombined = parseInt(document.getElementById('paidUsdCombined').value) || 0; // Use parseInt
-                    // If paid USD is already more than total, then disable. Otherwise, enable.
+                    const paidUsdCombined = parseNumber(document.getElementById('paidUsdCombined').value) || 0;
                     btn.disabled = (paidUsdCombined > totalSaleUsdCombined);
                     break;
-                case 'ves-mobile': // Reference is optional, so always enabled if selected
+                case 'ves-mobile':
                 case 'ves-pos':
                 case 'ves-biopago':
                 case 'ves-cash':
+                case 'ves-cashea':
                 case 'usd-zelle':
-                case 'usd-cash-simple': // Assuming a simple USD cash option without change calculation
                     btn.disabled = false;
                     break;
                 default:
@@ -3084,7 +3358,7 @@ function filterAndDisplayProducts(searchTerm = '') {
                 }
                 
                 const saleData = {
-                    id: saleId,
+                    id: commitSaleId(),
                     items: cart.map(item => {
                         // Determine the correct price per unit based on product type
                         const basePrice = item.product.isBulk ? item.product.pricePerUnit : item.product.price;
@@ -3116,21 +3390,24 @@ function filterAndDisplayProducts(searchTerm = '') {
                 };
                 
                 // Guardar venta
-                const savedSales = JSON.parse(localStorage.getItem('pos_sales') || '[]');
-                savedSales.push(saleData);
-                localStorage.setItem('pos_sales', JSON.stringify(savedSales));
+                ventas.push(saleData);
+                localStorage.setItem('pos_sales', JSON.stringify(ventas));
                 
-                // Actualizar inventario
                 updateInventory();
-                
-                // === AQUÍ AGREGAS LA LLAMADA ===
-                printReceipt(saleData); 
-                // ===============================
 
-                // Mostrar éxito
+                fbSaveVentas(ventas).catch(() => {
+                    _fbPending = true;
+                    localStorage.setItem('_pendingFirebaseChanges', 'true');
+                });
+                if (customerData) {
+                    fbUpsertClient({...customerData, lastSaleDate: new Date().toISOString()}).catch(() => {});
+                }
+                fbSaveNumero().catch(() => {});
+
+                printReceipt(saleData);
+
                 showToast('¡Venta procesada exitosamente!');
                 
-                // Cerrar modales y resetear
                 closeProcessModal();
                 closeConfirmModal();
                 
@@ -3140,6 +3417,8 @@ function filterAndDisplayProducts(searchTerm = '') {
                 
             } catch (error) {
                 console.error('Error processing sale:', error);
+                const btn = document.getElementById('confirmActionBtn');
+                if (btn) { btn.disabled = false; btn.textContent = 'Confirmar (F2)'; }
                 showToast('Error al procesar la venta');
             }
         }
@@ -3183,20 +3462,25 @@ function filterAndDisplayProducts(searchTerm = '') {
 
         function updateInventory() {
             let inventory = JSON.parse(localStorage.getItem('ciervo_inventory')) || [];
+            inventory.forEach(p => p.id = String(p.id));
             
             cart.forEach(item => {
                 const index = inventory.findIndex(p => p.id === item.product.id);
                 if (index !== -1) {
                     inventory[index].stock -= item.quantity;
-                    if (inventory[index].stock < 0) inventory[index].stock = 0; // Ensure stock is not negative
+                    if (inventory[index].stock < 0) inventory[index].stock = 0;
                 }
             });
             
             localStorage.setItem('ciervo_inventory', JSON.stringify(inventory));
             
-            // Recargar productos para actualizar stock en la interfaz
-            loadInventoryProducts(); // Reload the global inventoryProducts array
-            renderProductList(); // Re-render the product list
+            fbSaveProductos(inventory).catch(() => {
+                _fbPending = true;
+                localStorage.setItem('_pendingFirebaseChanges', 'true');
+            });
+            
+            loadInventoryProducts();
+            renderProductList();
         }
 
         function resetSale(generateNewId = true) {
@@ -3210,7 +3494,7 @@ function filterAndDisplayProducts(searchTerm = '') {
     document.getElementById('searchInput').value = '';
 
     if (generateNewId) {
-        saleId = generateSaleId();
+        saleId = peekSaleId();
         document.getElementById('saleId').textContent = saleId;
     }
 
@@ -3234,9 +3518,10 @@ function filterAndDisplayProducts(searchTerm = '') {
             
             confirmCallback = callback;
             document.getElementById('confirmModal').classList.add('active');
-            // Focus the confirm button in the confirmation modal
             const confirmActionBtn = document.getElementById('confirmActionBtn');
             if (confirmActionBtn) {
+                confirmActionBtn.disabled = false;
+                confirmActionBtn.textContent = 'Confirmar (F2)';
                 confirmActionBtn.focus();
             }
         }
@@ -3247,6 +3532,10 @@ function filterAndDisplayProducts(searchTerm = '') {
         }
 
         function executeConfirmAction() {
+            const btn = document.getElementById('confirmActionBtn');
+            if (btn.disabled) return;
+            btn.disabled = true;
+            btn.textContent = 'Procesando...';
             if (confirmCallback) {
                 confirmCallback();
             }
@@ -3254,6 +3543,15 @@ function filterAndDisplayProducts(searchTerm = '') {
 
         // ===== UTILIDADES =====
         function closeAllModals() {
+            if (document.getElementById('quantityModal').classList.contains('active')) {
+                closeQuantityModal();
+            }
+            if (document.getElementById('processModal').classList.contains('active')) {
+                closeProcessModal();
+            }
+            if (document.getElementById('heldCartsModal').classList.contains('active')) {
+                closeHeldCartsModal();
+            }
             document.querySelectorAll('.modal').forEach(modal => {
                 modal.classList.remove('active');
             });
@@ -3284,6 +3582,14 @@ function filterAndDisplayProducts(searchTerm = '') {
                         window.location.href = 'menu.html';
                     }
                 );
+            } else if (heldCarts.length > 0) {
+                showConfirmModal(
+                    'Salir del POS',
+                    `Hay ${heldCarts.length} carrito(s) en espera. Si sales se conservarán, pero no olvides atenderlos al regresar.`,
+                    () => {
+                        window.location.href = 'menu.html';
+                    }
+                );
             } else {
                 window.location.href = 'menu.html';
             }
@@ -3309,6 +3615,7 @@ function filterAndDisplayProducts(searchTerm = '') {
                     discount: currentDiscount
                 };
                 heldCarts.push(cartState);
+                saveHeldCarts();
 
                 showToast(`Carrito "${cartName}" guardado.`);
                 resetSale(false); // Limpiamos el carrito actual sin generar nuevo ID de venta
@@ -3334,7 +3641,7 @@ function filterAndDisplayProducts(searchTerm = '') {
                 li.className = 'held-cart-item';
                 li.innerHTML = `
                     <div class="held-cart-info">
-                        <span class="held-cart-name">${heldCart.name}</span>
+                        <span class="held-cart-name">${escapeHtml(heldCart.name)}</span>
                         <span class="held-cart-details">${heldCart.cart.length} productos - Total (aprox): $${formatCurrency(total)}</span>
                     </div>
                     <div class="held-cart-actions">
@@ -3366,6 +3673,7 @@ function filterAndDisplayProducts(searchTerm = '') {
             currentDiscount = cartToRestore.discount;
 
             heldCarts.splice(index, 1);
+            saveHeldCarts();
 
             updateCartUI();
             document.getElementById('discountInput').value = currentDiscount > 0 ? `${currentDiscount}%` : '';
@@ -3380,6 +3688,7 @@ function filterAndDisplayProducts(searchTerm = '') {
         function deleteHeldCart(index) {
             const deletedCartName = heldCarts[index].name;
             heldCarts.splice(index, 1);
+            saveHeldCarts();
             showToast(`Carrito "${deletedCartName}" eliminado.`);
 
             if (heldCarts.length === 0) {
@@ -3393,10 +3702,22 @@ function filterAndDisplayProducts(searchTerm = '') {
 // ================================================================
 // ==== FUNCIÓN DE IMPRESIÓN (Con Cédula y Exento) ================
 // ================================================================
-function printReceipt(saleData) {
+async function printReceipt(saleData) {
     try {
-        const config = JSON.parse(localStorage.getItem('receiptSettings')) || { enabled: true };
-        const company = JSON.parse(localStorage.getItem('companyData')) || { companyName: 'MI NEGOCIO' };
+        const defaults = {
+            enabled: true, showLogo: true, showBusinessData: true, showTaxId: true,
+            showDocTitle: true, docTitleText: 'FACTURA', invoicePrefix: '',
+            showCustomerData: true, showInvoiceNum: true, showSeller: true, showDateTime: true,
+            primaryCurrency: 'SALE', showDiscounts: true, showTaxes: true,
+            showPaymentDetails: true, showDualTotals: true, showExchangeRate: true,
+            footerMessage: 'Gracias por su compra', policyText: 'No se aceptan devoluciones'
+        };
+        const raw = JSON.parse(localStorage.getItem('receiptSettings'));
+        const config = raw ? Object.assign({}, defaults, raw) : defaults;
+        let company = JSON.parse(localStorage.getItem('companyData')) || { companyName: 'MI NEGOCIO' };
+
+        // Los datos de empresa ya se cargan al iniciar sesión vía fbLoadCompanyData().
+        // Si no hay datos locales, se usa el default; NUNCA se consulta Firebase aquí.
 
         if (!config.enabled) return;
 
@@ -3407,6 +3728,12 @@ function printReceipt(saleData) {
 
         // Si la venta se registró como Bolívares, ajustamos los totales (que están en USD)
         if (saleData.currency === 'VES') {
+            multiplier = rate;
+            symbol = 'Bs.';
+        }
+
+        // Si la config fuerza Bolívares, se sobreescribe la moneda de la venta
+        if (config.primaryCurrency === 'VES') {
             multiplier = rate;
             symbol = 'Bs.';
         }
@@ -3433,6 +3760,13 @@ function printReceipt(saleData) {
             console.error(e);
         }
 
+        const esc = (s) => {
+            if (s == null) return '';
+            const d = document.createElement('div');
+            d.textContent = s;
+            return d.innerHTML;
+        };
+
         // 3. GENERAR HTML
         let html = `<html><head><title>Ticket</title><style>
             body{font-family:'Courier New',monospace;font-size:11px;margin:0;padding:5px;width:290px;color:#000}
@@ -3443,22 +3777,28 @@ function printReceipt(saleData) {
 
         // Cabecera
         html += `<div class="c">`;
-        if (config.showLogo && company.logo) html += `<img src="${company.logo}" style="max-width:80px;filter:grayscale(100%);margin-bottom:5px"><br>`;
-        html += `<span class="b" style="font-size:13px">${company.companyName || 'TIENDA'}</span><br>`;
-        html += `RIF: ${company.rif || ''}<br>${company.address || ''}</div><div class="line"></div>`;
+        if (config.showLogo && company.logo) html += `<img src="${esc(company.logo)}" style="max-width:80px;filter:grayscale(100%);margin-bottom:5px"><br>`;
+        if (config.showBusinessData) {
+            html += `<span class="b" style="font-size:13px">${esc(company.companyName || 'TIENDA')}</span><br>`;
+            if (config.showTaxId) html += `RIF: ${esc(company.rif || '')}<br>`;
+            html += `${esc(company.address || '')}`;
+        }
+        html += `</div><div class="line"></div>`;
 
         // Datos Venta
-        html += `<div><span class="b">NOTA DE ENTREGA</span><br>`;
-        html += `Nº: ${saleData.id}<br>`;
-        const d = new Date(saleData.timestamp);
-        html += `${d.toLocaleDateString('es-VE')} ${d.toLocaleTimeString('es-VE')}<br>`;
-        html += `Atendido por: ${sellerName}<br>`;
-        
-        // --- CORRECCIÓN 1: MOSTRAR CÉDULA/RIF ---
-        if (saleData.customer) {
-            html += `Cliente: ${saleData.customer.name || 'Contado'}<br>`;
+        html += `<div>`;
+        if (config.showDocTitle) html += `<span class="b">${esc(config.docTitleText || 'FACTURA')}</span><br>`;
+        if (config.showInvoiceNum) html += `Nº: ${esc(config.invoicePrefix || '')}${esc(saleData.id)}<br>`;
+        if (config.showDateTime) {
+            const d = new Date(saleData.timestamp);
+            html += `${d.toLocaleDateString('es-VE')} ${d.toLocaleTimeString('es-VE')}<br>`;
+        }
+        if (config.showSeller) html += `Atendido por: ${esc(sellerName)}<br>`;
+
+        if (config.showCustomerData && saleData.customer) {
+            html += `Cliente: ${esc(saleData.customer.name || 'Contado')}<br>`;
             if (saleData.customer.document) {
-                html += `CI/RIF: ${saleData.customer.document}<br>`;
+                html += `CI/RIF: ${esc(saleData.customer.document)}<br>`;
             }
         }
         html += `</div><div class="line"></div>`;
@@ -3466,14 +3806,10 @@ function printReceipt(saleData) {
         // Ítems
         html += `<table><thead><tr><th width="15%">Cant</th><th>Articulo</th><th class="r">Total</th></tr></thead><tbody>`;
         saleData.items.forEach(item => {
-            // No multiplicamos items porque ya vienen en la moneda correcta
             const itemTotal = item.subtotal; 
             const qty = item.product.isBulk ? parseFloat(item.quantity).toFixed(3) : Math.round(item.quantity);
-            
-            // --- CORRECCIÓN 2: MARCA DE EXENTO (E) ---
             const exemptMark = item.product.isIvaExempt ? ' (E)' : '';
-            
-            html += `<tr><td>${qty}</td><td>${item.product.name}${exemptMark}</td><td class="r">${fmt(itemTotal)}</td></tr>`;
+            html += `<tr><td>${qty}</td><td>${esc(item.product.name)}${exemptMark}</td><td class="r">${fmt(itemTotal)}</td></tr>`;
         });
         html += `</tbody></table><div class="line"></div>`;
 
@@ -3484,39 +3820,48 @@ function printReceipt(saleData) {
         const totalFinal = (saleData.totals.total || 0) * multiplier;
 
         html += `<div class="r">Subtotal: ${symbol} ${fmt(subtotalFinal)}</div>`;
-        if (discountFinal > 0) html += `<div class="r">Descuento: -${symbol} ${fmt(discountFinal)}</div>`;
+        if (config.showDiscounts && discountFinal > 0) html += `<div class="r">Descuento: -${symbol} ${fmt(discountFinal)}</div>`;
         
-        if (ivaFinal > 0) {
+        if (config.showTaxes && ivaFinal > 0) {
             const baseImponible = subtotalFinal - discountFinal;
             html += `<div class="r">Base Imponible: ${symbol} ${fmt(baseImponible)}</div>`;
             html += `<div class="r">IVA (16%): ${symbol} ${fmt(ivaFinal)}</div>`;
         }
 
         html += `<div class="r" style="margin-top:5px;font-size:14px"><span class="b">TOTAL: ${symbol} ${fmt(totalFinal)}</span></div>`;
+        if (config.showDualTotals && multiplier === 1 && saleData.currency !== 'VES') {
+            const vesTotal = (saleData.totals.total || 0) * rate;
+            html += `<div class="r" style="font-size:10px">Bs. ${fmt(vesTotal)}</div>`;
+        }
+        if (config.showExchangeRate && rate !== 1) {
+            html += `<div class="r" style="font-size:10px">Tasa: Bs. ${fmt(rate)} / USD</div>`;
+        }
 
         // Método de Pago
-        html += `<div style="border:1px solid #000;padding:3px;margin-top:5px">MÉTODO DE PAGO:<br>`;
-        let payMethod = (saleData.paymentMethod || 'POS').toUpperCase().replace('VES-', '').replace('USD-', '');
-        
-        if (saleData.paymentMethod === 'combined') {
-            html += `Divisa ($): ${new Intl.NumberFormat('en-US').format(saleData.combinedPayment?.paidUsd || 0)}<br>`;
-            html += `Bolívares: ${fmt(saleData.combinedPayment?.paidVes || 0)}`;
+        if (config.showPaymentDetails) {
+            html += `<div style="border:1px solid #000;padding:3px;margin-top:5px">MÉTODO DE PAGO:<br>`;
+            let payMethod = (saleData.paymentMethod || 'POS').toUpperCase().replace('VES-', '').replace('USD-', '');
+            
+            if (saleData.paymentMethod === 'combined') {
+                html += `Divisa ($): ${new Intl.NumberFormat('en-US').format(saleData.combinedPayment?.paidUsd || 0)}<br>`;
+                html += `Bolívares: ${fmt(saleData.combinedPayment?.paidVes || 0)}`;
+            }
+
+            else if (saleData.paymentMethod === 'usd-cash') {
+                const paid = saleData.paymentDetails?.paidUsd || 0;
+                const change = saleData.paymentDetails?.changeUsd || 0;
+                html += `EFECTIVO USD:<br>`;
+                html += `Recibido: $${fmt(paid)}<br>`;
+                html += `Su Cambio: $${fmt(change)}`;
+            }
+
+            else {
+                html += `${payMethod}: ${symbol} ${fmt(totalFinal)}`;
+            }
+            html += `</div>`;
         }
 
-        else if (saleData.paymentMethod === 'usd-cash') {
-            const paid = saleData.paymentDetails?.paidUsd || 0;
-            const change = saleData.paymentDetails?.changeUsd || 0;
-            html += `EFECTIVO USD:<br>`;
-            html += `Recibido: $${fmt(paid)}<br>`;
-            html += `Su Cambio: $${fmt(change)}`;
-        }
-
-        else {
-            html += `${payMethod}: ${symbol} ${fmt(totalFinal)}`;
-        }
-        html += `</div>`;
-
-        html += `<div class="c" style="margin-top:10px">Gracias por su compra<br>No se aceptan devoluciones</div></body></html>`;
+        html += `<div class="c" style="margin-top:10px">${esc(config.footerMessage)}<br>${esc(config.policyText)}</div></body></html>`;
 
         const win = window.open('', '', 'height=600,width=400');
         win.document.write(html);
@@ -3527,13 +3872,6 @@ function printReceipt(saleData) {
         alert("Error al imprimir: " + e.message);
     }
 }
-
-
-
-
-
-
-
         /**
         * Actualiza el contador visual en el botón de carritos guardados.
         */
@@ -3559,7 +3897,335 @@ function printReceipt(saleData) {
         }
 
 
-        // Collapsible section function
+        // ===== FIREBASE =====
+        const FIREBASE_CONFIG = {
+            apiKey: "AIzaSyCyaIC2-pCCQf_mJWGtG6v-0kA1l2Or2CQ",
+            authDomain: "mini-market-ciervo-index.firebaseapp.com",
+            databaseURL: "https://mini-market-ciervo-index-default-rtdb.firebaseio.com",
+            projectId: "mini-market-ciervo-index",
+            storageBucket: "mini-market-ciervo-index.firebasestorage.app",
+            messagingSenderId: "828978506509",
+            appId: "1:828978506509:web:52b6220033072038115e44"
+        };
+
+        let _fbDb = null;
+        let _fbInitPromise = null;
+        let _fbPending = localStorage.getItem('_pendingFirebaseChanges') === 'true';
+        let _fbConnected = false;
+        let _cloudAccessChecked = false;
+        let _cloudAccess = false;
+
+        async function checkCloudAccess() {
+            if (_cloudAccessChecked) return _cloudAccess;
+            try {
+                const db = await initFirebase();
+                if (!db) return false;
+                const email = getCurrentUserEmail();
+                if (!email) { _cloudAccessChecked = true; _cloudAccess = false; return false; }
+                const snap = await db.ref('BBDD/' + sanitizeEmailForDb(email) + '/suscripcion/cloudSync').once('value');
+                _cloudAccess = snap.val() === true;
+            } catch (e) {
+                _cloudAccess = false;
+            }
+            _cloudAccessChecked = true;
+            return _cloudAccess;
+        }
+
+        function getCurrentUserEmail() {
+            const fromStorage = sessionStorage.getItem('propietarioActual');
+            if (fromStorage) return fromStorage;
+            try {
+                const owner = JSON.parse(sessionStorage.getItem('currentOwner'));
+                if (owner && owner.email) return owner.email;
+            } catch {}
+            return null;
+        }
+
+        function sanitizeEmailForDb(email) {
+            return email.replace('@', '_at_').replace(/\./g, '_');
+        }
+
+        function getUserDataPath() {
+            const email = getCurrentUserEmail();
+            if (!email) throw new Error('No hay sesión iniciada.');
+            return 'BBDD/' + sanitizeEmailForDb(email);
+        }
+
+/**
+ * Verifica si existe la estructura del usuario en Firebase.
+ * Si NO existe, crea el nodo BBDD/{email}/suscripcion/cloudSync = false
+ * para que el administrador pueda activarlo manualmente desde la consola.
+ */
+async function ensureUserCloudStructure() {
+    const email = getCurrentUserEmail();
+    if (!email) {
+        console.warn('[CloudInit] No hay email de propietario en sesión.');
+        return;
+    }
+
+    try {
+        const db = await initFirebase();
+        const userPath = getUserDataPath(); // BBDD/{email_sanitizado}
+        
+        // Revisamos si ya existe algo en su nodo
+        const snap = await db.ref(userPath).once('value');
+        
+        if (!snap.exists()) {
+            console.log(`[CloudInit] Creando estructura inicial para: ${email}`);
+            
+            // Creamos SOLO el nodo de suscripción en false.
+            // NO inicializamos productos, ventas ni categorías vacías,
+            // porque eso podría borrar los datos locales del usuario.
+            await db.ref(`${userPath}/suscripcion/cloudSync`).set(false);
+            
+            console.log('[CloudInit] Estructura creada. cloudSync = false.');
+        } else {
+            // Si el nodo existe pero le falta suscripcion/cloudSync (usuarios antiguos)
+            const cloudSyncVal = snap.child('suscripcion/cloudSync').val();
+            if (cloudSyncVal === null) {
+                await db.ref(`${userPath}/suscripcion/cloudSync`).set(false);
+                console.log('[CloudInit] Nodo suscripcion/cloudSync creado para estructura existente.');
+            }
+        }
+        
+        // Importante: limpiamos el cache de cloud-access.js para que 
+        // la próxima vez que pregunte, lea el valor fresco de Firebase
+        sessionStorage.removeItem('cloudSync');
+        sessionStorage.removeItem('cloudSyncEmail');
+        
+    } catch (error) {
+        console.error('[CloudInit] Error al inicializar estructura:', error);
+    }
+}
+
+        async function fbLoadCompanyData() {
+            try {
+                if (!await checkCloudAccess()) return;
+                const db = await initFirebase();
+                if (!db) return;
+                const snap = await db.ref(getUserDataPath() + '/empresa').once('value');
+                const val = snap.val();
+                if (val) localStorage.setItem('companyData', JSON.stringify(val));
+            } catch (e) {
+                console.error('Error loading company from Firebase:', e);
+            }
+        }
+
+        function loadFirebaseSDK() {
+            return new Promise((resolve, reject) => {
+                if (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length > 0) return resolve();
+                const scripts = [
+                    'https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js',
+                    'https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js'
+                ];
+                let loaded = 0;
+                                scripts.forEach(src => {
+                    const s = document.createElement('script');
+                    s.src = src;
+                    s.onload = () => { if (++loaded === scripts.length) resolve(); };
+                    s.onerror = () => reject(new Error('Error al cargar ' + src));
+                    document.head.appendChild(s);
+                });
+            });
+        }
+
+        function setFirebaseDot(color, title) {
+            const dot = document.getElementById('firebaseDot');
+            if (dot) { dot.style.background = color; dot.title = title; }
+        }
+
+        async function setupConnectionMonitor(db) {
+            if (!await checkCloudAccess()) return;
+            db.ref('.info/connected').on('value', async (snap) => {
+                _fbConnected = snap.val();
+                if (_fbConnected) {
+                    setFirebaseDot('#22c55e', 'Firebase conectado');
+                    if (!await checkCloudAccess()) return;
+                    if (_fbPending) {
+                        _fbPending = false;
+                        localStorage.removeItem('_pendingFirebaseChanges');
+                        try {
+                            await fbSaveVentas(ventas);
+                            await fbSaveNumero();
+                            const pendingInv = localStorage.getItem('ciervo_inventory');
+                            if (pendingInv) {
+                                await fbSaveProductos(JSON.parse(pendingInv));
+                            }
+                        } catch (e) {
+                            _fbPending = true;
+                            localStorage.setItem('_pendingFirebaseChanges', 'true');
+                        }
+                    }
+                } else {
+                    setFirebaseDot('#ef4444', 'Firebase desconectado');
+                }
+            });
+        }
+
+        async function initFirebase() {
+            if (_fbDb) return _fbDb;
+            if (_fbInitPromise) return _fbInitPromise;
+            _fbInitPromise = (async () => {
+                if (location.protocol === 'file:') throw new Error('Firebase no funciona con file://');
+                await loadFirebaseSDK();
+                if (!firebase.apps || firebase.apps.length === 0) firebase.initializeApp(FIREBASE_CONFIG);
+                const db = firebase.database();
+                _fbDb = db;
+                return _fbDb;
+            })();
+            _fbInitPromise.catch(() => { _fbInitPromise = null; _fbDb = null; });
+            return _fbInitPromise;
+        }
+
+        let ventas = JSON.parse(localStorage.getItem('pos_sales') || '[]');
+
+        async function fbSaveVentas(data) {
+            if (!await checkCloudAccess()) return;
+            const db = await initFirebase();
+            await db.ref(getUserDataPath() + '/ventas/historial').set(data);
+        }
+
+        async function fbUpsertClient(clientData) {
+            if (!await checkCloudAccess()) return;
+            const db = await initFirebase();
+            const path = getUserDataPath();
+            const key = clientData.document
+                ? clientData.document.replace(/[.#$\/\[\]]/g, '_')
+                : (clientData.name + '_' + (clientData.phone || '')).replace(/[.#$\/\[\]]/g, '_');
+            console.log('[fbUpsertClient] key:', key, 'data:', clientData);
+            // Leer clientes actuales, fusionar y escribir todo (evita pérdida de datos)
+            const snap = await db.ref(path + '/clientes').once('value');
+            const all = snap.val() || {};
+            all[key] = clientData;
+            await db.ref(path + '/clientes').set(all);
+            console.log('[fbUpsertClient] Total clientes guardados:', Object.keys(all).length);
+        }
+
+        async function fbSaveNumero() {
+            if (!await checkCloudAccess()) return;
+            const db = await initFirebase();
+            const num = parseInt(localStorage.getItem('pos_last_sale_number') || '0');
+            await db.ref(getUserDataPath() + '/ventas/ultimo_numero').set(num);
+        }
+
+        async function fbLoadVentas() {
+            if (!await checkCloudAccess()) return null;
+            const db = await initFirebase();
+            const snap = await db.ref(getUserDataPath() + '/ventas').once('value');
+            return snap.val();
+        }
+
+        async function fbSaveProductos(data) {
+            if (!await checkCloudAccess()) return;
+            const db = await initFirebase();
+            await db.ref(getUserDataPath() + '/productos').set(data);
+        }
+
+        async function fbLoadAll() {
+            if (!await checkCloudAccess()) return null;
+            const db = await initFirebase();
+            const snap = await db.ref(getUserDataPath()).once('value');
+            return snap.val();
+        }
+
+        /**
+         * Merge Firebase product data with local data to preserve catalog fields
+         * that Firebase may not have (images, specs, description, visible).
+         */
+        function mergeInventoryWithLocal(firebaseData) {
+            const localData = JSON.parse(localStorage.getItem('ciervo_inventory') || '[]');
+            return firebaseData.map(fbProd => {
+                const localProd = localData.find(p => String(p.id) === String(fbProd.id));
+                if (localProd) {
+                    return {
+                        ...fbProd,
+                        images: fbProd.images && fbProd.images.length ? fbProd.images : localProd.images || [],
+                        mainImageIndex: fbProd.mainImageIndex ?? localProd.mainImageIndex ?? 0,
+                        imageUrl: fbProd.imageUrl || localProd.imageUrl || '',
+                        description: localProd.description ?? fbProd.description ?? '',
+                        visible: localProd.visible ?? fbProd.visible ?? true,
+                        specs: { ...(fbProd.specs || {}), ...(localProd.specs || {}) }
+                    };
+                }
+                return fbProd;
+            });
+        }
+
+        async function syncFromFirebase() {
+            try {
+                if (!await checkCloudAccess()) return false;
+                const data = await fbLoadAll();
+                if (!data) return false;
+                let changed = false;
+                if (data.productos) {
+                    const merged = mergeInventoryWithLocal(data.productos);
+                    localStorage.setItem('ciervo_inventory', JSON.stringify(merged));
+                    changed = true;
+                }
+                if (data.categorias) {
+                    localStorage.setItem('ciervo_categories', JSON.stringify(data.categorias));
+                    changed = true;
+                }
+                if (data.ventas) {
+                    if (data.ventas.historial) {
+                        localStorage.setItem('pos_sales', JSON.stringify(data.ventas.historial));
+                        ventas = data.ventas.historial;
+                    }
+                    if (data.ventas.ultimo_numero) {
+                        const currentNum = parseInt(localStorage.getItem('pos_last_sale_number') || '0');
+                        if (data.ventas.ultimo_numero > currentNum) {
+                            localStorage.setItem('pos_last_sale_number', data.ventas.ultimo_numero.toString());
+                        }
+                    }
+                    changed = true;
+                }
+                return changed;
+            } catch (e) {
+                console.warn('Firebase no disponible, usando datos locales:', e.message);
+                return false;
+            }
+        }
+
+        async function setupRealtimeListeners() {
+            if (!await checkCloudAccess()) return;
+            const db = await initFirebase();
+            if (!db) return;
+            const email = getCurrentUserEmail();
+            if (!email) return;
+            const basePath = 'BBDD/' + sanitizeEmailForDb(email);
+
+            // Escuchar cambios en productos
+            db.ref(basePath + '/productos').on('value', snap => {
+                const productos = snap.val();
+                if (productos) {
+                    const merged = mergeInventoryWithLocal(productos);
+                    localStorage.setItem('ciervo_inventory', JSON.stringify(merged));
+                    loadInventoryProducts();
+                    renderProductList();
+                    loadCategories();
+                    renderCategoryFilters();
+                }
+            });
+
+            // Escuchar cambios en datos de empresa
+            db.ref(basePath + '/empresa').on('value', snap => {
+                const empresa = snap.val();
+                if (empresa) localStorage.setItem('companyData', JSON.stringify(empresa));
+            });
+        }
+
+        async function uploadToFirebase() {
+            try {
+                await initFirebase();
+                await fbSaveVentas(ventas);
+                await fbSaveNumero();
+                setFirebaseDot('#22c55e', 'Firebase conectado');
+            } catch (e) {
+                setFirebaseDot('#ef4444', 'Firebase: ' + e.message);
+            }
+        }
+
+        // ===== COLLAPSIBLE =====
         function toggleSection(sectionId, forceCollapse = false) {
             const sectionContent = document.getElementById(sectionId);
             const toggleIcon = document.getElementById(sectionId + 'ToggleIcon');
@@ -3572,15 +4238,6 @@ function printReceipt(saleData) {
                 toggleIcon.classList.toggle('rotated');
             }
         }
-    </script>
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const currentUser = sessionStorage.getItem('currentUser');
-            if (!currentUser) {
-                alert("No se ha iniciado sesión. Redirigiendo al login.");
-                window.location.href = 'index.html';
-            }
-        });
     </script>
 </body>
 </html>

@@ -903,7 +903,7 @@
                 <!-- Navigation Actions -->
                 <div class="nav-actions">
                     <!-- Theme Toggle Button -->
-                    <button class="icon-button theme-toggle" onclick="toggleDarkMode()" aria-label="Toggle dark mode">
+                    <button class="icon-button theme-toggle" onclick="toggleDarkMode()" aria-label="Cambiar modo oscuro">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sun-icon">
                             <circle cx="12" cy="12" r="4"/>
                             <path d="M12 2v2"/>
@@ -920,7 +920,7 @@
                         </svg>
                     </button>
 
-                    <button class="mode-toggle active" id="modeToggle" onclick="toggleMode()">
+                    <button class="mode-toggle active" id="modeToggle" onclick="toggleMode()" aria-label="Cambiar modo rápido/avanzado">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M12 20h9"/>
                             <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
@@ -1057,7 +1057,7 @@
                             </label>
                             <div class="input-with-addon">
                                 <span class="input-addon" id="costCurrencySymbol">$</span>
-                                <input type="number" id="costAmount" class="form-input" required placeholder="0.00" step="0.01" min="0" value="10">
+                                <input type="number" id="costAmount" class="form-input" required placeholder="0.00" step="0.01" min="0.01" value="10">
                             </div>
                         </div>
 
@@ -1469,10 +1469,10 @@
             
             if (!rateSelect) return;
             
-            // Limpiar opciones actuales
+            const previousValue = rateSelect.value;
+            
             rateSelect.innerHTML = '';
             
-            // Agregar opciones según la moneda
             if (currency === 'BS') {
                 rateSelect.appendChild(new Option('No aplica (ya en BS)', 'none'));
                 rateSelect.disabled = true;
@@ -1480,15 +1480,23 @@
                 rateSelect.appendChild(new Option('Dólar Oficial', 'official'));
                 rateSelect.appendChild(new Option('Dólar Paralelo', 'parallel'));
                 rateSelect.disabled = false;
-                rateSelect.value = 'parallel'; // Valor por defecto para USD
+                if (['official', 'parallel'].includes(previousValue)) {
+                    rateSelect.value = previousValue;
+                } else {
+                    rateSelect.value = 'parallel';
+                }
             } else if (currency === 'EUR') {
                 rateSelect.appendChild(new Option('Euro', 'euro'));
-                rateSelect.appendChild(new Option('Dólar Oficial', 'official')); // Opcional: si se quiere convertir EUR a USD oficial
-                rateSelect.appendChild(new Option('Dólar Paralelo', 'parallel')); // Opcional: si se quiere convertir EUR a USD paralelo
+                rateSelect.appendChild(new Option('Dólar Oficial', 'official'));
+                rateSelect.appendChild(new Option('Dólar Paralelo', 'parallel'));
                 rateSelect.disabled = false;
-                rateSelect.value = 'euro'; // Valor por defecto para EUR
+                if (['euro', 'official', 'parallel'].includes(previousValue)) {
+                    rateSelect.value = previousValue;
+                } else {
+                    rateSelect.value = 'euro';
+                }
             }
-            calculatePrice(); // Recalcular al cambiar la moneda de costo
+            calculatePrice();
         }
 
         // Actualizar símbolo de moneda
@@ -1525,6 +1533,13 @@
         }
 
         // Mostrar notificación
+        function escapeHtml(str) {
+            if (str === null || str === undefined) return '';
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
         function showNotification(message, type = 'success') {
             const notification = document.getElementById('notificationMessage');
             notification.textContent = message;
@@ -1589,8 +1604,14 @@
             
             // Obtener valores
             const costCurrency = document.getElementById('costCurrency').value;
-            const profitMargin = parseFloat(document.getElementById('profitMargin').value) || 0;
-            
+            const profitMarginInput = document.getElementById('profitMargin');
+            const profitMargin = parseFloat(profitMarginInput.value);
+            if (isNaN(profitMargin) || profitMargin < 0) {
+                profitMarginInput.style.borderColor = '#ef4444';
+                document.getElementById('resultsContainer').style.display = 'none';
+                return;
+            }
+            profitMarginInput.style.borderColor = '';
             // --- INICIO DE LA LÓGICA CORREGIDA ---
 
             // 1. Calcular costos adicionales en USD (solo en modo avanzado)
@@ -1604,34 +1625,25 @@
             
             let totalCostInBs = 0;
 
-            // 2. Determinar la tasa de dólar a usar para conversiones
-            // Esta tasa se usará para el costo principal (si es USD) y/o para los costos adicionales
-            const dollarRateType = isAdvancedMode ? 
-                (document.getElementById('exchangeRateType').value || 'parallel') : 
-                'parallel';
-            const dollarConversionRate = exchangeRates[dollarRateType];
-
-            // 3. Calcular el costo total en Bolívares según la moneda de origen
-            switch(costCurrency) {
-                case 'USD':
-                    // El costo principal y los adicionales están en USD
-                    const totalCostInUSD = costAmount + additionalCostsUSD;
-                    totalCostInBs = totalCostInUSD * dollarConversionRate;
-                    break;
-
-                case 'EUR':
-                    // El costo principal se convierte de EUR a BS. Los adicionales de USD a BS.
-                    const costBaseInBs = costAmount * exchangeRates.euro;
-                    const additionalCostsInBs = additionalCostsUSD * dollarConversionRate;
-                    totalCostInBs = costBaseInBs + additionalCostsInBs;
-                    break;
-
-                case 'BS':
-                    // El costo principal ya está en BS. Solo se convierten los adicionales de USD a BS.
-                    const additionalCostsInBsFromUSD = additionalCostsUSD * dollarConversionRate;
-                    totalCostInBs = costAmount + additionalCostsInBsFromUSD;
-                    break;
+            // 2. Determinar tasas de conversión
+            // Tasa USD: la que el usuario elija (oficial/paralelo), o paralelo por defecto
+            let usdRate = exchangeRates.parallel;
+            if (isAdvancedMode) {
+                const rateType = document.getElementById('exchangeRateType').value;
+                if (rateType === 'official') usdRate = exchangeRates.official;
             }
+
+            // 3. Convertir todo a BS
+            let costMainInBs;
+            if (costCurrency === 'USD') {
+                costMainInBs = costAmount * usdRate;
+            } else if (costCurrency === 'EUR') {
+                costMainInBs = costAmount * exchangeRates.euro;
+            } else {
+                costMainInBs = costAmount;
+            }
+            const costAdditionalInBs = additionalCostsUSD * usdRate;
+            totalCostInBs = costMainInBs + costAdditionalInBs;
             
             // --- FIN DE LA LÓGICA CORREGIDA ---
 
@@ -1699,22 +1711,23 @@
                 return;
             }
 
-            // Recalcular para obtener los valores más recientes y correctos
-            calculatePrice(); 
+            calculatePrice();
 
-            // Obtener los valores ya calculados y formateados de la interfaz
-            const suggestedPriceText = document.getElementById('suggested-price').textContent;
-            const realMarginText = document.getElementById('real-margin').textContent;
-            const totalCostBsText = document.getElementById('total-cost-bs').textContent; 
-            const totalCostUsdText = document.getElementById('total-cost-usd').textContent; 
+            const suggestedPriceEl = document.getElementById('suggested-price');
+            const realMarginEl = document.getElementById('real-margin');
+            const totalCostBsEl = document.getElementById('total-cost-bs');
+
+            const suggestedPriceRaw = parseFloat(suggestedPriceEl.textContent.replace(/[^\d,.-]/g, '').replace(/\./g, '').replace(',', '.')) || 0;
+            const totalCostBsRaw = parseFloat(totalCostBsEl.textContent.replace(/[^\d,.-]/g, '').replace(/\./g, '').replace(',', '.')) || 0;
+            const marginRaw = parseFloat(realMarginEl.textContent) || 0;
 
             const calculation = {
                 id: Date.now(),
                 product: productName,
-                totalCostBs: totalCostBsText,
-                totalCostUsd: totalCostUsdText,
-                price: suggestedPriceText,
-                margin: realMarginText,
+                costAmount: costAmount,
+                totalCost: totalCostBsRaw,
+                price: suggestedPriceRaw,
+                margin: marginRaw,
                 date: new Date().toLocaleString('es-VE', { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
                 category: document.getElementById('productCategory').value
             };
@@ -1738,6 +1751,22 @@
             if (savedHistory) {
                 try {
                     calculationHistory = JSON.parse(savedHistory);
+                    // Migrar datos antiguos (formateados) a nuevo formato (números crudos)
+                    calculationHistory = calculationHistory.map(calc => {
+                        if (typeof calc.margin === 'string') {
+                            calc.margin = parseFloat(calc.margin) || 0;
+                        }
+                        if (typeof calc.totalCost === 'undefined' && typeof calc.totalCostBs === 'string') {
+                            calc.totalCost = parseFloat(calc.totalCostBs.replace(/[^\d,.-]/g, '').replace(/\./g, '').replace(',', '.')) || 0;
+                        }
+                        if (typeof calc.totalCost === 'string') {
+                            calc.totalCost = parseFloat(calc.totalCost.replace(/[^\d,.-]/g, '').replace(/\./g, '').replace(',', '.')) || 0;
+                        }
+                        if (typeof calc.price === 'string') {
+                            calc.price = parseFloat(calc.price.replace(/[^\d,.-]/g, '').replace(/\./g, '').replace(',', '.')) || 0;
+                        }
+                        return calc;
+                    });
                     updateHistoryDisplay();
                 } catch (error) {
                     console.error('Error cargando historial:', error);
@@ -1765,11 +1794,11 @@
             calculationHistory.forEach(calc => {
                 const row = document.createElement('tr');
                 row.innerHTML = `
-                    <td>${calc.product}</td>
-                    <td>${calc.totalCostBs} ${calc.totalCostUsd ? `(${calc.totalCostUsd})` : ''}</td>
-                    <td>${calc.price}</td>
-                    <td>${calc.margin}</td>
-                    <td>${calc.date}</td>
+                    <td>${escapeHtml(calc.product)}</td>
+                    <td>${escapeHtml(formatCurrency(calc.totalCost))} BS</td>
+                    <td>${escapeHtml(formatCurrency(calc.price))} BS</td>
+                    <td>${escapeHtml(calc.margin.toFixed(0))}%</td>
+                    <td>${escapeHtml(calc.date)}</td>
                 `;
                 historyBody.appendChild(row);
             });
@@ -1790,38 +1819,26 @@
             document.getElementById('productName').value = '';
             document.getElementById('productCategory').value = 'alimentos';
             document.getElementById('costCurrency').value = 'USD';
-            document.getElementById('costAmount').value = '10'; // Restaurar valor inicial
+            document.getElementById('costAmount').value = '';
             
-            // Restaurar valores de las tasas a los por defecto si no hay guardados
             updateRateInputs();
 
-            document.getElementById('profitMargin').value = '50'; // Restaurar valor inicial
+            document.getElementById('profitMargin').value = '';
             
-            // Resetear campos avanzados si están presentes
-            if (document.getElementById('exchangeRateType')) { // Check if element exists (only in advanced mode)
-                document.getElementById('exchangeRateType').value = 'parallel';
-            }
-            if (document.getElementById('displayRateType')) {
-                document.getElementById('displayRateType').value = 'parallel';
-            }
-            if (document.getElementById('transportCost')) {
-                document.getElementById('transportCost').value = '0';
-            }
-            if (document.getElementById('storageCost')) {
-                document.getElementById('storageCost').value = '0';
-            }
-            if (document.getElementById('taxesCost')) {
-                document.getElementById('taxesCost').value = '0';
-            }
+            document.getElementById('exchangeRateType').value = 'parallel';
+            document.getElementById('displayRateType').value = 'parallel';
+            document.getElementById('transportCost').value = '0';
+            document.getElementById('storageCost').value = '0';
+            document.getElementById('taxesCost').value = '0';
             
-            // Restaurar bordes de validación
             document.getElementById('productName').style.borderColor = '';
             document.getElementById('costAmount').style.borderColor = '';
+            document.getElementById('profitMargin').style.borderColor = '';
 
             updateCurrencySymbol();
             updateRateOptions();
-            calculatePrice(); // Recalcular con los valores reseteados
-            showNotification('Formulario limpiado y valores restaurados.');
+            document.getElementById('resultsContainer').style.display = 'none';
+            showNotification('Formulario limpiado.');
         }
 
         // Formatear moneda
@@ -1834,7 +1851,7 @@
             }).format(amount);
         }
 
-        // Validar entrada numérica (mejorado para no solo cambiar borde)
+        // Validar entrada numérica
         function validateNumericInput(input) {
             const value = parseFloat(input.value);
             if (isNaN(value) || value < 0) {
@@ -1934,16 +1951,6 @@
                 resetForm();
             }
         });
-
-        // Auto-guardar configuración
-        setInterval(function() {
-            const currentSettings = {
-                advancedMode: isAdvancedMode,
-                rates: exchangeRates
-            };
-            localStorage.setItem('ciervo_auto_save', JSON.stringify(currentSettings));
-            // showNotification('Configuración guardada automáticamente.', 'info'); // Demasiado frecuente
-        }, 30000); // Auto-guardar cada 30 segundos
 
         console.log('Calculadora de Precios Venezuela inicializada correctamente');
     </script>

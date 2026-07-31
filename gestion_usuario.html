@@ -1418,6 +1418,17 @@
         .dark-mode .dark-mode-toggle:hover {
             background: rgba(255, 255, 255, 0.1);
         }
+
+        .connection-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #94a3b8;
+            display: inline-block;
+            transition: background 0.3s;
+            flex-shrink: 0;
+        }
+
         @media print {
             body { background: white !important; color: black !important; }
             .top-bar, .action-bar, .btn, .dark-mode-toggle { display: none !important; }
@@ -1450,6 +1461,7 @@
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sun-icon"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="M4.93 4.93l1.41 1.41"/><path d="M17.66 17.66l1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="M4.93 19.07l1.41-1.41"/><path d="M17.66 6.34l1.41-1.41"/></svg>
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="moon-icon hidden"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
                     </button>
+                    <span class="connection-dot" id="firebaseDot" title="Estado de conexión"></span>
                     <a href="menu.html" class="back-button">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
                         Volver al Menú
@@ -1479,14 +1491,14 @@
         <!-- User Management Tabs -->
         <div class="tab-container">
             <div class="tab-navigation">
-                <button class="tab-button active" onclick="switchUserTab('list')">
+                <button class="tab-button active" data-tab="list" onclick="switchUserTab('list')">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
                         <circle cx="12" cy="7" r="4"/>
                     </svg>
                     Lista de Usuarios
                 </button>
-                <button class="tab-button" onclick="switchUserTab('register')">
+                <button class="tab-button" data-tab="register" onclick="switchUserTab('register')">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
                         <circle cx="12" cy="7" r="4"/>
@@ -1494,7 +1506,7 @@
                     </svg>
                     Registrar Usuario
                 </button>
-                <button class="tab-button" onclick="switchUserTab('roles')">
+                <button class="tab-button" data-tab="roles" onclick="switchUserTab('roles')">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.582a.5.5 0 0 1 0 .962L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0L9.937 15.5Z"/>
                     </svg>
@@ -1644,7 +1656,7 @@
                                         <div class="input-with-icon">
                                             <input type="password" id="password" name="password" class="form-input" required 
                                                    placeholder="Contraseña segura" oninput="checkPasswordStrength(this)" onblur="validateField(this)">
-                                            <svg class="input-icon" onclick="togglePassword('password')" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                            <svg class="input-icon" onclick="togglePassword('password')" role="button" tabindex="0" aria-label="Mostrar contraseña" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                                         </div>
                                         <div class="password-strength" id="password-strength">
                                             <div class="strength-label">Fortaleza de contraseña</div>
@@ -1662,7 +1674,7 @@
                                         <div class="input-with-icon">
                                             <input type="password" id="confirmPassword" name="confirmPassword" class="form-input" required 
                                                    placeholder="Confirme su contraseña" onblur="validateField(this)">
-                                            <svg class="input-icon" onclick="togglePassword('confirmPassword')" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                            <svg class="input-icon" onclick="togglePassword('confirmPassword')" role="button" tabindex="0" aria-label="Mostrar confirmación de contraseña" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                                         </div>
                                         <div class="validation-message" id="confirmPassword-message"></div>
                                     </div>
@@ -1819,7 +1831,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h3>Editar Usuario</h3>
-                <button class="modal-close" onclick="closeEditModal()">&times;</button>
+                <button class="modal-close" onclick="closeEditModal()" aria-label="Cerrar modal">&times;</button>
             </div>
             
             <!-- Admin Mode Toggle -->
@@ -1886,11 +1898,11 @@
 
                     <div class="form-group">
                         <label class="form-label" for="edit-password">
-                            Contraseña <span class="required">*</span>
+                            Contraseña
                         </label>
                         <div class="input-with-icon">
-                            <input type="password" id="edit-password" name="password" class="form-input" required>
-                            <svg class="input-icon" onclick="togglePassword('edit-password')" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <input type="password" id="edit-password" name="password" class="form-input">
+                            <svg class="input-icon" onclick="togglePassword('edit-password')" role="button" tabindex="0" aria-label="Mostrar contraseña" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
                                 <circle cx="12" cy="12" r="3"/>
                             </svg>
@@ -1944,6 +1956,19 @@
     </div>
 
     <script>
+        // --- file:// guard ---
+        if (location.protocol === 'file:') {
+            document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:#64748b;text-align:center;padding:2rem;"><div><h2 style="margin-bottom:1rem;">Firebase no disponible</h2><p>Esta p&aacute;gina necesita conexi&oacute;n a Firebase y no funciona desde el protocolo file://</p><p style="margin-top:1rem;">Usa un servidor local o abre desde un dominio https.</p></div></div>';
+            throw new Error('Firebase no funciona con file://');
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            var d = document.createElement('div');
+            d.appendChild(document.createTextNode(String(str)));
+            return d.innerHTML;
+        }
+
         // Firebase Configuration
         const firebaseConfig = {
             apiKey: "AIzaSyCyaIC2-pCCQf_mJWGtG6v-0kA1l2Or2CQ",
@@ -1955,9 +1980,65 @@
             appId: "1:828978506509:web:52b6220033072038115e44"
         };
 
-        // Initialize Firebase
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
+        // Firebase init (Pattern B)
+        let _firebaseDb = null;
+        let _firebaseInitPromise = null;
+        let _firebaseConnected = false;
+
+        function loadFirebaseSDK() {
+            return new Promise((resolve, reject) => {
+                if (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length > 0) return resolve();
+                const scripts = [
+                    'https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js',
+                    'https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js'
+                ];
+                let loaded = 0;
+                scripts.forEach(src => {
+                    const s = document.createElement('script');
+                    s.src = src;
+                    s.onload = () => { if (++loaded === scripts.length) resolve(); };
+                    s.onerror = () => reject(new Error('Error al cargar ' + src));
+                    document.head.appendChild(s);
+                });
+            });
+        }
+
+        function setFirebaseDot(color, title) {
+            const dot = document.getElementById('firebaseDot');
+            if (dot) { dot.style.background = color; dot.title = title; }
+        }
+
+        function setupConnectionMonitor(database) {
+            database.ref('.info/connected').on('value', (snap) => {
+                _firebaseConnected = snap.val();
+                setFirebaseDot(_firebaseConnected ? '#22c55e' : '#ef4444', _firebaseConnected ? 'Firebase conectado' : 'Firebase desconectado');
+            });
+        }
+
+        async function initFirebase() {
+            if (_firebaseDb) return _firebaseDb;
+            if (_firebaseInitPromise) return _firebaseInitPromise;
+            _firebaseInitPromise = (async () => {
+                await loadFirebaseSDK();
+                if (!firebase.apps || firebase.apps.length === 0) firebase.initializeApp(firebaseConfig);
+                const database = firebase.database();
+                setupConnectionMonitor(database);
+                _firebaseDb = database;
+                return _firebaseDb;
+            })();
+            _firebaseInitPromise.catch(() => { _firebaseInitPromise = null; _firebaseDb = null; });
+            return _firebaseInitPromise;
+        }
+
+        function getCurrentUserEmail() {
+            const fromStorage = sessionStorage.getItem('propietarioActual');
+            if (fromStorage) return fromStorage;
+            try {
+                const owner = JSON.parse(sessionStorage.getItem('currentOwner'));
+                if (owner && owner.email) return owner.email;
+            } catch {}
+            return null;
+        }
 
         // Global variables
         let selectedRole = null;
@@ -1973,12 +2054,11 @@
         };
         let isAdminMode = false;
 
-        // Get current owner email from sessionStorage
-        const propietarioActualEmail = sessionStorage.getItem('propietarioActual');
+        const propietarioActualEmail = getCurrentUserEmail();
 
         if (!propietarioActualEmail) {
             alert('Error: No ha iniciado sesión como propietario. Será redirigido a la página de login.');
-            // window.location.href = 'pagina-de-login.html'; // Uncomment when login page is ready
+            window.location.href = 'index.html';
         }
 
         // Role permissions configuration
@@ -2077,19 +2157,21 @@
                 callback([]);
                 return;
             }
-            db.ref('operadores').orderByChild('propietario').equalTo(propietarioActualEmail).once('value', snapshot => {
-                const operadores = [];
-                snapshot.forEach(childSnapshot => {
-                    let operador = childSnapshot.val();
-                    operador.id = childSnapshot.key; // Save Firebase unique key as id
-                    operadores.push(operador);
+            initFirebase().then(database => {
+                database.ref('operadores').orderByChild('propietario').equalTo(propietarioActualEmail).once('value', snapshot => {
+                    const operadores = [];
+                    snapshot.forEach(childSnapshot => {
+                        let operador = childSnapshot.val();
+                        operador.id = childSnapshot.key;
+                        operadores.push(operador);
+                    });
+                    callback(operadores);
+                }).catch(error => {
+                    console.error("Error reading users:", error);
+                    alert("Error al cargar los usuarios.");
+                    callback([]);
                 });
-                callback(operadores);
-            }).catch(error => {
-                console.error("Error reading users from Firebase:", error);
-                alert("Error al cargar los usuarios desde la base de datos.");
-                callback([]);
-            });
+            }).catch(() => callback([]));
         }
 
         // Tab switching
@@ -2097,8 +2179,9 @@
             document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
             
-            const targetButton = document.querySelector(`.tab-button[onclick="switchUserTab('${tabName}')"]`);
-            const targetTabContent = document.getElementById(`${tabName === 'list' ? 'users-list' : tabName === 'register' ? 'user-register' : 'roles-management'}-tab`);
+            const targetButton = document.querySelector(`.tab-button[data-tab="${tabName}"]`);
+            const tabIds = { list: 'users-list', register: 'user-register', roles: 'roles-management' };
+            const targetTabContent = document.getElementById(`${tabIds[tabName]}-tab`);
 
             if (targetButton) {
                 targetButton.classList.add('active');
@@ -2113,50 +2196,44 @@
             
             if (tabName === 'register') {
                 softResetForm();
+                updateSubmitButton();
             }
         }
 
         // Soft reset form (without confirmation)
         function softResetForm() {
+            const startDateInput = document.getElementById('startDate');
             const form = document.getElementById('registration-form');
-            if (form) {
-                form.reset();
-            }
-            
+            if (form) form.reset();
+
+            if (startDateInput) startDateInput.valueAsDate = new Date();
+
             Object.keys(formValidation).forEach(key => {
                 formValidation[key] = false;
             });
-            
+
             document.querySelectorAll('.validation-message').forEach(el => {
                 el.textContent = '';
                 el.className = 'validation-message';
             });
-            
+
             selectedRole = null;
             document.querySelectorAll('.role-option').forEach(option => {
                 option.classList.remove('selected');
             });
-            
+
             const permissionsPreview = document.getElementById('permissions-preview');
             if (permissionsPreview) {
                 permissionsPreview.style.display = 'none';
             }
-            
-            const strengthBar = document.querySelector('#password-strength .strength-bar');
-            if (strengthBar) {
-                strengthBar.className = 'strength-bar';
+
+            const strengthSection = document.getElementById('password-strength');
+            if (strengthSection) {
+                const bar = strengthSection.querySelector('.strength-bar');
+                if (bar) bar.className = 'strength-bar';
+                const label = strengthSection.querySelector('.strength-label');
+                if (label) label.textContent = 'Fortaleza de contraseña';
             }
-            const strengthLabel = document.querySelector('#password-strength .strength-label');
-            if (strengthLabel) {
-                strengthLabel.textContent = 'Fortaleza de contraseña';
-            }
-            
-            const startDateInput = document.getElementById('startDate');
-            if (startDateInput) {
-                startDateInput.valueAsDate = new Date();
-            }
-            
-            updateSubmitButton();
         }
 
         // Render users in the list
@@ -2183,8 +2260,8 @@
                 }
                 
                 grid.innerHTML = usersToRender.map(user => `
-                    <div class="user-card" onclick="editUser('${user.id}')">
-                        <button class="delete-user-btn" onclick="event.stopPropagation(); deleteUserFromList('${user.id}')">
+                    <div class="user-card" onclick="editUser('${escapeHtml(user.id)}')">
+                        <button class="delete-user-btn" onclick="event.stopPropagation(); deleteUserFromList('${escapeHtml(user.id)}')">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M3 6h18"/>
                                 <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
@@ -2199,8 +2276,8 @@
                                 </svg>
                             </div>
                             <div class="user-info">
-                                <h4>${user.firstName} ${user.lastName}</h4>
-                                <p>${user.email}</p>
+                                <h4>${escapeHtml(user.firstName)} ${escapeHtml(user.lastName)}</h4>
+                                <p>${escapeHtml(user.email)}</p>
                             </div>
                         </div>
                         <div class="user-card-body">
@@ -2208,7 +2285,7 @@
                                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
                                 </svg>
-                                ${user.phone || 'No especificado'}
+                                ${escapeHtml(user.phone) || 'No especificado'}
                             </div>
                             <div class="user-detail">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -2218,7 +2295,7 @@
                                     <line x1="16" y1="17" x2="8" y2="17"/>
                                     <polyline points="10,9 9,9 8,9"/>
                                 </svg>
-                                ${user.document}
+                                ${escapeHtml(user.document)}
                             </div>
                             <div class="user-detail">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -2227,12 +2304,12 @@
                                     <line x1="8" y1="2" x2="8" y2="6"/>
                                     <line x1="3" y1="10" x2="21" y2="10"/>
                                 </svg>
-                                ${user.position || 'No especificado'}
+                                ${escapeHtml(user.position) || 'No especificado'}
                             </div>
                         </div>
                         <div class="user-card-footer">
                             <span class="user-role-badge ${user.role === 'Administrador' ? 'role-admin' : 'role-seller'}">
-                                ${user.role}
+                                ${escapeHtml(user.role)}
                             </span>
                             <div class="user-status status-${user.status}">
                                 <div class="status-dot"></div>
@@ -2245,12 +2322,16 @@
         }
 
         // Filter users based on search and filters
+        let _filterUsersSeq = 0;
+
         function filterUsers() {
             const searchTerm = document.getElementById('userSearch').value.toLowerCase();
             const roleFilter = document.getElementById('roleFilter').value;
             const statusFilter = document.getElementById('statusFilter').value;
-            
+            const seq = ++_filterUsersSeq;
+
             getUsersFromFirebase(allUsers => {
+                if (seq !== _filterUsersSeq) return;
                 const filteredUsers = allUsers.filter(user => {
                     const matchesSearch = user.firstName.toLowerCase().includes(searchTerm) ||
                                         user.lastName.toLowerCase().includes(searchTerm) ||
@@ -2382,14 +2463,18 @@
             updateSubmitButton();
         }
 
+        let _checkUsernameSeq = 0;
+
         function checkUsername(field) {
             const username = field.value.trim();
             const messageElement = document.getElementById(`${field.id}-message`);
-            
+            const seq = ++_checkUsernameSeq;
+
             getUsersFromFirebase(users => {
+                if (seq !== _checkUsernameSeq) return;
                 const currentUserId = document.getElementById('edit-user-id') ? document.getElementById('edit-user-id').value : null;
                 const isTaken = users.some(user => user.username === username && user.id !== currentUserId);
-                
+
                 if (isTaken) {
                     messageElement.textContent = '⚠ Usuario no disponible';
                     messageElement.className = 'validation-message validation-error';
@@ -2471,6 +2556,7 @@
         function resetForm() {
             if (confirm('¿Está seguro de que desea limpiar todos los campos?')) {
                 softResetForm();
+                updateSubmitButton();
             }
         }
 
@@ -2520,70 +2606,75 @@
                 createdAt: new Date().toISOString()
             };
             
-            db.ref('operadores').push().set(userData)
-                .then(() => {
-                    submitButton.classList.remove('loading');
-                    submitButton.disabled = false;
-                    
-                    alert(`✅ Usuario creado exitosamente!\n\nNombre: ${userData.firstName} ${userData.lastName}\nUsuario: ${userData.username}\nRol: ${userData.role}\nEstado: ${userData.status}`);
-                    
-                    softResetForm();
-                    switchUserTab('list');
-                    // ---- INICIO DE LA CORRECCIÓN ----
-                    // Forzamos la recarga de la lista de usuarios inmediatamente.
-                    renderUsers();
-                    // ---- FIN DE LA CORRECCIÓN ----
-                })
-                .catch(error => {
-                    console.error("Error adding document: ", error);
-                    alert("Error al crear el usuario. Por favor, intente de nuevo.");
-                    submitButton.classList.remove('loading');
-                    submitButton.disabled = false;
-                });
+            initFirebase().then(database => {
+                database.ref('operadores').push().set(userData)
+                    .then(() => {
+                        submitButton.classList.remove('loading');
+                        submitButton.disabled = false;
+
+                        alert(`✅ Usuario creado exitosamente!\n\nNombre: ${userData.firstName} ${userData.lastName}\nUsuario: ${userData.username}\nRol: ${userData.role}\nEstado: ${userData.status}`);
+
+                        softResetForm();
+                        switchUserTab('list');
+                        renderUsers();
+                    })
+                    .catch(error => {
+                        console.error("Error adding document: ", error);
+                        alert("Error al crear el usuario. Por favor, intente de nuevo.");
+                        submitButton.classList.remove('loading');
+                        submitButton.disabled = false;
+                    });
+            }).catch(() => {
+                alert("Error de conexión con Firebase.");
+                submitButton.classList.remove('loading');
+                submitButton.disabled = false;
+            });
         }
 
         // Edit user functionality
         function editUser(userId) {
-            db.ref('operadores/' + userId).once('value')
-                .then(snapshot => {
-                    const user = snapshot.val();
-                    if (!user) {
-                        alert('Usuario no encontrado.');
-                        return;
-                    }
-                    
-                    document.getElementById('edit-user-id').value = userId;
-                    document.getElementById('edit-firstName').value = user.firstName;
-                    document.getElementById('edit-lastName').value = user.lastName;
-                    document.getElementById('edit-email').value = user.email;
-                    document.getElementById('edit-phone').value = user.phone || '';
-                    document.getElementById('edit-document').value = user.document;
-                    document.getElementById('edit-position').value = user.position || '';
-                    document.getElementById('edit-username').value = user.username;
-                    document.getElementById('edit-password').value = user.password;
-                    document.getElementById('edit-role').value = user.role;
-                    document.getElementById('edit-status').value = user.status;
-                    document.getElementById('edit-notes').value = user.notes || '';
-                    
-                    isAdminMode = false;
-                    const adminModeToggle = document.getElementById('adminModeToggle');
-                    if (adminModeToggle) {
-                        adminModeToggle.checked = false;
-                    }
-                    const editPasswordField = document.getElementById('edit-password');
-                    if (editPasswordField) {
-                        editPasswordField.type = 'password';
-                    }
-                    
-                    const editUserModal = document.getElementById('editUserModal');
-                    if (editUserModal) {
-                        editUserModal.classList.remove('hidden');
-                    }
-                })
-                .catch(error => {
-                    console.error("Error fetching user for edit:", error);
-                    alert("Error al cargar los datos del usuario para edición.");
-                });
+            initFirebase().then(database => {
+                database.ref('operadores/' + userId).once('value')
+                    .then(snapshot => {
+                        const user = snapshot.val();
+                        if (!user) {
+                            alert('Usuario no encontrado.');
+                            return;
+                        }
+
+                        document.getElementById('edit-user-id').value = userId;
+                        document.getElementById('edit-firstName').value = user.firstName || '';
+                        document.getElementById('edit-lastName').value = user.lastName || '';
+                        document.getElementById('edit-email').value = user.email || '';
+                        document.getElementById('edit-phone').value = user.phone || '';
+                        document.getElementById('edit-document').value = user.document || '';
+                        document.getElementById('edit-position').value = user.position || '';
+                        document.getElementById('edit-username').value = user.username || '';
+                        document.getElementById('edit-password').value = user.password || '';
+                        document.getElementById('edit-role').value = user.role || '';
+                        document.getElementById('edit-status').value = user.status || '';
+                        document.getElementById('edit-notes').value = user.notes || '';
+
+                        isAdminMode = false;
+                        const adminModeToggle = document.getElementById('adminModeToggle');
+                        if (adminModeToggle) {
+                            adminModeToggle.checked = false;
+                        }
+                        const editPasswordField = document.getElementById('edit-password');
+                        if (editPasswordField) {
+                            editPasswordField.type = 'password';
+                        }
+
+                        const editUserModal = document.getElementById('editUserModal');
+                        if (editUserModal) {
+                            editUserModal.classList.remove('hidden');
+                        }
+                    })
+                    .catch(error => {
+                        console.error("Error fetching user for edit:", error);
+                        alert("Error al cargar los datos del usuario para edición.");
+                    });
+            }).catch(() => alert("Error de conexión con Firebase."));
         }
 
         function closeEditModal() {
@@ -2608,7 +2699,7 @@
 
         function handleEditSubmit(event) {
             event.preventDefault();
-            
+
             const form = event.target;
             const userId = document.getElementById('edit-user-id').value;
             const formData = new FormData(form);
@@ -2621,58 +2712,58 @@
                 document: formData.get('document'),
                 position: formData.get('position') || '',
                 username: formData.get('username'),
-                password: formData.get('password'),
                 role: formData.get('role'),
                 status: formData.get('status'),
                 notes: formData.get('notes') || ''
             };
-            
-            if (!userData.firstName || !userData.lastName || !userData.email || !userData.document || !userData.username || !userData.password || !userData.role) {
+
+            const password = formData.get('password');
+            if (password) {
+                userData.password = password;
+            }
+
+            if (!userData.firstName || !userData.lastName || !userData.email || !userData.document || !userData.username || !userData.role) {
                 alert('Por favor, complete todos los campos requeridos en el formulario de edición.');
                 return;
             }
 
-            db.ref('operadores/' + userId).update(userData)
-                .then(() => {
-                    renderUsers();
-                    closeEditModal();
-                    alert('✅ Usuario actualizado exitosamente!');
-                })
-                .catch(error => {
-                    console.error("Error updating user:", error);
-                    alert("Error al actualizar el usuario. Por favor, intente de nuevo.");
-                });
-        }
-
-        function deleteUser() {
-            const userId = document.getElementById('edit-user-id').value;
-            
-            if (confirm('¿Está seguro de que desea eliminar este usuario? Esta acción no se puede deshacer.')) {
-                db.ref('operadores/' + userId).remove()
+            initFirebase().then(database => {
+                database.ref('operadores/' + userId).update(userData)
                     .then(() => {
                         renderUsers();
                         closeEditModal();
-                        alert('✅ Usuario eliminado exitosamente!');
+                        alert('✅ Usuario actualizado exitosamente!');
                     })
                     .catch(error => {
-                        console.error("Error removing user:", error);
-                        alert("Error al eliminar el usuario. Por favor, intente de nuevo.");
+                        console.error("Error updating user:", error);
+                        alert("Error al actualizar el usuario. Por favor, intente de nuevo.");
                     });
+            }).catch(() => alert("Error de conexión con Firebase."));
+        }
+
+        function deleteUserById(userId, closeModal) {
+            if (confirm('¿Está seguro de que desea eliminar este usuario? Esta acción no se puede deshacer.')) {
+                initFirebase().then(database => {
+                    database.ref('operadores/' + userId).remove()
+                        .then(() => {
+                            renderUsers();
+                            if (closeModal) closeEditModal();
+                            alert('✅ Usuario eliminado exitosamente!');
+                        })
+                        .catch(error => {
+                            console.error("Error removing user:", error);
+                            alert("Error al eliminar el usuario. Por favor, intente de nuevo.");
+                        });
+                }).catch(() => alert("Error de conexión con Firebase."));
             }
         }
 
+        function deleteUser() {
+            deleteUserById(document.getElementById('edit-user-id').value, true);
+        }
+
         function deleteUserFromList(userId) {
-            if (confirm('¿Está seguro de que desea eliminar este usuario? Esta acción no se puede deshacer.')) {
-                db.ref('operadores/' + userId).remove()
-                    .then(() => {
-                        renderUsers();
-                        alert('✅ Usuario eliminado exitosamente!');
-                    })
-                    .catch(error => {
-                        console.error("Error removing user:", error);
-                        alert("Error al eliminar el usuario. Por favor, intente de nuevo.");
-                    });
-            }
+            deleteUserById(userId, false);
         }
     </script>
 </body>
