@@ -2653,7 +2653,7 @@ function handleStockKeydown(event) {
             }
 
             const isDuplicate = products.some(p => 
-                normalizeString(p.name) === normalizeString(name) && p.id !== editingProductId
+                normalizeString(p.name) === normalizeString(name) && String(p.id) !== String(editingProductId)
             );
 
             if (isDuplicate) {
@@ -2681,7 +2681,7 @@ function handleStockKeydown(event) {
             }
 
             const isDuplicate = products.some(p => 
-                p.code && normalizeString(p.code) === normalizeString(code) && p.id !== editingProductId
+                p.code && normalizeString(p.code) === normalizeString(code) && String(p.id) !== String(editingProductId)
             );
 
             if (isDuplicate) {
@@ -3071,7 +3071,7 @@ function handleStockKeydown(event) {
                                 </svg>
                                 ${stockDisplay}
                             </span>
-                            <button class="btn-icon btn-adjust-stock" onclick="openStockAdjustmentModal(${product.id})" title="Ajustar Stock" aria-label="Ajustar stock" style="margin-top: 0.5rem;">
+                            <button class="btn-icon btn-adjust-stock" onclick="openStockAdjustmentModal('${product.id}')" title="Ajustar Stock" aria-label="Ajustar stock" style="margin-top: 0.5rem;">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <path d="M12 5v14"/>
                                     <path d="M5 12h14"/>
@@ -3099,13 +3099,13 @@ function handleStockKeydown(event) {
                         </td>
                         <td>
                             <div class="action-buttons-cell">
-                                <button class="btn-icon btn-edit" onclick="editProduct(${product.id})" title="Editar" aria-label="Editar producto">
+                                <button class="btn-icon btn-edit" onclick="editProduct('${product.id}')" title="Editar" aria-label="Editar producto">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                                         <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
                                     </svg>
                                 </button>
-                                <button class="btn-icon btn-delete" onclick="deleteProduct(${product.id})" title="Eliminar" aria-label="Eliminar producto">
+                                <button class="btn-icon btn-delete" onclick="deleteProduct('${product.id}')" title="Eliminar" aria-label="Eliminar producto">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                         <path d="M3 6h18"/>
                                         <path d="M19 6v14c0 1-1 2-2 2H7c0-1-1-2-1-2V6"/>
@@ -3342,7 +3342,7 @@ function handleStockKeydown(event) {
             // Validation for bulk adjustments that could result in negative cost or price
             let willResultInInvalid = false;
             selectedProductIds.forEach(productId => {
-                const product = products.find(p => p.id === productId);
+                const product = products.find(p => String(p.id) === String(productId));
                 if (product) {
                     const currentCost = product.isBulk ? product.costPerUnit : product.cost;
                     const currentPrice = product.isBulk ? product.pricePerUnit : product.price;
@@ -3379,7 +3379,7 @@ function handleStockKeydown(event) {
                 let affectedProducts = 0;
 
                 selectedProductIds.forEach(productId => {
-                    const product = products.find(p => p.id === productId);
+                    const product = products.find(p => String(p.id) === String(productId));
                     if (product) {
                         affectedProducts++;
                         let currentCost = product.isBulk ? product.costPerUnit : product.cost;
@@ -3423,7 +3423,7 @@ function handleStockKeydown(event) {
             const { action, value, newCategory } = bulkEditActionDetails;
 
             let changesApplied = 0;
-            const productsToUpdate = Array.from(selectedProductIds).map(id => products.find(p => p.id === id)).filter(p => p);
+            const productsToUpdate = Array.from(selectedProductIds).map(id => products.find(p => String(p.id) === String(id))).filter(p => p);
 
             if (action === 'deleteSelected') {
                 products = products.filter(p => !selectedProductIds.has(p.id));
@@ -3546,7 +3546,7 @@ function handleStockKeydown(event) {
                 isBulkProductCheckbox.disabled = false; // Enable for new product
                 resetForm();
             } else {
-                const product = products.find(p => p.id === productId);
+                const product = products.find(p => String(p.id) === String(productId));
                 if (!product) {
                     showNotification('Producto no encontrado para editar.', 'error');
                     closeModal();
@@ -3837,7 +3837,7 @@ function handleStockKeydown(event) {
             let oldPriceValue = null;
 
             if (editingProductId) {
-                const existingProduct = products.find(p => p.id === editingProductId);
+                const existingProduct = products.find(p => String(p.id) === String(editingProductId));
                 if (existingProduct) {
                     oldCostValue = existingProduct.isBulk ? existingProduct.costPerUnit : existingProduct.cost;
                     oldPriceValue = existingProduct.isBulk ? existingProduct.pricePerUnit : existingProduct.price;
@@ -3897,7 +3897,7 @@ function handleStockKeydown(event) {
             }
             
             if (editingProductId) {
-                const index = products.findIndex(p => p.id === editingProductId);
+                const index = products.findIndex(p => String(p.id) === String(editingProductId));
                 if (index !== -1) {
                     const currentStock = products[index].stock;
                     const currentStockHistory = products[index].stockHistory;
@@ -3971,7 +3971,7 @@ function handleStockKeydown(event) {
 
         function deleteProduct(productId) {
             deletingProductId = productId;
-            const productToDelete = products.find(p => p.id === productId);
+            const productToDelete = products.find(p => String(p.id) === String(productId));
             if (productToDelete) {
                 document.getElementById('deleteProductNameConfirm').textContent = `Producto: ${productToDelete.name}`;
                 document.getElementById('deleteModal').classList.add('show');
@@ -3986,7 +3986,7 @@ function handleStockKeydown(event) {
         function confirmDelete() {
             if (deletingProductId) {
                 const initialLength = products.length;
-                products = products.filter(p => p.id !== deletingProductId); // Changed to delete only the specific product
+                products = products.filter(p => String(p.id) !== String(deletingProductId)); // Changed to delete only the specific product
                 if (products.length < initialLength) {
                     saveProducts();
                     currentPage = 1;
@@ -4001,7 +4001,7 @@ function handleStockKeydown(event) {
         }
 
         async function downloadProductReport(productId) {
-            const product = products.find(p => p.id === productId);
+            const product = products.find(p => String(p.id) === String(productId));
             if (!product) {
                 showNotification('Producto no encontrado para generar reporte.', 'error');
                 return;
@@ -4099,7 +4099,7 @@ function handleStockKeydown(event) {
         // Stock Adjustment Functions
         function openStockAdjustmentModal(productId) {
             adjustingStockProductId = productId;
-            const product = products.find(p => p.id === productId);
+            const product = products.find(p => String(p.id) === String(productId));
             if (!product) {
                 showNotification('Producto no encontrado para ajustar stock.', 'error');
                 return;
@@ -4154,7 +4154,7 @@ function handleStockKeydown(event) {
         }
 
         function applyStockAdjustment() {
-            const product = products.find(p => p.id === adjustingStockProductId);
+            const product = products.find(p => String(p.id) === String(adjustingStockProductId));
             if (!product) return;
 
             const quantityInput = document.getElementById('adjustmentQuantity');
@@ -4397,7 +4397,7 @@ function handleStockKeydown(event) {
                 return;
             }
 
-            const product = products.find(p => p.id === parseInt(productId));
+            const product = products.find(p => String(p.id) === String(productId));
             if (!product || !product.priceHistory || product.priceHistory.length === 0) {
                 priceHistoryBody.innerHTML = '<tr><td colspan="4" style="text-align: center;">No hay historial de precios para este producto.</td></tr>';
                 return;
