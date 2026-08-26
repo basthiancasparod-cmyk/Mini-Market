@@ -409,6 +409,15 @@
                                     <small style="color:#64748b; font-size:0.75rem;">Determina en qué moneda se expresan los items.</small>
                                 </div>
 
+                                <div class="form-group">
+                                    <label class="form-label">Tamaño de Papel (Impresora Térmica)</label>
+                                    <select id="paperSize" class="form-select">
+                                        <option value="80mm">80 mm (Estándar)</option>
+                                        <option value="58mm">58 mm (Compacto)</option>
+                                    </select>
+                                    <small style="color:#64748b; font-size:0.75rem;">Ancho del papel de la impresora térmica.</small>
+                                </div>
+
                                 <div class="switch-row">
                                     <div class="switch-label">
                                         <strong>Desglose de Descuentos</strong>
@@ -624,6 +633,8 @@
             showPaymentDetails: true,
             showDualTotals: true,
             showExchangeRate: true,
+            // Formato
+            paperSize: "80mm", // 80mm o 58mm
             // Textos
             footerMessage: "¡Gracias por su visita!",
             policyText: "Conserve su ticket."
@@ -817,6 +828,7 @@
             setCheck('showDateTime', config.showDateTime);
             
             setVal('primaryCurrency', config.primaryCurrency);
+            setVal('paperSize', config.paperSize);
             setCheck('showDiscounts', config.showDiscounts);
             setCheck('showTaxes', config.showTaxes);
             setCheck('showPaymentDetails', config.showPaymentDetails);
@@ -854,6 +866,12 @@
             const isEnabled = getCheck('enablePrint');
             const paper = document.getElementById('ticketPreview');
             const msg = document.getElementById('printDisabledMsg');
+            
+            // Tamaño de papel (afecta ancho de la vista previa)
+            const paperSize = getVal('paperSize') || '80mm';
+            const previewWidth = paperSize === '58mm' ? '230px' : '320px'; // 58mm ≈ 230px, 80mm ≈ 320px a 96 DPI
+            paper.style.width = previewWidth;
+            paper.style.maxWidth = paperSize === '58mm' ? '58mm' : '80mm';
             
             if (!isEnabled) {
                 paper.style.opacity = "0.4"; paper.style.filter = "grayscale(100%)";
@@ -1012,6 +1030,7 @@
                 showDateTime: getCheck('showDateTime'),
                 // Detalles
                 primaryCurrency: getVal('primaryCurrency'),
+                paperSize: getVal('paperSize'),
                 showDiscounts: getCheck('showDiscounts'),
                 showTaxes: getCheck('showTaxes'),
                 showPaymentDetails: getCheck('showPaymentDetails'),

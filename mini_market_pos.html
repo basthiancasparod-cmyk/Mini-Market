@@ -3710,6 +3710,7 @@ async function printReceipt(saleData) {
             showCustomerData: true, showInvoiceNum: true, showSeller: true, showDateTime: true,
             primaryCurrency: 'SALE', showDiscounts: true, showTaxes: true,
             showPaymentDetails: true, showDualTotals: true, showExchangeRate: true,
+            paperSize: '80mm',
             footerMessage: 'Gracias por su compra', policyText: 'No se aceptan devoluciones'
         };
         const raw = JSON.parse(localStorage.getItem('receiptSettings'));
@@ -3767,19 +3768,31 @@ async function printReceipt(saleData) {
             return d.innerHTML;
         };
 
-        // 3. GENERAR HTML
+        // 3. GENERAR HTML (optimizado para impresoras térmicas 80mm/58mm)
+        const pageSize = config.paperSize || '80mm';
+        const bodyMaxWidth = pageSize;
         let html = `<html><head><title>Ticket</title><style>
-            body{font-family:'Courier New',monospace;font-size:11px;margin:0;padding:5px;width:290px;color:#000}
+            @page { margin: 0; size: ${pageSize} auto; }
+            @media print {
+                @page { margin: 0; size: ${pageSize} auto; }
+                html, body { width: ${pageSize}; margin: 0; padding: 0; }
+                * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            }
+            body{font-family:'Courier New',Courier,monospace;font-size:12px;margin:0;padding:4px;width:100%;max-width:${bodyMaxWidth};color:#000;box-sizing:border-box}
             .c{text-align:center}.r{text-align:right}.b{font-weight:bold}
-            .line{border-bottom:1px dashed #000;margin:5px 0}
-            table{width:100%;font-size:11px;border-collapse:collapse}td{vertical-align:top}
+            .line{border-bottom:1px dashed #000;margin:4px 0}
+            .double-line{border-bottom:3px double #000;margin:4px 0}
+            table{width:100%;font-size:12px;border-collapse:collapse}td{vertical-align:top;padding:1px 0}
+            img{max-width:100%;height:auto;image-rendering:crisp-edges}
+            .small{font-size:10px}.xsmall{font-size:9px}
+            .payment-box{border:1px solid #000;padding:3px;margin-top:4px}
         </style></head><body>`;
 
         // Cabecera
         html += `<div class="c">`;
         if (config.showLogo && company.logo) html += `<img src="${esc(company.logo)}" style="max-width:80px;filter:grayscale(100%);margin-bottom:5px"><br>`;
         if (config.showBusinessData) {
-            html += `<span class="b" style="font-size:13px">${esc(company.companyName || 'TIENDA')}</span><br>`;
+            html += `<span class="b">${esc(company.companyName || 'TIENDA')}</span><br>`;
             if (config.showTaxId) html += `RIF: ${esc(company.rif || '')}<br>`;
             html += `${esc(company.address || '')}`;
         }
@@ -3828,18 +3841,18 @@ async function printReceipt(saleData) {
             html += `<div class="r">IVA (16%): ${symbol} ${fmt(ivaFinal)}</div>`;
         }
 
-        html += `<div class="r" style="margin-top:5px;font-size:14px"><span class="b">TOTAL: ${symbol} ${fmt(totalFinal)}</span></div>`;
+        html += `<div class="r" style="margin-top:5px"><span class="b">TOTAL: ${symbol} ${fmt(totalFinal)}</span></div>`;
         if (config.showDualTotals && multiplier === 1 && saleData.currency !== 'VES') {
             const vesTotal = (saleData.totals.total || 0) * rate;
-            html += `<div class="r" style="font-size:10px">Bs. ${fmt(vesTotal)}</div>`;
+            html += `<div class="r small">Bs. ${fmt(vesTotal)}</div>`;
         }
         if (config.showExchangeRate && rate !== 1) {
-            html += `<div class="r" style="font-size:10px">Tasa: Bs. ${fmt(rate)} / USD</div>`;
+            html += `<div class="r small">Tasa: Bs. ${fmt(rate)} / USD</div>`;
         }
 
         // Método de Pago
         if (config.showPaymentDetails) {
-            html += `<div style="border:1px solid #000;padding:3px;margin-top:5px">MÉTODO DE PAGO:<br>`;
+            html += `<div class="payment-box">MÉTODO DE PAGO:<br>`;
             let payMethod = (saleData.paymentMethod || 'POS').toUpperCase().replace('VES-', '').replace('USD-', '');
             
             if (saleData.paymentMethod === 'combined') {
@@ -3861,7 +3874,7 @@ async function printReceipt(saleData) {
             html += `</div>`;
         }
 
-        html += `<div class="c" style="margin-top:10px">${esc(config.footerMessage)}<br>${esc(config.policyText)}</div></body></html>`;
+        html += `<div class="c small" style="margin-top:8px">${esc(config.footerMessage)}<br>${esc(config.policyText)}</div></body></html>`;
 
         const win = window.open('', '', 'height=600,width=400');
         win.document.write(html);
