@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>POS - Mini Market</title>
+    <link rel="icon" type="image/x-icon" href="icono.ico">
     <script src="cloud-access.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -3771,7 +3772,8 @@ async function printReceipt(saleData) {
         // 3. GENERAR HTML (optimizado para impresoras térmicas 80mm/58mm)
         const pageSize = config.paperSize || '80mm';
         const bodyMaxWidth = pageSize;
-        let html = `<html><head><title>Ticket</title><style>
+        let html = `<html><head><title>Ticket</title>
+    <link rel="icon" type="image/x-icon" href="icono.ico"><style>
             @page { margin: 0; size: ${pageSize} auto; }
             @media print {
                 @page { margin: 0; size: ${pageSize} auto; }
