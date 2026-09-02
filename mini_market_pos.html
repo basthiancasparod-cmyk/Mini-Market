@@ -1646,10 +1646,40 @@
                 <h3 class="modal-title">Configurar Tasa de Cambio</h3>
                 <p class="modal-subtitle">Establecer valor del dólar en bolívares</p>
             </div>
+            
             <div class="form-group">
+                <label class="form-label">Modo de tasa</label>
+                <div class="toggle-switch-row" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+                    <label class="radio-option" style="display:flex;align-items:center;gap:6px;cursor:pointer">
+                        <input type="radio" name="rateMode" id="rateAuto" value="auto" style="width:18px;height:18px;accent-color:#3b82f6">
+                        <span>Automática (BCV)</span>
+                    </label>
+                    <label class="radio-option" style="display:flex;align-items:center;gap:6px;cursor:pointer">
+                        <input type="radio" name="rateMode" id="rateManual" value="manual" style="width:18px;height:18px;accent-color:#3b82f6">
+                        <span>Manual</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="form-group" id="manualRateGroup">
+                <label class="form-label">Tasa manual (Bs por $)</label>
                 <input type="number" class="form-input" id="exchangeInput" 
                        placeholder="Tasa de cambio (Bs por $)" step="0.01" min="1" value="36.50">
             </div>
+
+            <div class="form-group" id="autoRateGroup" style="display:none">
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+                    <span id="autoRateValue" style="font-size:1.1rem;font-weight:600;color:#1e293b">-- Bs/$</span>
+                    <span id="autoRateStatus" class="badge" style="font-size:0.7rem;padding:2px 8px;border-radius:999px;background:#e0e7ff;color:#3730a3">Cargando...</span>
+                    <button type="button" class="btn-icon" onclick="fetchBcvRate()" title="Actualizar ahora" style="margin-left:auto;padding:6px;background:#eff6ff;border:1px solid #3b82f6;border-radius:8px;color:#3b82f6">
+                        <i class="fas fa-sync-alt" style="font-size:0.9rem"></i>
+                    </button>
+                </div>
+                <div class="small" style="color:#64748b" id="autoRateMeta">
+                    Fuente: BCV (Banco Central de Venezuela) • Última actualización: --
+                </div>
+            </div>
+
             <div class="modal-actions">
                 <button class="modal-btn modal-cancel" onclick="closeExchangeModal()">Cancelar (Esc)</button>
                 <button class="modal-btn modal-confirm" onclick="saveExchangeRate()">Guardar</button>
@@ -1826,7 +1856,8 @@
     <script>
         // ===== VARIABLES GLOBALES =====
         let currentCurrency = 'VES';
-        let exchangeRate = 36.50;
+        let exchangeRate = parseFloat(localStorage.getItem('pos_exchange_rate')) || 36.50;
+        let rateMode = localStorage.getItem('pos_rate_mode') || 'manual';
         let cart = [];
         let currentProductToAdd = null;
         let selectedPaymentMethod = null;
@@ -2984,9 +3015,120 @@ function filterAndDisplayProducts(searchTerm = '') {
         }
 
         // ===== MODAL TASA DE CAMBIO =====
+        async function fetchBcvRate() {
+            const statusEl = document.getElementById('autoRateStatus');
+            const valueEl = document.getElementById('autoRateValue');
+            const metaEl = document.getElementById('autoRateMeta');
+            const btn = statusEl?.parentElement?.querySelector('button');
+            
+            if (btn) btn.disabled = true;
+            if (statusEl) { statusEl.textContent = 'Actualizando...'; statusEl.style.background = '#fef3c7'; statusEl.style.color = '#92400e'; }
+
+            try {
+                // Intentar múltiples fuentes BCV
+                let rate = null;
+                let source = '';
+                
+                // Fuente 1: dolarapi.com (proxy BCV oficial)
+                try {
+                    const res = await fetch('https://ve.dolarapi.com/v1/dolares/oficial', { cache: 'no-store' });
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data.promedio) { rate = parseFloat(data.promedio); source = 'dolarapi.com (BCV)'; }
+                    }
+                } catch (e) { console.warn('dolarapi falló:', e); }
+                
+// Fuente 2: exchangerate.host (fallback)
+                if (!rate) {
+                    try {
+                        const res = await fetch('https://api.exchangerate.host/latest?base=USD&symbols=VES', { cache: 'no-store' });
+                        if (res.ok) {
+                            const data = await res.json();
+                            if (data.rates?.VES) { rate = parseFloat(data.rates.VES); source = 'exchangerate.host'; }
+                        }
+                    } catch (e) { console.warn('exchangerate.host fall�:', e); }
+                }
+                
+                // Fuente 3: BCV RSS (fallback final - puede tener CORS)
+                if (!rate) {
+                    try {
+                        const res = await fetch('https://www.bcv.org.ve/rss/tasas.xml', { cache: 'no-store' });
+                        if (res.ok) {
+                            const text = await res.text();
+                            const parser = new DOMParser();
+                            const xml = parser.parseFromString(text, 'text/xml');
+                            const items = xml.querySelectorAll('item');
+                            items.forEach(item => {
+                                const title = item.querySelector('title')?.textContent || '';
+                                if (title.includes('Dólar') || title.includes('USD')) {
+                                    const match = title.match(/([\d.,]+)/);
+                                    if (match) { rate = parseFloat(match[1].replace(',', '.')); source = 'BCV RSS'; }
+                                }
+                            });
+                        }
+                    } catch (e) { console.warn('BCV RSS falló:', e); }
+                }
+
+                if (rate && rate > 0) {
+                    exchangeRate = rate;
+                    localStorage.setItem('pos_exchange_rate', exchangeRate);
+                    if (valueEl) valueEl.textContent = `${rate.toFixed(2)} Bs/$`;
+                    if (statusEl) { statusEl.textContent = 'Actualizado'; statusEl.style.background = '#dcfce7'; statusEl.style.color = '#166534'; }
+                    if (metaEl) metaEl.textContent = `Fuente: ${source} • Última actualización: ${new Date().toLocaleString('es-VE')}`;
+                    updateExchangeRateDisplay();
+                    renderProductList();
+                    updateCartUI();
+                    showToast(`Tasa BCV actualizada: ${rate.toFixed(2)} Bs/$`);
+                } else {
+                    throw new Error('No se pudo obtener tasa de ninguna fuente');
+                }
+            } catch (e) {
+                console.error('Error fetch BCV:', e);
+                if (statusEl) { statusEl.textContent = 'Error'; statusEl.style.background = '#fee2e2'; statusEl.style.color = '#991b1b'; }
+                if (metaEl) metaEl.textContent = `Error: ${e.message}. Usando tasa guardada.`;
+                showToast('No se pudo obtener tasa BCV automáticamente');
+            } finally {
+                if (btn) btn.disabled = false;
+            }
+        }
+
         function openExchangeModal() {
+            // Cargar modo guardado
+            const savedMode = localStorage.getItem('pos_rate_mode') || 'manual';
+            rateMode = savedMode;
+            document.getElementById('rateAuto').checked = (rateMode === 'auto');
+            document.getElementById('rateManual').checked = (rateMode === 'manual');
+            toggleRateModeUI(rateMode);
+            
+            // Si es manual, poner valor actual en input
             document.getElementById('exchangeInput').value = exchangeRate;
+            
+            // Si es auto, intentar cargar tasa actual si no hay
+            if (rateMode === 'auto') {
+                const savedRate = localStorage.getItem('pos_exchange_rate');
+                if (savedRate) {
+                    document.getElementById('autoRateValue').textContent = `${parseFloat(savedRate).toFixed(2)} Bs/$`;
+                    document.getElementById('autoRateStatus').textContent = 'Guardada';
+                    document.getElementById('autoRateStatus').style.background = '#dcfce7';
+                    document.getElementById('autoRateStatus').style.color = '#166534';
+                } else {
+                    fetchBcvRate(); // Primera carga
+                }
+            }
+            
             document.getElementById('exchangeModal').classList.add('active');
+        }
+
+        function toggleRateModeUI(mode) {
+            const manualGroup = document.getElementById('manualRateGroup');
+            const autoGroup = document.getElementById('autoRateGroup');
+            if (mode === 'auto') {
+                manualGroup.style.display = 'none';
+                autoGroup.style.display = 'block';
+            } else {
+                manualGroup.style.display = 'block';
+                autoGroup.style.display = 'none';
+            }
         }
 
         function closeExchangeModal() {
@@ -2994,23 +3136,31 @@ function filterAndDisplayProducts(searchTerm = '') {
         }
 
         function saveExchangeRate() {
-            const newRate = parseFloat(document.getElementById('exchangeInput').value);
-            if (isNaN(newRate) || newRate <= 0) {
-                showToast('Tasa de cambio inválida');
-                return;
-            }
+            const newMode = document.getElementById('rateAuto').checked ? 'auto' : 'manual';
+            rateMode = newMode;
+            localStorage.setItem('pos_rate_mode', rateMode);
             
-            exchangeRate = newRate;
-            localStorage.setItem('pos_exchange_rate', exchangeRate);
+            if (rateMode === 'manual') {
+                const newRate = parseFloat(document.getElementById('exchangeInput').value);
+                if (isNaN(newRate) || newRate <= 0) {
+                    showToast('Tasa de cambio inválida');
+                    return;
+                }
+                exchangeRate = newRate;
+                localStorage.setItem('pos_exchange_rate', exchangeRate);
+            }
+            // En modo auto, la tasa ya se guarda al hacer fetch
+            
             updateExchangeRateDisplay();
             closeExchangeModal();
-            renderProductList(); // Recargar productos para actualizar precios
-            updateCartUI(); // Recalcular carrito
-            showToast('Tasa de cambio actualizada');
+            renderProductList();
+            updateCartUI();
+            showToast(`Tasa de cambio ${rateMode === 'auto' ? 'automática (BCV)' : 'manual'} guardada`);
         }
 
         function updateExchangeRateDisplay() {
-            document.getElementById('currentRate').textContent = `${exchangeRate.toFixed(2)} Bs/$`;
+            const prefix = rateMode === 'auto' ? '⚡ ' : '';
+            document.getElementById('currentRate').textContent = `${prefix}${exchangeRate.toFixed(2)} Bs/$`;
         }
 
         // ===== MODAL PROCESAMIENTO =====
