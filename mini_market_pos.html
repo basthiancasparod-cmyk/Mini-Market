@@ -1651,11 +1651,11 @@
                 <label class="form-label">Modo de tasa</label>
                 <div class="toggle-switch-row" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
                     <label class="radio-option" style="display:flex;align-items:center;gap:6px;cursor:pointer">
-                        <input type="radio" name="rateMode" id="rateAuto" value="auto" style="width:18px;height:18px;accent-color:#3b82f6">
-                        <span>Automática (BCV)</span>
+                        <input type="radio" name="rateMode" id="rateAuto" value="auto" onchange="toggleRateModeUI('auto'); renderRateOptions(); refreshAutomaticRates()" style="width:18px;height:18px;accent-color:#3b82f6">
+                        <span>Automática (referencias)</span>
                     </label>
                     <label class="radio-option" style="display:flex;align-items:center;gap:6px;cursor:pointer">
-                        <input type="radio" name="rateMode" id="rateManual" value="manual" style="width:18px;height:18px;accent-color:#3b82f6">
+                        <input type="radio" name="rateMode" id="rateManual" value="manual" onchange="toggleRateModeUI('manual')" style="width:18px;height:18px;accent-color:#3b82f6">
                         <span>Manual</span>
                     </label>
                 </div>
@@ -1668,16 +1668,12 @@
             </div>
 
             <div class="form-group" id="autoRateGroup" style="display:none">
-                <label class="form-label" for="rateSource">Referencia automática</label>
-                <select class="form-input" id="rateSource" onchange="fetchSelectedRate()" style="margin-bottom:10px">
-                    <option value="bcv">BCV (oficial)</option>
-                    <option value="binance">Binance / USDT (P2P)</option>
-                    <option value="promedio">Promedio (BCV + Binance / USDT)</option>
-                </select>
+                <label class="form-label">Referencias disponibles</label>
+                <div id="rateOptions" style="display:grid;gap:8px;margin-bottom:10px"></div>
                 <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">
                     <span id="autoRateValue" style="font-size:1.1rem;font-weight:600;color:#1e293b">-- Bs/$</span>
                     <span id="autoRateStatus" class="badge" style="font-size:0.7rem;padding:2px 8px;border-radius:999px;background:#e0e7ff;color:#3730a3">Cargando...</span>
-                    <button type="button" class="btn-icon" onclick="fetchSelectedRate()" title="Actualizar ahora" style="margin-left:auto;padding:6px;background:#eff6ff;border:1px solid #3b82f6;border-radius:8px;color:#3b82f6">
+                    <button type="button" class="btn-icon" onclick="refreshAutomaticRates({ applyActive: true, notify: true })" title="Actualizar ahora" style="margin-left:auto;padding:6px;background:#eff6ff;border:1px solid #3b82f6;border-radius:8px;color:#3b82f6">
                         <i class="fas fa-sync-alt" style="font-size:0.9rem"></i>
                     </button>
                 </div>
@@ -1870,6 +1866,9 @@
             binance: 'Binance / USDT (P2P)',
             promedio: 'Promedio (BCV + Binance / USDT)'
         };
+        let selectedRateSource = rateSource;
+        let automaticRates = {};
+        let automaticRateRefreshTimer = null;
         let cart = [];
         let currentProductToAdd = null;
         let selectedPaymentMethod = null;
@@ -1942,6 +1941,7 @@
         // ===== INICIALIZACIÓN =====
         document.addEventListener('DOMContentLoaded', function() {
             loadSavedSettings();
+            setupAutomaticRateRefresh();
             loadCategories(); // <-- AÑADIR ESTA LÍNEA
             renderCategoryFilters(); // <-- AÑADIR ESTA LÍNEA
             document.getElementById('saleId').textContent = saleId;
@@ -2297,7 +2297,7 @@ function handleClientSearch(documentValue) {
             }
 
             if (rateMode === 'auto') {
-                fetchSelectedRate();
+                refreshAutomaticRates({ applyActive: true });
             }
         }
 
@@ -3143,6 +3143,98 @@ function filterAndDisplayProducts(searchTerm = '') {
             return { rate, source: 'exchangerate.host (respaldo BCV)', updatedAt: new Date().toISOString() };
         }
 
+        function renderRateOptions() {
+            const container = document.getElementById('rateOptions');
+            if (!container) return;
+
+            container.innerHTML = ['bcv', 'binance', 'promedio'].map(key => {
+                const reference = automaticRates[key];
+                const value = reference ? `${reference.rate.toFixed(2)} Bs/$` : 'Sin consultar';
+                const detail = reference?.source || 'Actualiza para consultar esta referencia';
+                const selected = key === selectedRateSource;
+                return `
+                    <label style="display:flex;align-items:center;gap:10px;padding:10px;border:1px solid ${selected ? '#3b82f6' : '#cbd5e1'};border-radius:9px;background:${selected ? '#eff6ff' : '#fff'};cursor:pointer">
+                        <input type="radio" name="automaticRateSource" value="${key}" ${selected ? 'checked' : ''} onchange="selectRateSource('${key}')" style="accent-color:#3b82f6">
+                        <span style="flex:1"><strong>${rateSourceLabels[key]}</strong><br><small style="color:#64748b">${detail}</small></span>
+                        <strong style="white-space:nowrap">${value}</strong>
+                    </label>`;
+            }).join('');
+
+            const preview = automaticRates[selectedRateSource];
+            const valueEl = document.getElementById('autoRateValue');
+            if (valueEl) valueEl.textContent = preview ? `Previsualización: ${preview.rate.toFixed(2)} Bs/$` : 'Previsualización: -- Bs/$';
+        }
+
+        function selectRateSource(source) {
+            selectedRateSource = source;
+            renderRateOptions();
+            const metaEl = document.getElementById('autoRateMeta');
+            if (metaEl) metaEl.textContent = `Selección pendiente: ${rateSourceLabels[source]}. Pulsa Guardar para aplicarla.`;
+        }
+
+        function applyActiveAutomaticRate(notify = false) {
+            const reference = automaticRates[rateSource];
+            if (!reference) return;
+
+            const previousRate = exchangeRate;
+            exchangeRate = reference.rate;
+            localStorage.setItem('pos_exchange_rate', exchangeRate);
+            localStorage.setItem(`pos_exchange_rate_${rateSource}`, exchangeRate);
+            updateExchangeRateDisplay();
+            renderProductList();
+            updateCartUI();
+
+            if (notify && Math.abs(previousRate - exchangeRate) >= 0.01) {
+                showToast(`${rateSourceLabels[rateSource]} actualizada: ${exchangeRate.toFixed(2)} Bs/$`);
+            }
+        }
+
+        async function refreshAutomaticRates({ applyActive = false, notify = false } = {}) {
+            const statusEl = document.getElementById('autoRateStatus');
+            const metaEl = document.getElementById('autoRateMeta');
+            const btn = statusEl?.parentElement?.querySelector('button');
+            if (btn) btn.disabled = true;
+            if (statusEl) { statusEl.textContent = 'Actualizando...'; statusEl.style.background = '#fef3c7'; statusEl.style.color = '#92400e'; }
+
+            const [bcvResult, binanceResult] = await Promise.allSettled([fetchBcvReference(), fetchBinanceReference()]);
+            if (bcvResult.status === 'fulfilled') automaticRates.bcv = bcvResult.value;
+            if (binanceResult.status === 'fulfilled') automaticRates.binance = binanceResult.value;
+            if (automaticRates.bcv && automaticRates.binance) {
+                automaticRates.promedio = {
+                    rate: (automaticRates.bcv.rate + automaticRates.binance.rate) / 2,
+                    source: 'Promedio de BCV y Binance / USDT',
+                    updatedAt: new Date().toISOString()
+                };
+            }
+
+            const successfulRequests = [bcvResult, binanceResult].filter(result => result.status === 'fulfilled').length;
+            renderRateOptions();
+            if (successfulRequests) {
+                if (statusEl) { statusEl.textContent = 'Actualizado'; statusEl.style.background = '#dcfce7'; statusEl.style.color = '#166534'; }
+                if (metaEl) metaEl.textContent = `Última consulta: ${new Date().toLocaleString('es-VE')} • Se actualiza cada 5 min. mientras el POS esté visible.`;
+                if (applyActive && rateMode === 'auto') applyActiveAutomaticRate(notify);
+            } else {
+                if (statusEl) { statusEl.textContent = 'Error'; statusEl.style.background = '#fee2e2'; statusEl.style.color = '#991b1b'; }
+                if (metaEl) metaEl.textContent = 'No se pudieron actualizar las referencias. Se conserva la última tasa aplicada.';
+                if (notify) showToast('No se pudieron actualizar las tasas automáticas');
+            }
+            if (btn) btn.disabled = false;
+        }
+
+        function setupAutomaticRateRefresh() {
+            if (automaticRateRefreshTimer) clearInterval(automaticRateRefreshTimer);
+            automaticRateRefreshTimer = setInterval(() => {
+                if (document.visibilityState === 'visible' && rateMode === 'auto') {
+                    refreshAutomaticRates({ applyActive: true, notify: true });
+                }
+            }, 5 * 60 * 1000);
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'visible' && rateMode === 'auto') {
+                    refreshAutomaticRates({ applyActive: true, notify: true });
+                }
+            });
+        }
+
         function applyAutomaticRate(rate, source, updatedAt) {
             const statusEl = document.getElementById('autoRateStatus');
             const valueEl = document.getElementById('autoRateValue');
@@ -3205,26 +3297,18 @@ function filterAndDisplayProducts(searchTerm = '') {
             const savedMode = localStorage.getItem('pos_rate_mode') || 'manual';
             rateMode = savedMode;
             rateSource = localStorage.getItem('pos_rate_source') || 'bcv';
+            selectedRateSource = rateSource;
             document.getElementById('rateAuto').checked = (rateMode === 'auto');
             document.getElementById('rateManual').checked = (rateMode === 'manual');
-            document.getElementById('rateSource').value = rateSource;
             toggleRateModeUI(rateMode);
             
             // Si es manual, poner valor actual en input
             document.getElementById('exchangeInput').value = exchangeRate;
             
-            // En automático, consultar la referencia seleccionada al abrir.
+            // Mostrar todas las referencias y actualizarlas al abrir.
             if (rateMode === 'auto') {
-                const savedRate = localStorage.getItem(`pos_exchange_rate_${rateSource}`) || localStorage.getItem('pos_exchange_rate');
-                if (savedRate) {
-                    exchangeRate = parseFloat(savedRate);
-                    document.getElementById('autoRateValue').textContent = `${parseFloat(savedRate).toFixed(2)} Bs/$`;
-                    document.getElementById('autoRateStatus').textContent = 'Guardada';
-                    document.getElementById('autoRateStatus').style.background = '#dcfce7';
-                    document.getElementById('autoRateStatus').style.color = '#166534';
-                    updateExchangeRateDisplay();
-                }
-                fetchSelectedRate();
+                renderRateOptions();
+                refreshAutomaticRates({ applyActive: true });
             }
             
             document.getElementById('exchangeModal').classList.add('active');
@@ -3259,8 +3343,16 @@ function filterAndDisplayProducts(searchTerm = '') {
                 }
                 exchangeRate = newRate;
                 localStorage.setItem('pos_exchange_rate', exchangeRate);
+            } else {
+                const selectedReference = automaticRates[selectedRateSource];
+                if (!selectedReference) {
+                    showToast('Espera a que se cargue una tasa válida antes de guardar');
+                    return;
+                }
+                rateSource = selectedRateSource;
+                localStorage.setItem('pos_rate_source', rateSource);
+                applyActiveAutomaticRate();
             }
-            // En modo auto, la tasa ya se guarda al hacer fetch
             
             updateExchangeRateDisplay();
             closeExchangeModal();
