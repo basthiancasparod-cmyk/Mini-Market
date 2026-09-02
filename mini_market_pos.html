@@ -1668,15 +1668,21 @@
             </div>
 
             <div class="form-group" id="autoRateGroup" style="display:none">
+                <label class="form-label" for="rateSource">Referencia automática</label>
+                <select class="form-input" id="rateSource" onchange="fetchSelectedRate()" style="margin-bottom:10px">
+                    <option value="bcv">BCV (oficial)</option>
+                    <option value="binance">Binance / USDT (P2P)</option>
+                    <option value="promedio">Promedio (BCV + Binance / USDT)</option>
+                </select>
                 <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">
                     <span id="autoRateValue" style="font-size:1.1rem;font-weight:600;color:#1e293b">-- Bs/$</span>
                     <span id="autoRateStatus" class="badge" style="font-size:0.7rem;padding:2px 8px;border-radius:999px;background:#e0e7ff;color:#3730a3">Cargando...</span>
-                    <button type="button" class="btn-icon" onclick="fetchBcvRate()" title="Actualizar ahora" style="margin-left:auto;padding:6px;background:#eff6ff;border:1px solid #3b82f6;border-radius:8px;color:#3b82f6">
+                    <button type="button" class="btn-icon" onclick="fetchSelectedRate()" title="Actualizar ahora" style="margin-left:auto;padding:6px;background:#eff6ff;border:1px solid #3b82f6;border-radius:8px;color:#3b82f6">
                         <i class="fas fa-sync-alt" style="font-size:0.9rem"></i>
                     </button>
                 </div>
                 <div class="small" style="color:#64748b" id="autoRateMeta">
-                    Fuente: BCV (Banco Central de Venezuela) • Última actualización: --
+                    Fuente: -- • Última actualización: --
                 </div>
             </div>
 
@@ -1858,6 +1864,12 @@
         let currentCurrency = 'VES';
         let exchangeRate = parseFloat(localStorage.getItem('pos_exchange_rate')) || 36.50;
         let rateMode = localStorage.getItem('pos_rate_mode') || 'manual';
+        let rateSource = localStorage.getItem('pos_rate_source') || 'bcv';
+        const rateSourceLabels = {
+            bcv: 'BCV (oficial)',
+            binance: 'Binance / USDT (P2P)',
+            promedio: 'Promedio (BCV + Binance / USDT)'
+        };
         let cart = [];
         let currentProductToAdd = null;
         let selectedPaymentMethod = null;
@@ -2278,10 +2290,14 @@ function handleClientSearch(documentValue) {
 
         // ===== FUNCIONES PRINCIPALES =====
         function loadSavedSettings() {
-            const savedRate = localStorage.getItem('pos_exchange_rate');
+            const savedRate = localStorage.getItem(`pos_exchange_rate_${rateSource}`) || localStorage.getItem('pos_exchange_rate');
             if (savedRate) {
                 exchangeRate = parseFloat(savedRate);
                 updateExchangeRateDisplay();
+            }
+
+            if (rateMode === 'auto') {
+                fetchSelectedRate();
             }
         }
 
@@ -3072,13 +3088,14 @@ function filterAndDisplayProducts(searchTerm = '') {
                 if (rate && rate > 0) {
                     exchangeRate = rate;
                     localStorage.setItem('pos_exchange_rate', exchangeRate);
+                    localStorage.setItem(`pos_exchange_rate_${rateSource}`, exchangeRate);
                     if (valueEl) valueEl.textContent = `${rate.toFixed(2)} Bs/$`;
                     if (statusEl) { statusEl.textContent = 'Actualizado'; statusEl.style.background = '#dcfce7'; statusEl.style.color = '#166534'; }
                     if (metaEl) metaEl.textContent = `Fuente: ${source} • Última actualización: ${new Date().toLocaleString('es-VE')}`;
                     updateExchangeRateDisplay();
                     renderProductList();
                     updateCartUI();
-                    showToast(`Tasa BCV actualizada: ${rate.toFixed(2)} Bs/$`);
+                    showToast(`Tasa ${rateSourceLabels[rateSource] || 'BCV'} actualizada: ${rate.toFixed(2)} Bs/$`);
                 } else {
                     throw new Error('No se pudo obtener tasa de ninguna fuente');
                 }
@@ -3092,28 +3109,122 @@ function filterAndDisplayProducts(searchTerm = '') {
             }
         }
 
+        async function fetchBinanceReference() {
+            const res = await fetch('https://www.usdt.com.ve/api/v1/rates/current', { cache: 'no-store' });
+            if (!res.ok) throw new Error('No se pudo consultar Binance / USDT');
+
+            const payload = await res.json();
+            const rate = parseFloat(payload?.data?.binance?.buy_rate);
+            if (!rate || rate <= 0) throw new Error('La respuesta de Binance / USDT no contiene una tasa válida');
+
+            return {
+                rate,
+                source: 'Binance P2P vía usdt.com.ve',
+                updatedAt: payload?.data?.captured_at
+            };
+        }
+
+        async function fetchBcvReference() {
+            try {
+                const res = await fetch('https://ve.dolarapi.com/v1/dolares/oficial', { cache: 'no-store' });
+                if (res.ok) {
+                    const data = await res.json();
+                    const rate = parseFloat(data?.promedio);
+                    if (rate > 0) return { rate, source: 'dolarapi.com (BCV)', updatedAt: data?.fechaActualizacion };
+                }
+            } catch (e) {
+                console.warn('dolarapi falló al calcular el promedio:', e);
+            }
+
+            const res = await fetch('https://api.exchangerate.host/latest?base=USD&symbols=VES', { cache: 'no-store' });
+            const data = await res.json();
+            const rate = parseFloat(data?.rates?.VES);
+            if (!rate || rate <= 0) throw new Error('No se pudo consultar la tasa BCV');
+            return { rate, source: 'exchangerate.host (respaldo BCV)', updatedAt: new Date().toISOString() };
+        }
+
+        function applyAutomaticRate(rate, source, updatedAt) {
+            const statusEl = document.getElementById('autoRateStatus');
+            const valueEl = document.getElementById('autoRateValue');
+            const metaEl = document.getElementById('autoRateMeta');
+
+            exchangeRate = rate;
+            localStorage.setItem('pos_exchange_rate', exchangeRate);
+            localStorage.setItem(`pos_exchange_rate_${rateSource}`, exchangeRate);
+            if (valueEl) valueEl.textContent = `${rate.toFixed(2)} Bs/$`;
+            if (statusEl) { statusEl.textContent = 'Actualizado'; statusEl.style.background = '#dcfce7'; statusEl.style.color = '#166534'; }
+            if (metaEl) {
+                const date = updatedAt ? new Date(updatedAt) : new Date();
+                metaEl.textContent = `Fuente: ${source} • Última actualización: ${date.toLocaleString('es-VE')}`;
+            }
+            updateExchangeRateDisplay();
+            renderProductList();
+            updateCartUI();
+            showToast(`Tasa ${rateSourceLabels[rateSource]} actualizada: ${rate.toFixed(2)} Bs/$`);
+        }
+
+        async function fetchSelectedRate() {
+            const sourceSelect = document.getElementById('rateSource');
+            rateSource = sourceSelect?.value || rateSource;
+            localStorage.setItem('pos_rate_source', rateSource);
+
+            if (rateSource === 'bcv') {
+                return fetchBcvRate();
+            }
+
+            const statusEl = document.getElementById('autoRateStatus');
+            const btn = statusEl?.parentElement?.querySelector('button');
+            if (btn) btn.disabled = true;
+            if (statusEl) { statusEl.textContent = 'Actualizando...'; statusEl.style.background = '#fef3c7'; statusEl.style.color = '#92400e'; }
+
+            try {
+                if (rateSource === 'binance') {
+                    const binance = await fetchBinanceReference();
+                    applyAutomaticRate(binance.rate, binance.source, binance.updatedAt);
+                } else {
+                    const [bcv, binance] = await Promise.all([fetchBcvReference(), fetchBinanceReference()]);
+                    applyAutomaticRate(
+                        (bcv.rate + binance.rate) / 2,
+                        'Promedio de BCV y Binance / USDT',
+                        new Date().toISOString()
+                    );
+                }
+            } catch (e) {
+                console.error(`Error al consultar ${rateSource}:`, e);
+                if (statusEl) { statusEl.textContent = 'Error'; statusEl.style.background = '#fee2e2'; statusEl.style.color = '#991b1b'; }
+                const metaEl = document.getElementById('autoRateMeta');
+                if (metaEl) metaEl.textContent = `Error: ${e.message}. Usando tasa guardada.`;
+                showToast(`No se pudo obtener la tasa ${rateSourceLabels[rateSource]}`);
+            } finally {
+                if (btn) btn.disabled = false;
+            }
+        }
+
         function openExchangeModal() {
             // Cargar modo guardado
             const savedMode = localStorage.getItem('pos_rate_mode') || 'manual';
             rateMode = savedMode;
+            rateSource = localStorage.getItem('pos_rate_source') || 'bcv';
             document.getElementById('rateAuto').checked = (rateMode === 'auto');
             document.getElementById('rateManual').checked = (rateMode === 'manual');
+            document.getElementById('rateSource').value = rateSource;
             toggleRateModeUI(rateMode);
             
             // Si es manual, poner valor actual en input
             document.getElementById('exchangeInput').value = exchangeRate;
             
-            // Si es auto, intentar cargar tasa actual si no hay
+            // En automático, consultar la referencia seleccionada al abrir.
             if (rateMode === 'auto') {
-                const savedRate = localStorage.getItem('pos_exchange_rate');
+                const savedRate = localStorage.getItem(`pos_exchange_rate_${rateSource}`) || localStorage.getItem('pos_exchange_rate');
                 if (savedRate) {
+                    exchangeRate = parseFloat(savedRate);
                     document.getElementById('autoRateValue').textContent = `${parseFloat(savedRate).toFixed(2)} Bs/$`;
                     document.getElementById('autoRateStatus').textContent = 'Guardada';
                     document.getElementById('autoRateStatus').style.background = '#dcfce7';
                     document.getElementById('autoRateStatus').style.color = '#166534';
-                } else {
-                    fetchBcvRate(); // Primera carga
+                    updateExchangeRateDisplay();
                 }
+                fetchSelectedRate();
             }
             
             document.getElementById('exchangeModal').classList.add('active');
@@ -3155,11 +3266,11 @@ function filterAndDisplayProducts(searchTerm = '') {
             closeExchangeModal();
             renderProductList();
             updateCartUI();
-            showToast(`Tasa de cambio ${rateMode === 'auto' ? 'automática (BCV)' : 'manual'} guardada`);
+            showToast(`Tasa de cambio ${rateMode === 'auto' ? `automática: ${rateSourceLabels[rateSource]}` : 'manual'} guardada`);
         }
 
         function updateExchangeRateDisplay() {
-            const prefix = rateMode === 'auto' ? '⚡ ' : '';
+            const prefix = rateMode === 'auto' ? `⚡ ${rateSourceLabels[rateSource] || 'Automática'}: ` : '';
             document.getElementById('currentRate').textContent = `${prefix}${exchangeRate.toFixed(2)} Bs/$`;
         }
 
