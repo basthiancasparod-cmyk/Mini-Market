@@ -6,6 +6,7 @@
     <title>Gestión de Proveedores - Ciervo Administrativo</title>
     <link rel="icon" type="image/x-icon" href="icono.ico">
     <script src="cloud-access.js"></script>
+    <script src="sincronizacion.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.1/dist/umd/lucide.js"></script>
     <style>
@@ -1528,7 +1529,7 @@
         }
 
         async function setupConnectionMonitor(database) {
-            if (!await checkCloudAccess()) return;
+            if (!await checkCloudAccess()) return false;
             database.ref('.info/connected').on('value', (snap) => {
                 _firebaseConnected = snap.val();
                 setFirebaseDot(_firebaseConnected ? '#22c55e' : '#ef4444', _firebaseConnected ? 'Firebase conectado' : 'Firebase desconectado');
@@ -1576,11 +1577,13 @@
                 const email = getCurrentUserEmail();
                 if (!email) { _cloudAccessChecked = true; _cloudAccess = false; return false; }
                 const snap = await db.ref('BBDD/' + getEmailPath(email) + '/suscripcion/cloudSync').once('value');
-                _cloudAccess = snap.val() === true;
+                const valor = snap.val();
+            if (valor === null) return false;   // nodo ausente o sin conexión: se reintenta sin cachear
+            _cloudAccess = valor === true;
+            _cloudAccessChecked = true;   // respuesta real del servidor: se puede cachear
             } catch (e) {
-                _cloudAccess = false;
+            _cloudAccess = false;         // fallo de red: no se cachea, se reintenta
             }
-            _cloudAccessChecked = true;
             return _cloudAccess;
         }
 
@@ -1616,6 +1619,11 @@
                     return _suppliersCache;
                 }
                 const db = await initFirebase();
+                // Fase A (C1): con cambios locales sin confirmar, la nube NO pisa lo local.
+                if (typeof puedeSobrescribirLocalSync === 'function' && !puedeSobrescribirLocalSync()) {
+                    console.warn('Hay cambios pendientes de subir: no se descargan proveedores de la nube.');
+                    return;
+                }
                 const snap = await db.ref('BBDD/' + getEmailPath(propietarioActualEmail) + '/proveedores').once('value');
                 const data = snap.val();
                 _suppliersCache = data ? Object.keys(data).map(key => ({ ...data[key], id: key })) : [];
@@ -1631,13 +1639,17 @@
                 const localSupplier = { ...supplierData, id: 'local_' + Date.now() };
                 // El llamador incorpora el proveedor al caché, igual que en modo cloud.
                 // Aquí solo persistimos la versión que quedará tras esa incorporación.
+                                marcarPendienteSync('proveedores'); // Fase A: hay un cambio local sin confirmar
                 localStorage.setItem('ciervo_suppliers', JSON.stringify([..._suppliersCache, localSupplier]));
                 return localSupplier;
             }
             const db = await initFirebase();
             const ref = db.ref('BBDD/' + getEmailPath(propietarioActualEmail) + '/proveedores').push();
             const key = ref.key;
-            await ref.set(supplierData);
+                        marcarPendienteSync('proveedores');
+
+                        await ref.set(supplierData);
+            limpiarPendienteSync('proveedores'); // el servidor confirmó
             return { ...supplierData, id: key };
         }
 
@@ -1645,21 +1657,29 @@
             if (!await checkCloudAccess()) {
                 const index = _suppliersCache.findIndex(s => s.id === id);
                 if (index !== -1) _suppliersCache[index] = { ..._suppliersCache[index], ...data };
+                                marcarPendienteSync('proveedores'); // Fase A: hay un cambio local sin confirmar
                 localStorage.setItem('ciervo_suppliers', JSON.stringify(_suppliersCache));
                 return;
             }
             const db = await initFirebase();
-            await db.ref('BBDD/' + getEmailPath(propietarioActualEmail) + '/proveedores/' + id).update(data);
+                        marcarPendienteSync('proveedores');
+
+                        await db.ref('BBDD/' + getEmailPath(propietarioActualEmail) + '/proveedores/' + id).update(data);
+            limpiarPendienteSync('proveedores'); // el servidor confirmó
         }
 
         async function removeSupplierFromFirebase(id) {
             if (!await checkCloudAccess()) {
                 _suppliersCache = _suppliersCache.filter(s => s.id !== id);
+                                marcarPendienteSync('proveedores'); // Fase A: hay un cambio local sin confirmar
                 localStorage.setItem('ciervo_suppliers', JSON.stringify(_suppliersCache));
                 return;
             }
             const db = await initFirebase();
-            await db.ref('BBDD/' + getEmailPath(propietarioActualEmail) + '/proveedores/' + id).remove();
+                        marcarPendienteSync('proveedores');
+
+                        await db.ref('BBDD/' + getEmailPath(propietarioActualEmail) + '/proveedores/' + id).remove();
+            limpiarPendienteSync('proveedores'); // el servidor confirmó
         }
 
         // Initialize

@@ -7,6 +7,7 @@
     <title>POS - Mini Market</title>
     <link rel="icon" type="image/x-icon" href="icono.ico">
     <script src="cloud-access.js"></script>
+    <script src="sincronizacion.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         /* Estilos CSS existentes */
@@ -1978,17 +1979,12 @@
             return `V-LOCAL-${getPosDeviceId()}-${nextId.toString().padStart(4, '0')}`;
         }
 
+        // Fase A (auditoría C3): aquí se llamaba a fbReserveSaleNumber(), una función que
+        // NO existe en el proyecto. El ReferenceError caía en el catch y el app siempre
+        // numeraba en local, dejando además un aviso confuso en consola. Se elimina la
+        // llamada muerta: el id de venta es único por dispositivo y no colisiona entre
+        // cajas. El consecutivo fiscal en la nube corresponde a la Fase B.
         async function reserveSaleId() {
-            try {
-                const cloudNumber = await fbReserveSaleNumber();
-                if (Number.isInteger(cloudNumber) && cloudNumber > 0) {
-                    const localNumber = parseInt(localStorage.getItem('pos_last_sale_number') || '0');
-                    localStorage.setItem('pos_last_sale_number', Math.max(localNumber, cloudNumber).toString());
-                    return `V-${cloudNumber.toString().padStart(4, '0')}`;
-                }
-            } catch (e) {
-                console.warn('No se pudo reservar consecutivo en la nube:', e.message);
-            }
             return reserveLocalSaleId();
         }
 
@@ -2057,11 +2053,16 @@
         
         // 2. Lógica original de sincronización
         if (_fbPending) {
+            // Fase A (C1/C4): primero subimos lo pendiente; nunca descargamos encima de
+            // cambios locales sin confirmar.
             await uploadToFirebase();
+        } else if (typeof puedeSobrescribirLocalSync === 'function' && !puedeSobrescribirLocalSync()) {
+            // Algún módulo tiene cambios sin confirmar: no pisamos los datos locales.
+            setFirebaseDot('#f59e0b', 'Hay cambios pendientes de subir');
         } else {
             const existsInCloud = await syncFromFirebase();
             if (existsInCloud) {
-                if (_fbConnected) setFirebaseDot('#22c55e', 'Firebase conectado');
+                setFirebaseDot('#22c55e', 'Firebase conectado'); // la nube respondió: hay conexión
                 loadInventoryProducts();
                 loadCategories();
                 renderCategoryFilters();
@@ -4110,10 +4111,15 @@ function filterAndDisplayProducts(searchTerm = '') {
                 
                 updateInventory();
 
-                fbSaveVentas(ventas).catch(() => {
-                    _fbPending = true;
-                    localStorage.setItem('_pendingFirebaseChanges', 'true');
-                });
+                // Fase A (auditoría C1): la marca se pone ANTES de intentar subir y solo se
+                // limpia si el servidor confirmó. Antes se marcaba en el catch, pero sin
+                // internet la promesa de .set() no resuelve ni rechaza: el catch nunca se
+                // ejecutaba y una venta hecha sin conexión se perdía al cerrar el equipo.
+                marcarPendienteSync('pos');
+                _fbPending = true;
+                fbSaveVentas(ventas).then((subida) => {
+                    if (subida) { _fbPending = false; limpiarPendienteSync('pos'); }
+                }).catch(() => { _fbPending = true; });
                 if (customerData) {
                     fbUpsertClient({...customerData, lastSaleDate: new Date().toISOString()}).catch(() => {});
                 }
@@ -4187,10 +4193,12 @@ function filterAndDisplayProducts(searchTerm = '') {
             
             localStorage.setItem('ciervo_inventory', JSON.stringify(inventory));
             
-            fbSaveProductos(inventory).catch(() => {
-                _fbPending = true;
-                localStorage.setItem('_pendingFirebaseChanges', 'true');
-            });
+            // Fase A (C1): igual que en las ventas, marcar antes de intentar subir.
+            marcarPendienteSync('pos');
+            _fbPending = true;
+            fbSaveProductos(inventory).then((subida) => {
+                if (subida) { _fbPending = false; limpiarPendienteSync('pos'); }
+            }).catch(() => { _fbPending = true; });
             
             loadInventoryProducts();
             renderProductList();
@@ -4639,7 +4647,11 @@ async function printReceipt(saleData) {
 
         let _fbDb = null;
         let _fbInitPromise = null;
-        let _fbPending = localStorage.getItem('_pendingFirebaseChanges') === 'true';
+        // Fase A (auditoría C4): la marca de pendientes es por módulo y por negocio,
+        // y sigue respetando la marca antigua compartida.
+        let _fbPending = (typeof hayPendientesSync === 'function')
+            ? hayPendientesSync('pos')
+            : (localStorage.getItem('_pendingFirebaseChanges') === 'true');
         let _fbConnected = false;
         let _cloudAccessChecked = false;
         let _cloudAccess = false;
@@ -4652,11 +4664,13 @@ async function printReceipt(saleData) {
                 const email = getCurrentUserEmail();
                 if (!email) { _cloudAccessChecked = true; _cloudAccess = false; return false; }
                 const snap = await db.ref('BBDD/' + sanitizeEmailForDb(email) + '/suscripcion/cloudSync').once('value');
-                _cloudAccess = snap.val() === true;
+                const valor = snap.val();
+                if (valor === null) return false;   // nodo ausente o sin conexión: se reintenta sin cachear
+                _cloudAccess = valor === true;
+                _cloudAccessChecked = true;   // respuesta real del servidor: se puede cachear   // respuesta real del servidor: se puede cachear
             } catch (e) {
-                _cloudAccess = false;
+                _cloudAccess = false;         // fallo de red: no se cachea, se reintenta
             }
-            _cloudAccessChecked = true;
             return _cloudAccess;
         }
 
@@ -4765,25 +4779,24 @@ async function ensureUserCloudStructure() {
         }
 
         async function setupConnectionMonitor(db) {
-            if (!await checkCloudAccess()) return;
             db.ref('.info/connected').on('value', async (snap) => {
                 _fbConnected = snap.val();
                 if (_fbConnected) {
                     setFirebaseDot('#22c55e', 'Firebase conectado');
+                    // Fase A (C6): al recuperar la conexión el permiso se vuelve a preguntar.
+                    _cloudAccessChecked = false;
                     if (!await checkCloudAccess()) return;
-                    if (_fbPending) {
-                        _fbPending = false;
-                        localStorage.removeItem('_pendingFirebaseChanges');
+                    if (_fbPending || (typeof hayPendientesSync === 'function' && hayPendientesSync('pos'))) {
+                        // Fase A (C1): la marca se limpia SOLO si el servidor confirmó.
                         try {
-                            await fbSaveVentas(ventas);
+                            const subidaVentas = await fbSaveVentas(ventas);
                             await fbSaveNumero();
                             const pendingInv = localStorage.getItem('ciervo_inventory');
-                            if (pendingInv) {
-                                await fbSaveProductos(JSON.parse(pendingInv));
-                            }
+                            if (pendingInv) await fbSaveProductos(JSON.parse(pendingInv));
+                            if (subidaVentas) { _fbPending = false; limpiarPendienteSync('pos'); }
                         } catch (e) {
                             _fbPending = true;
-                            localStorage.setItem('_pendingFirebaseChanges', 'true');
+                            marcarPendienteSync('pos');
                         }
                     }
                 } else {
@@ -4810,9 +4823,10 @@ async function ensureUserCloudStructure() {
         let ventas = JSON.parse(localStorage.getItem('pos_sales') || '[]');
 
         async function fbSaveVentas(data) {
-            if (!await checkCloudAccess()) return;
+            if (!await checkCloudAccess()) return false;   // sin nube: no se subió
             const db = await initFirebase();
             await db.ref(getUserDataPath() + '/ventas/historial').set(data);
+            return true;                                    // el servidor confirmó
         }
 
         async function fbUpsertClient(clientData) {
@@ -4832,10 +4846,17 @@ async function ensureUserCloudStructure() {
         }
 
         async function fbSaveNumero() {
-            if (!await checkCloudAccess()) return;
+            if (!await checkCloudAccess()) return false;
             const db = await initFirebase();
             const num = parseInt(localStorage.getItem('pos_last_sale_number') || '0');
-            await db.ref(getUserDataPath() + '/ventas/ultimo_numero').set(num);
+            // Fase A (auditoría C3): el contador de la nube NUNCA debe retroceder. Antes se
+            // escribía el número local sin mirar el de la nube, así que un equipo atrasado
+            // (tras estar sin conexión) podía bajarlo y provocar tickets repetidos.
+            await db.ref(getUserDataPath() + '/ventas/ultimo_numero').transaction((actual) => {
+                const enNube = Number(actual) || 0;
+                return num > enNube ? num : enNube;
+            });
+            return true;
         }
 
         async function fbLoadVentas() {
@@ -4846,9 +4867,10 @@ async function ensureUserCloudStructure() {
         }
 
         async function fbSaveProductos(data) {
-            if (!await checkCloudAccess()) return;
+            if (!await checkCloudAccess()) return false;
             const db = await initFirebase();
             await db.ref(getUserDataPath() + '/productos').set(data);
+            return true;
         }
 
         async function fbLoadAll() {
@@ -4884,6 +4906,11 @@ async function ensureUserCloudStructure() {
         async function syncFromFirebase() {
             try {
                 if (!await checkCloudAccess()) return false;
+                // Fase A (C1): con cambios locales sin confirmar, la nube NO pisa lo local.
+                if (typeof puedeSobrescribirLocalSync === 'function' && !puedeSobrescribirLocalSync()) {
+                    console.warn('Hay cambios pendientes de subir: no se descargan datos de la nube.');
+                    return false;
+                }
                 const data = await fbLoadAll();
                 if (!data) return false;
                 let changed = false;
@@ -4947,10 +4974,19 @@ async function ensureUserCloudStructure() {
         async function uploadToFirebase() {
             try {
                 await initFirebase();
-                await fbSaveVentas(ventas);
+                // Fase A (C1): subir no es olvidar. La marca se limpia solo con confirmación
+                // del servidor, y si no hay nube no se limpia nada (los datos quedan seguros).
+                const subidaVentas = await fbSaveVentas(ventas);
                 await fbSaveNumero();
-                setFirebaseDot('#22c55e', 'Firebase conectado');
+                if (subidaVentas) {
+                    _fbPending = false;
+                    limpiarPendienteSync('pos');
+                    setFirebaseDot('#22c55e', 'Firebase conectado');
+                } else {
+                    setFirebaseDot('#f59e0b', 'Sin conexión con la nube: venta guardada aquí');
+                }
             } catch (e) {
+                marcarPendienteSync('pos');
                 setFirebaseDot('#ef4444', 'Firebase: ' + e.message);
             }
         }

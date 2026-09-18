@@ -6,6 +6,7 @@
     <title>Configuración de Recibo - Ciervo</title>
     <link rel="icon" type="image/x-icon" href="icono.ico">
     <script src="cloud-access.js"></script>
+    <script src="sincronizacion.js"></script>
     <style>
         /* --- ESTILOS BASE --- */
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -717,17 +718,24 @@
                 const email = getCurrentUserEmail();
                 if (!email) { _cloudAccessChecked = true; _cloudAccess = false; return false; }
                 const snap = await db.ref('BBDD/' + sanitizeEmailForDb(email) + '/suscripcion/cloudSync').once('value');
-                _cloudAccess = snap.val() === true;
+                const valor = snap.val();
+            if (valor === null) return false;   // nodo ausente o sin conexión: se reintenta sin cachear
+            _cloudAccess = valor === true;
+            _cloudAccessChecked = true;   // respuesta real del servidor: se puede cachear
             } catch (e) {
-                _cloudAccess = false;
+            _cloudAccess = false;         // fallo de red: no se cachea, se reintenta
             }
-            _cloudAccessChecked = true;
             return _cloudAccess;
         }
 
         async function loadCompanyFromFirebase() {
             try {
-                if (!await checkCloudAccess()) return null;
+                                if (!await checkCloudAccess()) return null;
+                // Fase A (C1): con cambios locales sin confirmar, la nube NO pisa lo local.
+                if (typeof puedeSobrescribirLocalSync === 'function' && !puedeSobrescribirLocalSync()) {
+                    console.warn('Hay cambios pendientes de subir: no se descargan datos de la nube.');
+                    return null;
+                }
                 const db = await initFirebase();
                 if (!db) return null;
                 const email = getCurrentUserEmail();

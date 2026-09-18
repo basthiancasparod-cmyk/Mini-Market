@@ -6,6 +6,7 @@
     <title>Listado de Clientes - Ciervo Administrativo</title>
     <link rel="icon" type="image/x-icon" href="icono.ico">
     <script src="cloud-access.js"></script>
+    <script src="sincronizacion.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.1/dist/umd/lucide.js"></script>
     <style>
@@ -998,11 +999,13 @@
                 const email = getCurrentUserEmail();
                 if (!email) { _cloudAccessChecked = true; _cloudAccess = false; return false; }
                 const snap = await db.ref('BBDD/' + sanitizeEmailForDb(email) + '/suscripcion/cloudSync').once('value');
-                _cloudAccess = snap.val() === true;
+                const valor = snap.val();
+            if (valor === null) return false;   // nodo ausente o sin conexión: se reintenta sin cachear
+            _cloudAccess = valor === true;
+            _cloudAccessChecked = true;   // respuesta real del servidor: se puede cachear
             } catch (e) {
-                _cloudAccess = false;
+            _cloudAccess = false;         // fallo de red: no se cachea, se reintenta
             }
-            _cloudAccessChecked = true;
             return _cloudAccess;
         }
 
@@ -1042,7 +1045,6 @@
         }
 
         async function setupConnectionMonitor(db) {
-            if (!await checkCloudAccess()) return;
             db.ref('.info/connected').on('value', (snap) => {
                 const connected = snap.val();
                 _firebaseConnected = connected;
@@ -1103,6 +1105,8 @@
                 const db = await initFirebase();
                 const path = getUserDataPath();
                 db.ref(path + '/clientes').on('value', (snap) => {
+                    // Fase A (C1): con cambios locales sin confirmar, la nube NO pisa lo local.
+                    if (typeof puedeSobrescribirLocalSync === 'function' && !puedeSobrescribirLocalSync()) return;
                     allClientsData = processClientsData(snap.val());
                     filterAndRenderClients();
                 }, (err) => {
@@ -1233,17 +1237,21 @@
 
             try {
                 if (!await checkCloudAccess()) {
+                                        marcarPendienteSync('clientes'); // Fase A: hay un cambio local sin confirmar
                     localStorage.setItem('ciervo_clients', JSON.stringify(allClientsData));
                     return;
                 }
                 const db = await initFirebase();
                 const path = getUserDataPath();
-                await db.ref(path + '/clientes/' + updatedClient._key).update({
+                                marcarPendienteSync('clientes');
+
+                                await db.ref(path + '/clientes/' + updatedClient._key).update({
                     name: updatedClient.name,
                     document: updatedClient.document,
                     phone: updatedClient.phone,
                     email: updatedClient.email
                 });
+                limpiarPendienteSync('clientes'); // el servidor confirmó
             } catch (e) {
                 console.error("Error guardando cliente:", e.message);
             }

@@ -6,6 +6,7 @@
     <title>Cuentas por Cobrar y Pagar - Ciervo Administrativo</title>
     <link rel="icon" type="image/x-icon" href="icono.ico">
     <script src="cloud-access.js"></script>
+    <script src="sincronizacion.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.1/dist/umd/lucide.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -1411,7 +1412,6 @@
         }
 
         async function setupConnectionMonitor(db) {
-            if (!await checkCloudAccess()) return;
             db.ref('.info/connected').on('value', async (snap) => {
                 _firebaseConnected = snap.val();
                 if (_firebaseConnected) {
@@ -1462,11 +1462,13 @@
                 const email = getCurrentUserEmail();
                 if (!email) { _cloudAccessChecked = true; _cloudAccess = false; return false; }
                 const snap = await db.ref('BBDD/' + sanitizeEmailForDb(email) + '/suscripcion/cloudSync').once('value');
-                _cloudAccess = snap.val() === true;
+                const valor = snap.val();
+            if (valor === null) return false;   // nodo ausente o sin conexión: se reintenta sin cachear
+            _cloudAccess = valor === true;
+            _cloudAccessChecked = true;   // respuesta real del servidor: se puede cachear
             } catch (e) {
-                _cloudAccess = false;
+            _cloudAccess = false;         // fallo de red: no se cachea, se reintenta
             }
-            _cloudAccessChecked = true;
             return _cloudAccess;
         }
 
@@ -1477,19 +1479,27 @@
                 if (!db) return false;
                 const path = getCuentasDbPath();
                 if (!path) return false;
-                await db.ref(path).set(data);
-                localStorage.removeItem('_pendingFirebaseChanges_cuentas');
+                                marcarPendienteSync('cuentas');
+
+                                await db.ref(path).set(data);
+                limpiarPendienteSync('cuentas'); // el servidor confirmó
+                limpiarPendienteSync('cuentas');
                 return true;
             } catch (e) {
                 console.error('Error syncing to Firebase:', e);
-                localStorage.setItem('_pendingFirebaseChanges_cuentas', 'true');
+                marcarPendienteSync('cuentas');
                 return false;
             }
         }
 
         async function loadFromFirebase() {
             try {
-                if (!await checkCloudAccess()) return null;
+                                if (!await checkCloudAccess()) return null;
+                // Fase A (C1): con cambios locales sin confirmar, la nube NO pisa lo local.
+                if (typeof puedeSobrescribirLocalSync === 'function' && !puedeSobrescribirLocalSync()) {
+                    console.warn('Hay cambios pendientes de subir: no se descargan datos de la nube.');
+                    return null;
+                }
                 const db = await initFirebase();
                 if (!db) return null;
                 const path = getCuentasDbPath();
@@ -1497,6 +1507,7 @@
                 const snap = await db.ref(path).once('value');
                 const val = snap.val();
                 if (val) {
+                                        marcarPendienteSync('cuentas'); // Fase A: hay un cambio local sin confirmar
                     localStorage.setItem('ciervo_accounts', JSON.stringify(val));
                     return val;
                 }
@@ -1584,6 +1595,7 @@
         }
 
         function saveAccountsCache() {
+                        marcarPendienteSync('cuentas'); // Fase A: hay un cambio local sin confirmar
             localStorage.setItem('ciervo_accounts', JSON.stringify(_accountsCache));
         }
 

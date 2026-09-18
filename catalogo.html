@@ -10,6 +10,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
     <script src="cloud-access.js"></script>
+    <script src="sincronizacion.js"></script>
     <style>
         /* ================================
            ESTILOS BASE (Heredados)
@@ -751,11 +752,13 @@
                 const email = getCurrentUserEmail();
                 if (!email) { _cloudAccessChecked = true; _cloudAccess = false; return false; }
                 const snap = await db.ref('BBDD/' + sanitizeEmailForDb(email) + '/suscripcion/cloudSync').once('value');
-                _cloudAccess = snap.val() === true;
+                const valor = snap.val();
+            if (valor === null) return false;   // nodo ausente o sin conexión: se reintenta sin cachear
+            _cloudAccess = valor === true;
+            _cloudAccessChecked = true;   // respuesta real del servidor: se puede cachear
             } catch (e) {
-                _cloudAccess = false;
+            _cloudAccess = false;         // fallo de red: no se cachea, se reintenta
             }
-            _cloudAccessChecked = true;
             return _cloudAccess;
         }
 
@@ -777,17 +780,20 @@
 
         async function firebaseSaveProducts(data) {
             try {
-                if (!await checkCloudAccess()) return;
+                if (!await checkCloudAccess()) return false;
                 const db = await initFirebase();
                 if (!db) return;
                 const path = getUserDataPath();
-                await db.ref(path + '/productos').set(data);
+                                marcarPendienteSync('catalogo');
+
+                                await db.ref(path + '/productos').set(data);
+                limpiarPendienteSync('catalogo'); // el servidor confirmó
                 _pendingFirebaseChanges = false;
-                localStorage.removeItem('_pendingFirebaseChanges');
+                limpiarPendienteSync('catalogo');
             } catch (e) {
                 if (!e.message || !e.message.includes('file:')) {
                     _pendingFirebaseChanges = true;
-                    localStorage.setItem('_pendingFirebaseChanges', 'true');
+                    marcarPendienteSync('catalogo');
                 }
             }
         }
@@ -817,7 +823,7 @@
             });
 
             // Retry pending Firebase changes on load
-            if (localStorage.getItem('_pendingFirebaseChanges') === 'true') {
+            if ((typeof hayPendientesSync === 'function' ? hayPendientesSync('catalogo') : localStorage.getItem('_pendingFirebaseChanges') === 'true')) {
                 setTimeout(() => {
                     firebaseSaveProducts(products);
                 }, 2000);
@@ -1002,6 +1008,7 @@
         }
 
         function saveProducts() {
+                        marcarPendienteSync('catalogo'); // Fase A: hay un cambio local sin confirmar
             localStorage.setItem('ciervo_inventory', JSON.stringify(products));
             renderAll();
             firebaseSaveProducts(products);

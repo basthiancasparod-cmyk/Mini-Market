@@ -6,6 +6,7 @@
     <title>Gestión de Compras - Ciervo Administrativo</title>
     <link rel="icon" type="image/x-icon" href="icono.ico">
     <script src="cloud-access.js"></script>
+    <script src="sincronizacion.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.1/dist/umd/lucide.js"></script>
     <style>
@@ -2177,12 +2178,15 @@
             localStorage.setItem('ciervo_purchases', JSON.stringify(purchases));
             localStorage.setItem('ciervo_inventory_history', JSON.stringify(inventoryHistory));
             try {
-                await firebaseSaveSuppliers(suppliers);
-                await firebaseSavePurchases(purchases);
-                await firebaseSaveHistory(inventoryHistory);
+                                marcarPendienteSync('compras');
+                if (await firebaseSaveSuppliers(suppliers)) limpiarPendienteSync('compras');
+                                marcarPendienteSync('compras');
+                if (await firebaseSavePurchases(purchases)) limpiarPendienteSync('compras');
+                                marcarPendienteSync('compras');
+                if (await firebaseSaveHistory(inventoryHistory)) limpiarPendienteSync('compras');
             } catch (e) {
                 if (e.message.includes('file:')) showNotification(e.message, 'error');
-                else { _pendingChanges = true; localStorage.setItem('_pendingFirebaseChanges', 'true'); }
+                else { _pendingChanges = true; marcarPendienteSync('compras'); }
             }
         }
 
@@ -2277,17 +2281,19 @@
                 const email = getCurrentUserEmail();
                 if (!email) { _cloudAccessChecked = true; _cloudAccess = false; return false; }
                 const snap = await db.ref('BBDD/' + sanitizeEmailForDb(email) + '/suscripcion/cloudSync').once('value');
-                _cloudAccess = snap.val() === true;
+                const valor = snap.val();
+            if (valor === null) return false;   // nodo ausente o sin conexión: se reintenta sin cachear
+            _cloudAccess = valor === true;
+            _cloudAccessChecked = true;   // respuesta real del servidor: se puede cachear
             } catch (e) {
-                _cloudAccess = false;
+            _cloudAccess = false;         // fallo de red: no se cachea, se reintenta
             }
-            _cloudAccessChecked = true;
             return _cloudAccess;
         }
 
         let _firebaseDb = null;
         let _firebaseInitPromise = null;
-        let _pendingChanges = localStorage.getItem('_pendingFirebaseChanges') === 'true';
+        let _pendingChanges = (typeof hayPendientesSync === 'function' ? hayPendientesSync('compras') : localStorage.getItem('_pendingFirebaseChanges') === 'true');
         let _firebaseConnected = false;
 
         function loadFirebaseSDK() {
@@ -2318,7 +2324,6 @@
         }
 
         async function setupConnectionMonitor(db) {
-            if (!await checkCloudAccess()) return;
             db.ref('.info/connected').on('value', async (snap) => {
                 const connected = snap.val();
                 _firebaseConnected = connected;
@@ -2326,14 +2331,17 @@
                     setFirebaseDot('#22c55e', 'Firebase conectado');
                     if (_pendingChanges) {
                         _pendingChanges = false;
-                        localStorage.removeItem('_pendingFirebaseChanges');
+                        limpiarPendienteSync('compras');
                         try {
-                            await firebaseSaveSuppliers(suppliers);
-                            await firebaseSavePurchases(purchases);
-                            await firebaseSaveHistory(inventoryHistory);
+                                                        marcarPendienteSync('compras');
+                            if (await firebaseSaveSuppliers(suppliers)) limpiarPendienteSync('compras');
+                                                        marcarPendienteSync('compras');
+                            if (await firebaseSavePurchases(purchases)) limpiarPendienteSync('compras');
+                                                        marcarPendienteSync('compras');
+                            if (await firebaseSaveHistory(inventoryHistory)) limpiarPendienteSync('compras');
                         } catch (e) {
                             _pendingChanges = true;
-                            localStorage.setItem('_pendingFirebaseChanges', 'true');
+                            marcarPendienteSync('compras');
                         }
                     }
                 } else {
@@ -2368,42 +2376,47 @@
         }
 
         async function firebaseSaveSuppliers(data) {
-            if (!await checkCloudAccess()) return;
+            if (!await checkCloudAccess()) return false;
             const db = await initFirebase();
             const path = getUserDataPath();
             await db.ref(path + '/compras/proveedores').set(data);
         }
 
         async function firebaseSavePurchases(data) {
-            if (!await checkCloudAccess()) return;
+            if (!await checkCloudAccess()) return false;
             const db = await initFirebase();
             const path = getUserDataPath();
             await db.ref(path + '/compras/compras').set(data);
         }
 
         async function firebaseSaveHistory(data) {
-            if (!await checkCloudAccess()) return;
+            if (!await checkCloudAccess()) return false;
             const db = await initFirebase();
             const path = getUserDataPath();
             await db.ref(path + '/compras/historial').set(data);
         }
 
         async function firebaseSaveProducts(data) {
-            if (!await checkCloudAccess()) return;
+            if (!await checkCloudAccess()) return false;
             const db = await initFirebase();
             const path = getUserDataPath();
             await db.ref(path + '/productos').set(data);
         }
 
         async function firebaseSaveCategories(data) {
-            if (!await checkCloudAccess()) return;
+            if (!await checkCloudAccess()) return false;
             const db = await initFirebase();
             const path = getUserDataPath();
             await db.ref(path + '/categorias').set(data);
         }
 
         async function firebaseLoadCompras() {
-            if (!await checkCloudAccess()) return null;
+                        if (!await checkCloudAccess()) return null;
+            // Fase A (C1): con cambios locales sin confirmar, la nube NO pisa lo local.
+            if (typeof puedeSobrescribirLocalSync === 'function' && !puedeSobrescribirLocalSync()) {
+                console.warn('Hay cambios pendientes de subir: no se descargan datos de la nube.');
+                return null;
+            }
             const db = await initFirebase();
             const path = getUserDataPath();
             const snap = await db.ref(path + '/compras').once('value');
@@ -2447,9 +2460,12 @@
         async function uploadToFirebase() {
             try {
                 await initFirebase();
-                await firebaseSaveSuppliers(suppliers);
-                await firebaseSavePurchases(purchases);
-                await firebaseSaveHistory(inventoryHistory);
+                                marcarPendienteSync('compras');
+                if (await firebaseSaveSuppliers(suppliers)) limpiarPendienteSync('compras');
+                                marcarPendienteSync('compras');
+                if (await firebaseSavePurchases(purchases)) limpiarPendienteSync('compras');
+                                marcarPendienteSync('compras');
+                if (await firebaseSaveHistory(inventoryHistory)) limpiarPendienteSync('compras');
                 setFirebaseDot('#22c55e', 'Firebase conectado');
             } catch (e) {
                 setFirebaseDot('#ef4444', 'Firebase: ' + e.message);
@@ -2939,10 +2955,11 @@
         async function saveInventoryToStorage(inventory) {
             localStorage.setItem('ciervo_inventory', JSON.stringify(inventory));
             try {
-                await firebaseSaveProducts(inventory);
+                                marcarPendienteSync('compras');
+                if (await firebaseSaveProducts(inventory)) limpiarPendienteSync('compras');
             } catch (e) {
                 if (e.message.includes('file:')) showNotification(e.message, 'error');
-                else { _pendingChanges = true; localStorage.setItem('_pendingFirebaseChanges', 'true'); }
+                else { _pendingChanges = true; marcarPendienteSync('compras'); }
             }
         }
 

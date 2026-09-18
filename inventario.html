@@ -6,6 +6,7 @@
     <title>Control de Inventario - Ciervo Administrativo</title>
     <link rel="icon" type="image/x-icon" href="icono.ico">
     <script src="cloud-access.js"></script>
+    <script src="sincronizacion.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="preconnect" href="https://cdn.jsdelivr.net">
     <link rel="preconnect" href="https://cdnjs.cloudflare.com">
@@ -2237,17 +2238,22 @@ body.dark-mode .dropdown-divider {
                 const email = getCurrentUserEmail();
                 if (!email) { _cloudAccessChecked = true; _cloudAccess = false; return false; }
                 const snap = await db.ref('BBDD/' + sanitizeEmailForDb(email) + '/suscripcion/cloudSync').once('value');
-                _cloudAccess = snap.val() === true;
+                const valor = snap.val();
+                if (valor === null) return false;   // nodo ausente o sin conexión: se reintenta sin cachear
+                _cloudAccess = valor === true;
+                _cloudAccessChecked = true;   // respuesta real del servidor: se puede cachear   // respuesta real del servidor: se puede cachear
             } catch (e) {
-                _cloudAccess = false;
+                _cloudAccess = false;         // fallo de red: no se cachea, se reintenta
             }
-            _cloudAccessChecked = true;
             return _cloudAccess;
         }
 
         let _firebaseDb = null;
         let _firebaseInitPromise = null;
-        let _pendingChanges = localStorage.getItem('_pendingFirebaseChanges') === 'true';
+        // Fase A (auditoría C4): marca por módulo y por negocio (respeta la antigua).
+        let _pendingChanges = (typeof hayPendientesSync === 'function')
+            ? hayPendientesSync('inventario')
+            : (localStorage.getItem('_pendingFirebaseChanges') === 'true');
         let _firebaseConnected = false;
 
         function loadFirebaseSDK() {
@@ -2278,22 +2284,23 @@ body.dark-mode .dropdown-divider {
         }
 
         async function setupConnectionMonitor(db) {
-            if (!await checkCloudAccess()) return;
             db.ref('.info/connected').on('value', async (snap) => {
                 const connected = snap.val();
                 _firebaseConnected = connected;
                 if (connected) {
                     setFirebaseDot('#22c55e', 'Firebase conectado');
+                    // Fase A (C6): al recuperar la conexión el permiso se vuelve a preguntar.
+                    _cloudAccessChecked = false;
                     if (!await checkCloudAccess()) return;
-                    if (_pendingChanges) {
-                        _pendingChanges = false;
-                        localStorage.removeItem('_pendingFirebaseChanges');
+                    if (_pendingChanges || (typeof hayPendientesSync === 'function' && hayPendientesSync('inventario'))) {
+                        // Fase A (C1): la marca se limpia SOLO si el servidor confirmó.
                         try {
-                            await firebaseSaveProducts(products);
-                            await firebaseSaveCategories(categories);
+                            const subidaProductos = await firebaseSaveProducts(products);
+                            const subidaCategorias = await firebaseSaveCategories(categories);
+                            if (subidaProductos || subidaCategorias) { _pendingChanges = false; limpiarPendienteSync('inventario'); }
                         } catch (e) {
                             _pendingChanges = true;
-                            localStorage.setItem('_pendingFirebaseChanges', 'true');
+                            marcarPendienteSync('inventario');
                         }
                     }
                 } else {
@@ -2328,17 +2335,19 @@ body.dark-mode .dropdown-divider {
         }
 
         async function firebaseSaveProducts(data) {
-            if (!await checkCloudAccess()) return;
+            if (!await checkCloudAccess()) return false;   // sin nube: no se subió
             const db = await initFirebase();
             const path = getUserDataPath();
             await db.ref(path + '/productos').set(data);
+            return true;                                    // el servidor confirmó
         }
 
         async function firebaseSaveCategories(data) {
-            if (!await checkCloudAccess()) return;
+            if (!await checkCloudAccess()) return false;
             const db = await initFirebase();
             const path = getUserDataPath();
             await db.ref(path + '/categorias').set(data);
+            return true;
         }
 
         async function firebaseLoadAll() {
@@ -2371,6 +2380,11 @@ body.dark-mode .dropdown-divider {
         async function syncFromFirebase() {
             try {
                 if (!await checkCloudAccess()) return false;
+                // Fase A (C1): con cambios locales sin confirmar, la nube NO pisa lo local.
+                if (typeof puedeSobrescribirLocalSync === 'function' && !puedeSobrescribirLocalSync()) {
+                    console.warn('Hay cambios pendientes de subir: no se descargan datos de la nube.');
+                    return false;
+                }
                 const data = await firebaseLoadAll();
                 if (!data) return false;
                 let changed = false;
@@ -2433,10 +2447,18 @@ body.dark-mode .dropdown-divider {
         async function uploadToFirebase() {
             try {
                 await initFirebase();
-                await firebaseSaveProducts(products);
-                await firebaseSaveCategories(categories);
-                setFirebaseDot('#22c55e', 'Firebase conectado');
+                // Fase A (C1): la marca se limpia solo con confirmación del servidor.
+                const subidaProductos = await firebaseSaveProducts(products);
+                const subidaCategorias = await firebaseSaveCategories(categories);
+                if (subidaProductos || subidaCategorias) {
+                    _pendingChanges = false;
+                    limpiarPendienteSync('inventario');
+                    setFirebaseDot('#22c55e', 'Firebase conectado');
+                } else {
+                    setFirebaseDot('#f59e0b', 'Sin conexión con la nube: cambios guardados aquí');
+                }
             } catch (e) {
+                marcarPendienteSync('inventario');
                 setFirebaseDot('#ef4444', 'Firebase: ' + e.message);
                 if (e.message.includes('file:')) showNotification(e.message, 'error');
             }
@@ -2474,8 +2496,11 @@ body.dark-mode .dropdown-divider {
                 }
                 try {
                     if (_pendingChanges) {
-                        // Hay cambios offline pendientes de la sesión anterior → subir antes de sync
+                        // Fase A (C1/C4): hay cambios sin confirmar → subir y no descargar encima
                         await uploadToFirebase();
+                    } else if (typeof puedeSobrescribirLocalSync === 'function' && !puedeSobrescribirLocalSync()) {
+                        // Algún módulo tiene pendientes: no pisamos los datos locales
+                        setFirebaseDot('#f59e0b', 'Hay cambios pendientes de subir');
                     } else {
                         const existsInCloud = await syncFromFirebase();
                         if (existsInCloud) {
@@ -2724,10 +2749,14 @@ function handleStockKeydown(event) {
 
         async function saveCategories() {
             localStorage.setItem('ciervo_categories', JSON.stringify(categories));
-            try { await firebaseSaveCategories(categories); }
-            catch (e) {
+            // Fase A (C1): marcar antes de subir, limpiar solo con confirmación.
+            _pendingChanges = true;
+            marcarPendienteSync('inventario');
+            try {
+                const subida = await firebaseSaveCategories(categories);
+                if (subida) { _pendingChanges = false; limpiarPendienteSync('inventario'); }
+            } catch (e) {
                 if (e.message.includes('file:')) showNotification(e.message, 'error');
-                else { _pendingChanges = true; localStorage.setItem('_pendingFirebaseChanges', 'true'); }
             }
         }
 
@@ -2909,10 +2938,16 @@ function handleStockKeydown(event) {
 
         async function saveProducts() {
             localStorage.setItem('ciervo_inventory', JSON.stringify(products));
-            try { await firebaseSaveProducts(products); }
-            catch (e) {
+            // Fase A (C1): marcar ANTES de intentar subir; limpiar solo con confirmación.
+            // (Sin internet la promesa de .set() no resuelve ni rechaza, así que el catch
+            // de antes nunca se ejecutaba y el cambio quedaba sin marcar.)
+            _pendingChanges = true;
+            marcarPendienteSync('inventario');
+            try {
+                const subida = await firebaseSaveProducts(products);
+                if (subida) { _pendingChanges = false; limpiarPendienteSync('inventario'); }
+            } catch (e) {
                 if (e.message.includes('file:')) showNotification(e.message, 'error');
-                else { _pendingChanges = true; localStorage.setItem('_pendingFirebaseChanges', 'true'); }
             }
         }
 

@@ -2256,7 +2256,8 @@
                     localStorage.removeItem('ciervo_accounts');
                 }},
                 { text: 'Eliminando datos de clientes...', progress: 90, action: () => {
-                    localStorage.removeItem('pos_customers'); // Key identified from listado_clientes.html
+                    localStorage.removeItem('pos_customers'); // clave antigua: ya no la usa ninguna página
+                    localStorage.removeItem('ciervo_clients'); // clave real de clientes (listado_clientes.html)
                 }},
                 { text: 'Creando usuario administrador demo...', progress: 95, action: createDemoAdminUser },
                 { text: 'Finalizando restablecimiento y limpiando configuraciones...', progress: 100, action: clearOtherSystemData }
@@ -2331,6 +2332,13 @@
             localStorage.removeItem('pos_held_carts');
             localStorage.removeItem('ciervo_categories');
             localStorage.removeItem('_pendingFirebaseChanges');
+            // Fase A: olvidar también las marcas de pendientes por módulo. Los datos
+            // locales se acaban de borrar: reintentar subirlos no tendría sentido.
+            try {
+                Object.keys(localStorage)
+                    .filter(k => k.indexOf('_pendSync_') === 0)
+                    .forEach(k => localStorage.removeItem(k));
+            } catch (e) { /* nada */ }
             localStorage.removeItem('pos_sale_prefix');
             localStorage.removeItem('pos_default_currency');
             localStorage.removeItem('inv_default_min_stock');
