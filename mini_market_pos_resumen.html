@@ -2247,7 +2247,7 @@ function applyFilters() {
                 <div class="detail-item"><span class="detail-label">Subtotal:</span><span class="detail-value">${subtotalDisplay}</span></div>
                 <div class="detail-item"><span class="detail-label">IVA (16%):</span><span class="detail-value">${ivaDisplay}</span></div>
                 <div class="detail-item"><span class="detail-label">Total:</span><span class="detail-value">${totalDisplay}</span></div>
-                <div class="detail-item"><span class="detail-label">Tasa de Cambio:</span><span class="detail-value">${exchangeRate.toFixed(2)} Bs/$</span></div>
+                <div class="detail-item"><span class="detail-label">Tasa de Cambio:</span><span class="detail-value">${exchangeRate.toFixed(2)} Bs/${sale.rateSource === 'euro' ? '€' : '$'}</span></div>
                 
                 ${sale.paymentMethod === 'ves-mobile' && sale.paymentDetails && sale.paymentDetails.reference ? `
                     <div class="detail-item">
@@ -2778,7 +2778,9 @@ function recalculateTotalFromItems(sale) {
                 if (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length > 0) return resolve();
                 const scripts = [
                     'https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js',
-                    'https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js'
+                    'https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js',
+
+                    'https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js'
                 ];
                 let loaded = 0;
                 scripts.forEach(src => {
@@ -2883,5 +2885,6 @@ function recalculateTotalFromItems(sale) {
     </script>
 
     
+    <script src="sesion.js"></script>
 </body>
 </html>

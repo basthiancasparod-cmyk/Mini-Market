@@ -4170,8 +4170,13 @@
             // Cerrar el modal
             closeLogoutModal();
 
-            // Redirigir al index.html
-            window.location.href = 'index.html';
+            // Cerrar también la sesión de Firebase Authentication y volver al login.
+            // (Borrar sessionStorage no basta: sin esto la sesión seguiría abierta.)
+            if (typeof window.cerrarSesionApp === 'function') {
+                window.cerrarSesionApp('index.html');
+            } else {
+                window.location.href = 'index.html';
+            }
         }
 
         // Cerrar modal al hacer clic fuera del contenido
@@ -4241,5 +4246,6 @@
             }
         });
     </script>
+    <script src="cerrar_sesion.js"></script>
 </body>
 </html>

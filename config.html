@@ -13,6 +13,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <!-- Firebase Realtime Database -->
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
     <style>
         /* CSS Variables for Theming */
         :root {
@@ -1265,7 +1266,7 @@
                         <div class="fold-content" id="foldPos">
                             <div class="fold-form-grid">
                                 <div class="fold-form-group">
-                                    <label for="posExchangeRate">Tasa de Cambio (Bs./$)</label>
+                                    <label for="posExchangeRate">Tasa de Cambio (Bs./$ - modo manual)</label>
                                     <input type="number" id="posExchangeRate" step="0.01" min="0" placeholder="36.50">
                                 </div>
                                 <div class="fold-form-group">
@@ -2136,13 +2137,15 @@
         }
 
         /**
-         * Verifica las credenciales del propietario contra la base de datos de Firebase.
+         * Verifica las credenciales del propietario con Firebase Authentication.
+         * Reautentica la sesión activa (valida la contraseña de verdad, sin cambiarla) y
+         * comprueba la aprobación en usuarios/{uid}/ingreso.
          */
         async function verifyAdminCredentials() {
             addLoadingState(verifyAdminBtn);
             const emailInput = document.getElementById('owner-email');
             const passwordInput = document.getElementById('admin-password');
-            const email = emailInput.value.trim();
+            const email = emailInput.value.trim().toLowerCase();
             const password = passwordInput.value;
 
             clearValidationMessages(); // Usa una función que limpie ambos campos
@@ -2165,36 +2168,27 @@
             }
 
             try {
-                const snapshot = await db.ref('users').orderByChild('email').equalTo(email).once('value');
-
-                if (!snapshot.exists()) {
-                    showValidationError('owner-email', 'El email del propietario no fue encontrado.');
+                const usuario = firebase.auth().currentUser;
+                if (!usuario) {
+                    showValidationError('owner-email', 'No hay una sesión activa. Vuelva a iniciar sesión.');
                     removeLoadingState(verifyAdminBtn);
                     return;
                 }
 
-                let ownerFound = false;
-                let correctPassword = false;
-                let isApproved = false;
-
-                snapshot.forEach(childSnapshot => {
-                    const owner = childSnapshot.val();
-                    if (owner.password === password) {
-                        ownerFound = true;
-                        correctPassword = true;
-                        if (owner.aprobado === true) {
-                            isApproved = true;
-                        }
-                    }
-                });
-
-                if (!ownerFound || !correctPassword) {
-                    showValidationError('admin-password', 'Contraseña incorrecta.');
+                // El correo debe ser el de la sesión activa: no se puede reautenticar a otro usuario
+                if ((usuario.email || '').toLowerCase() !== email) {
+                    showValidationError('owner-email', 'El correo no coincide con la sesión activa.');
                     removeLoadingState(verifyAdminBtn);
                     return;
                 }
 
-                if (!isApproved) {
+                // Validación real de la contraseña contra Firebase Authentication
+                const credencial = firebase.auth.EmailAuthProvider.credential(email, password);
+                await usuario.reauthenticateWithCredential(credencial);
+
+                // La aprobación del propietario vive en usuarios/{uid}/ingreso
+                const perfil = (await db.ref('usuarios/' + usuario.uid).once('value')).val();
+                if (!perfil || perfil.ingreso !== true) {
                     showValidationError('owner-email', 'La cuenta del propietario no está aprobada.');
                     removeLoadingState(verifyAdminBtn);
                     return;
@@ -2210,8 +2204,17 @@
                 }, 1000);
 
             } catch (error) {
-                console.error("Error al verificar con Firebase:", error);
-                showValidationError('owner-email', 'Error de conexión. Intente de nuevo.');
+                const codigo = error && error.code;
+                console.error('Error al verificar con Authentication:', codigo || (error && error.message));
+                if (['auth/wrong-password', 'auth/invalid-credential', 'auth/invalid-login-credentials', 'auth/internal-error'].includes(codigo)) {
+                    showValidationError('admin-password', 'Contraseña incorrecta.');
+                } else if (codigo === 'auth/too-many-requests') {
+                    showValidationError('admin-password', 'Demasiados intentos. Espere unos minutos.');
+                } else if (codigo === 'auth/requires-recent-login') {
+                    showValidationError('owner-email', 'Vuelva a iniciar sesión e inténtelo de nuevo.');
+                } else {
+                    showValidationError('owner-email', 'Error de conexión. Intente de nuevo.');
+                }
                 removeLoadingState(verifyAdminBtn);
             }
         }
@@ -2312,6 +2315,16 @@
             localStorage.removeItem('ciervo_calculation_history');
             localStorage.removeItem('ciervo_auto_save');
             localStorage.removeItem('pos_exchange_rate');
+            // Modo, referencia activa y tasas por referencia del POS: si no se borran,
+            // el POS restaura la tasa vieja guardada por fuente y el reinicio no surte efecto.
+            localStorage.removeItem('pos_rate_mode');
+            localStorage.removeItem('pos_rate_source');
+            localStorage.removeItem('pos_rate_history');
+            localStorage.removeItem('pos_rate_history_seed');
+            localStorage.removeItem('pos_rate_trend_window');
+            ['bcv', 'euro', 'binance', 'promedio'].forEach(function (source) {
+                localStorage.removeItem('pos_exchange_rate_' + source);
+            });
             localStorage.removeItem('pos_view_mode');
             localStorage.removeItem('pos_apply_iva');
             localStorage.removeItem('pos_last_sale_number');
@@ -2363,6 +2376,11 @@
         function redirectToLogin() {
             if (countdownInterval) {
                 clearInterval(countdownInterval);
+            }
+            // Cerrar la sesión de Firebase además de la de la pestaña
+            if (typeof window.cerrarSesionApp === 'function') {
+                window.cerrarSesionApp('index.html');
+                return;
             }
             sessionStorage.clear(); // Clear current user session
             window.location.href = 'index.html';
@@ -2479,14 +2497,28 @@
         }
 
         function loadPosSettings() {
-            document.getElementById('posExchangeRate').value = localStorage.getItem('pos_exchange_rate') || '36.50';
+            // Este campo siempre representa la tasa MANUAL en Bs por $, nunca la del euro
+            const savedMode = localStorage.getItem('pos_rate_mode') || 'manual';
+            const savedRate = savedMode === 'manual'
+                ? (localStorage.getItem('pos_exchange_rate') || '36.50')
+                : (localStorage.getItem('pos_exchange_rate_bcv') || localStorage.getItem('pos_exchange_rate') || '36.50');
+            document.getElementById('posExchangeRate').value = savedRate;
             document.getElementById('posDefaultCurrency').value = localStorage.getItem('pos_default_currency') || 'VES';
             document.getElementById('posSalePrefix').value = localStorage.getItem('pos_sale_prefix') || 'V-';
             document.getElementById('posApplyIVA').checked = localStorage.getItem('pos_apply_iva') === 'true';
         }
 
         function savePosSettings() {
-            localStorage.setItem('pos_exchange_rate', document.getElementById('posExchangeRate').value);
+            const rate = parseFloat(document.getElementById('posExchangeRate').value);
+            if (!Number.isFinite(rate) || rate <= 0) {
+                showToast('Tasa de cambio inválida.', 'error');
+                return;
+            }
+            localStorage.setItem('pos_exchange_rate', String(rate));
+            // El POS interpreta esta clave como la tasa manual en Bs/$: al guardarla aquí
+            // el POS queda en modo Manual con esta tasa (si no, una referencia automática
+            // como el euro o el BCV la sobrescribiría sin que el usuario lo note).
+            localStorage.setItem('pos_rate_mode', 'manual');
             localStorage.setItem('pos_apply_iva', document.getElementById('posApplyIVA').checked ? 'true' : 'false');
             localStorage.setItem('pos_default_currency', document.getElementById('posDefaultCurrency').value);
             localStorage.setItem('pos_sale_prefix', document.getElementById('posSalePrefix').value.trim() || 'V-');
@@ -2616,5 +2648,7 @@
             }
         });
     </script>
+    <script src="sesion.js"></script>
+    <script src="cerrar_sesion.js"></script>
 </body>
 </html>

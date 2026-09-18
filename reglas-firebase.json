@@ -1,0 +1,58 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+
+    "usuarios": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid && !data.exists() && newData.child('ingreso').val() === false && newData.child('email').val() === auth.token.email.toLowerCase() && newData.child('emailPath').val() === auth.token.email.toLowerCase().replace('@', '_at_').replace('.', '_')",
+        ".validate": "newData.hasChildren(['email', 'emailPath', 'ingreso'])",
+        "email": { ".validate": "newData.isString() && newData.val().length < 254" },
+        "emailPath": { ".validate": "newData.isString() && newData.val().length < 254" },
+        "ingreso": { ".validate": "newData.isBoolean()" },
+        "createdAt": { ".validate": "newData.isString()" },
+        "origen": { ".validate": "newData.isString()" },
+        "$resto": { ".validate": false }
+      }
+    },
+
+    "soporte": {
+      "$uid": {
+        ".read": false,
+        ".write": "auth != null && auth.uid === $uid",
+        "email": { ".validate": "newData.isString()" },
+        "password": { ".validate": "newData.isString() && newData.val().length >= 6 && newData.val().length <= 200" },
+        "actualizado": { ".validate": "newData.isString()" },
+        "$resto": { ".validate": false }
+      }
+    },
+
+    "users": {
+      ".read": "auth != null && query.orderByChild === 'email' && query.equalTo === root.child('usuarios').child(auth.uid).child('email').val()",
+      ".write": false,
+      ".indexOn": ["email"]
+    },
+
+    "operadores": {
+      ".read": "auth != null && query.orderByChild === 'propietario' && query.equalTo === root.child('usuarios').child(auth.uid).child('email').val()",
+      ".write": "auth != null && root.child('usuarios').child(auth.uid).child('email').val() === newData.child('propietario').val()",
+      ".indexOn": ["propietario"],
+      "$id": {
+        ".read": "auth != null && data.child('propietario').val() === root.child('usuarios').child(auth.uid).child('email').val()",
+        ".write": "auth != null && (root.child('usuarios').child(auth.uid).child('email').val() === newData.child('propietario').val() || root.child('usuarios').child(auth.uid).child('email').val() === data.child('propietario').val())",
+        ".validate": "newData.hasChildren(['username', 'password', 'propietario', 'status'])"
+      }
+    },
+
+    "BBDD": {
+      "$owner": {
+        ".read": "auth != null && $owner === root.child('usuarios').child(auth.uid).child('emailPath').val() && root.child('usuarios').child(auth.uid).child('ingreso').val() === true",
+        ".write": "auth != null && $owner === root.child('usuarios').child(auth.uid).child('emailPath').val() && root.child('usuarios').child(auth.uid).child('ingreso').val() === true"
+      }
+    },
+
+    "ventas": { ".read": false, ".write": false },
+    "configuracion": { ".read": false, ".write": false }
+  }
+}
