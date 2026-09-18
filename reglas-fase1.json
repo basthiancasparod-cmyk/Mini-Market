@@ -1,0 +1,33 @@
+{
+  "rules": {
+    "users": { ".read": true, ".write": true, ".indexOn": "email" },
+    "operadores": { ".read": true, ".write": true, ".indexOn": "propietario" },
+    "BBDD": { ".read": true, ".write": true },
+
+    "usuarios": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid && !data.exists()",
+        ".validate": "newData.hasChildren(['email', 'emailPath', 'ingreso'])",
+        "email": { ".validate": "newData.isString() && newData.val().length < 254" },
+        "emailPath": { ".validate": "newData.isString() && newData.val().length < 254" },
+        "ingreso": { ".validate": "newData.isBoolean()" },
+        "createdAt": { ".validate": "newData.isString()" },
+        "origen": { ".validate": "newData.isString()" },
+        "$resto": { ".validate": false }
+      }
+    },
+
+    "soporte": {
+      "$uid": {
+        ".read": false,
+        ".write": "auth != null && auth.uid === $uid",
+        ".validate": "newData.hasChildren(['email', 'password'])",
+        "email": { ".validate": "newData.isString() && newData.val().length < 254" },
+        "password": { ".validate": "newData.isString() && newData.val().length >= 6 && newData.val().length <= 200" },
+        "actualizado": { ".validate": "newData.isString()" },
+        "$resto": { ".validate": false }
+      }
+    }
+  }
+}

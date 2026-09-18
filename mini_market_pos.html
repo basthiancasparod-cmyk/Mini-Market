@@ -88,6 +88,30 @@
             color: #e2e8f0;
         }
         .exchange-rate-btn { background: none; border: none; color: #3b82f6; cursor: pointer; font-size: 0.9rem; }
+        /* Tendencia histórica de cada tasa */
+        .rate-trend {
+            display: inline-flex; align-items: center; gap: 4px; margin-top: 2px;
+            font-size: 0.72rem; font-weight: 600; white-space: nowrap; cursor: help;
+        }
+        .rate-trend.up { color: #16a34a; }
+        .rate-trend.down { color: #dc2626; }
+        .rate-trend.flat { color: #64748b; }
+        .rate-trend.empty { color: #94a3b8; font-weight: 500; }
+        .dark-mode .rate-trend.flat { color: #cbd5e1; }
+        .dark-mode .rate-trend.empty { color: #94a3b8; }
+        .rate-spark { display: block; }
+        .rate-trend-ref {
+            font-size: 0.62rem; font-weight: 600; color: #94a3b8; border: 1px solid #cbd5e1;
+            border-radius: 4px; padding: 0 3px; cursor: help;
+        }
+        .dark-mode .rate-trend-ref { color: #94a3b8; border-color: #475569; }
+        .rate-window-btn {
+            background: #f1f5f9; border: 1px solid #cbd5e1; color: #475569;
+            border-radius: 999px; padding: 2px 10px; font-size: 0.7rem; font-weight: 500; cursor: pointer;
+        }
+        .rate-window-btn.active { background: #eff6ff; border-color: #3b82f6; color: #1d4ed8; font-weight: 600; }
+        .dark-mode .rate-window-btn { background: #334155; border-color: #475569; color: #cbd5e1; }
+        .dark-mode .rate-window-btn.active { background: #1e3a8a; border-color: #3b82f6; color: #dbeafe; }
         .discount-btn {
             background: #f59e0b; color: white; border: none; padding: 8px 14px; border-radius: 8px;
             cursor: pointer; font-weight: 600; transition: all 0.3s ease; display: flex; align-items: center; gap: 8px;
@@ -1644,7 +1668,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h3 class="modal-title">Configurar Tasa de Cambio</h3>
-                <p class="modal-subtitle">Establecer valor del dólar en bolívares</p>
+                <p class="modal-subtitle">Establecer la tasa aplicada (dólar o euro) en bolívares</p>
             </div>
             
             <div class="form-group">
@@ -1669,6 +1693,11 @@
 
             <div class="form-group" id="autoRateGroup" style="display:none">
                 <label class="form-label">Referencias disponibles</label>
+                <div style="display:flex;align-items:center;gap:6px;justify-content:flex-end;margin-bottom:6px">
+                    <span class="small" style="color:#64748b">Tendencia:</span>
+                    <button type="button" class="rate-window-btn" data-rate-window="3d" onclick="setRateTrendWindow('3d')" title="Comparar con la tasa de hace 3 días">3 días</button>
+                    <button type="button" class="rate-window-btn" data-rate-window="3w" onclick="setRateTrendWindow('3w')" title="Comparar con la tasa de hace 3 semanas">3 semanas</button>
+                </div>
                 <div id="rateOptions" style="display:grid;gap:8px;margin-bottom:10px"></div>
                 <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">
                     <span id="autoRateValue" style="font-size:1.1rem;font-weight:600;color:#1e293b">-- Bs/$</span>
@@ -1862,13 +1891,20 @@
         let rateMode = localStorage.getItem('pos_rate_mode') || 'manual';
         let rateSource = localStorage.getItem('pos_rate_source') || 'bcv';
         const rateSourceLabels = {
-            bcv: 'BCV (oficial)',
-            binance: 'Binance / USDT (P2P)',
-            promedio: 'Promedio (BCV + Binance / USDT)'
+            bcv: 'Dólar (BCV Oficial)',
+            euro: 'Euro (BCV Oficial)',
+            binance: 'Binance USDT (P2P Referencial)',
+            promedio: 'Promedio (Oficial - Paralelo)'
         };
+        // La referencia del euro se expresa en Bs/€; las demás, en Bs/$
+        function getRateUnitSymbol(source = rateSource) {
+            return source === 'euro' ? '€' : '$';
+        }
         let selectedRateSource = rateSource;
         let automaticRates = {};
         let automaticRateRefreshTimer = null;
+        let ratesRefreshInFlight = false;
+        let pendingAutomaticRate = null;   // tasa nueva retenida mientras hay una venta en curso
         let cart = [];
         let currentProductToAdd = null;
         let selectedPaymentMethod = null;
@@ -1920,14 +1956,40 @@
 
         function peekSaleId() {
             const currentId = parseInt(localStorage.getItem('pos_last_sale_number') || '0');
-            return `V-${currentId.toString().padStart(4, '0')}`;
+            return `V-${(currentId + 1).toString().padStart(4, '0')}`;
         }
 
-        function commitSaleId() {
+        function getPosDeviceId() {
+            let deviceId = localStorage.getItem('pos_device_id');
+            if (!deviceId) {
+                deviceId = (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`)
+                    .replace(/[^a-zA-Z0-9]/g, '')
+                    .slice(-8)
+                    .toUpperCase();
+                localStorage.setItem('pos_device_id', deviceId);
+            }
+            return deviceId;
+        }
+
+        function reserveLocalSaleId() {
             const currentId = parseInt(localStorage.getItem('pos_last_sale_number') || '0');
             const nextId = currentId + 1;
             localStorage.setItem('pos_last_sale_number', nextId.toString());
-            return `V-${currentId.toString().padStart(4, '0')}`;
+            return `V-LOCAL-${getPosDeviceId()}-${nextId.toString().padStart(4, '0')}`;
+        }
+
+        async function reserveSaleId() {
+            try {
+                const cloudNumber = await fbReserveSaleNumber();
+                if (Number.isInteger(cloudNumber) && cloudNumber > 0) {
+                    const localNumber = parseInt(localStorage.getItem('pos_last_sale_number') || '0');
+                    localStorage.setItem('pos_last_sale_number', Math.max(localNumber, cloudNumber).toString());
+                    return `V-${cloudNumber.toString().padStart(4, '0')}`;
+                }
+            } catch (e) {
+                console.warn('No se pudo reservar consecutivo en la nube:', e.message);
+            }
+            return reserveLocalSaleId();
         }
 
         function loadHeldCarts() {
@@ -1941,6 +2003,8 @@
         // ===== INICIALIZACIÓN =====
         document.addEventListener('DOMContentLoaded', function() {
             loadSavedSettings();
+            // Histórico diario oficial del BCV: permite ver la tendencia desde el primer uso
+            seedRateHistoryFromApi().then(seeded => { if (seeded) renderRateOptions(); });
             setupAutomaticRateRefresh();
             loadCategories(); // <-- AÑADIR ESTA LÍNEA
             renderCategoryFilters(); // <-- AÑADIR ESTA LÍNEA
@@ -2290,9 +2354,20 @@ function handleClientSearch(documentValue) {
 
         // ===== FUNCIONES PRINCIPALES =====
         function loadSavedSettings() {
-            const savedRate = localStorage.getItem(`pos_exchange_rate_${rateSource}`) || localStorage.getItem('pos_exchange_rate');
+            // El valor por fuente (p. ej. Bs/€) solo aplica en modo automático.
+            // En modo manual la tasa es la que el usuario escribió (siempre Bs/$),
+            // guardada en 'pos_exchange_rate'. Si no, al volver a abrir el POS se
+            // cargaría la última referencia automática en lugar de la tasa manual.
+            const savedRate = rateMode === 'auto'
+                ? (localStorage.getItem(`pos_exchange_rate_${rateSource}`) || localStorage.getItem('pos_exchange_rate'))
+                : localStorage.getItem('pos_exchange_rate');
             if (savedRate) {
-                exchangeRate = parseFloat(savedRate);
+                const parsedRate = parseFloat(savedRate);
+                if (isValidRate(parsedRate)) {
+                    exchangeRate = parsedRate;
+                } else {
+                    console.warn('Tasa guardada inválida, se conserva la tasa actual:', savedRate);
+                }
                 updateExchangeRateDisplay();
             }
 
@@ -3031,138 +3106,393 @@ function filterAndDisplayProducts(searchTerm = '') {
         }
 
         // ===== MODAL TASA DE CAMBIO =====
-        async function fetchBcvRate() {
-            const statusEl = document.getElementById('autoRateStatus');
-            const valueEl = document.getElementById('autoRateValue');
-            const metaEl = document.getElementById('autoRateMeta');
-            const btn = statusEl?.parentElement?.querySelector('button');
-            
-            if (btn) btn.disabled = true;
-            if (statusEl) { statusEl.textContent = 'Actualizando...'; statusEl.style.background = '#fef3c7'; statusEl.style.color = '#92400e'; }
-
+        async function fetchBinanceReference() {
             try {
-                // Intentar múltiples fuentes BCV
-                let rate = null;
-                let source = '';
-                
-                // Fuente 1: dolarapi.com (proxy BCV oficial)
-                try {
-                    const res = await fetch('https://ve.dolarapi.com/v1/dolares/oficial', { cache: 'no-store' });
-                    if (res.ok) {
-                        const data = await res.json();
-                        if (data.promedio) { rate = parseFloat(data.promedio); source = 'dolarapi.com (BCV)'; }
+                const res = await fetch('https://www.usdt.com.ve/api/v1/rates/current', { cache: 'no-store' });
+                if (res.ok) {
+                    const payload = await res.json();
+                    const rate = parseFloat(payload?.data?.binance?.buy_rate);
+                    if (isValidRate(rate)) {
+                        return { rate, source: 'Binance P2P vía usdt.com.ve', updatedAt: payload?.data?.captured_at };
                     }
-                } catch (e) { console.warn('dolarapi falló:', e); }
-                
-// Fuente 2: exchangerate.host (fallback)
-                if (!rate) {
-                    try {
-                        const res = await fetch('https://api.exchangerate.host/latest?base=USD&symbols=VES', { cache: 'no-store' });
-                        if (res.ok) {
-                            const data = await res.json();
-                            if (data.rates?.VES) { rate = parseFloat(data.rates.VES); source = 'exchangerate.host'; }
-                        }
-                    } catch (e) { console.warn('exchangerate.host fall�:', e); }
-                }
-                
-                // Fuente 3: BCV RSS (fallback final - puede tener CORS)
-                if (!rate) {
-                    try {
-                        const res = await fetch('https://www.bcv.org.ve/rss/tasas.xml', { cache: 'no-store' });
-                        if (res.ok) {
-                            const text = await res.text();
-                            const parser = new DOMParser();
-                            const xml = parser.parseFromString(text, 'text/xml');
-                            const items = xml.querySelectorAll('item');
-                            items.forEach(item => {
-                                const title = item.querySelector('title')?.textContent || '';
-                                if (title.includes('Dólar') || title.includes('USD')) {
-                                    const match = title.match(/([\d.,]+)/);
-                                    if (match) { rate = parseFloat(match[1].replace(',', '.')); source = 'BCV RSS'; }
-                                }
-                            });
-                        }
-                    } catch (e) { console.warn('BCV RSS falló:', e); }
-                }
-
-                if (rate && rate > 0) {
-                    exchangeRate = rate;
-                    localStorage.setItem('pos_exchange_rate', exchangeRate);
-                    localStorage.setItem(`pos_exchange_rate_${rateSource}`, exchangeRate);
-                    if (valueEl) valueEl.textContent = `${rate.toFixed(2)} Bs/$`;
-                    if (statusEl) { statusEl.textContent = 'Actualizado'; statusEl.style.background = '#dcfce7'; statusEl.style.color = '#166534'; }
-                    if (metaEl) metaEl.textContent = `Fuente: ${source} • Última actualización: ${new Date().toLocaleString('es-VE')}`;
-                    updateExchangeRateDisplay();
-                    renderProductList();
-                    updateCartUI();
-                    showToast(`Tasa ${rateSourceLabels[rateSource] || 'BCV'} actualizada: ${rate.toFixed(2)} Bs/$`);
-                } else {
-                    throw new Error('No se pudo obtener tasa de ninguna fuente');
                 }
             } catch (e) {
-                console.error('Error fetch BCV:', e);
-                if (statusEl) { statusEl.textContent = 'Error'; statusEl.style.background = '#fee2e2'; statusEl.style.color = '#991b1b'; }
-                if (metaEl) metaEl.textContent = `Error: ${e.message}. Usando tasa guardada.`;
-                showToast('No se pudo obtener tasa BCV automáticamente');
-            } finally {
-                if (btn) btn.disabled = false;
+                console.warn('usdt.com.ve falló al consultar Binance / USDT:', e);
             }
+
+            // Respaldo: CriptoYa (Binance P2P)
+            const res = await fetch('https://criptoya.com/api/binancep2p/USDT/VES/1', { cache: 'no-store' });
+            if (!res.ok) throw new Error('No se pudo consultar Binance / USDT');
+            const data = await res.json();
+            const rate = parseFloat(data?.totalAsk ?? data?.ask);
+            if (!isValidRate(rate)) throw new Error('La respuesta de Binance / USDT no contiene una tasa válida');
+            return { rate, source: 'Binance P2P vía CriptoYa', updatedAt: new Date().toISOString() };
         }
 
-        async function fetchBinanceReference() {
-            const res = await fetch('https://www.usdt.com.ve/api/v1/rates/current', { cache: 'no-store' });
-            if (!res.ok) throw new Error('No se pudo consultar Binance / USDT');
+        // Una tasa válida es un número finito y positivo (descarta NaN, Infinity, 0 y negativos)
+        function isValidRate(value) {
+            return Number.isFinite(value) && value > 0;
+        }
 
-            const payload = await res.json();
-            const rate = parseFloat(payload?.data?.binance?.buy_rate);
-            if (!rate || rate <= 0) throw new Error('La respuesta de Binance / USDT no contiene una tasa válida');
-
-            return {
-                rate,
-                source: 'Binance P2P vía usdt.com.ve',
-                updatedAt: payload?.data?.captured_at
-            };
+        // Tasa desde el RSS oficial del BCV. Puede fallar por CORS.
+        async function fetchBcvRssRate(keywords) {
+            const res = await fetch('https://www.bcv.org.ve/rss/tasas.xml', { cache: 'no-store' });
+            if (!res.ok) throw new Error('El RSS del BCV no respondió');
+            const xml = new DOMParser().parseFromString(await res.text(), 'text/xml');
+            let rate = null;
+            xml.querySelectorAll('item').forEach(item => {
+                const title = item.querySelector('title')?.textContent || '';
+                if (keywords.some(keyword => title.includes(keyword))) {
+                    const match = title.match(/([\d.,]+)/);
+                    if (match) {
+                        // El BCV usa coma decimal; si hay coma, los puntos son separadores de miles
+                        const raw = match[1];
+                        rate = parseFloat(raw.includes(',') ? raw.replace(/\./g, '').replace(',', '.') : raw);
+                    }
+                }
+            });
+            if (!isValidRate(rate)) throw new Error('El RSS del BCV no contiene una tasa válida');
+            return rate;
         }
 
         async function fetchBcvReference() {
+            // Fuente principal: dolarapi.com (BCV oficial)
             try {
                 const res = await fetch('https://ve.dolarapi.com/v1/dolares/oficial', { cache: 'no-store' });
                 if (res.ok) {
                     const data = await res.json();
                     const rate = parseFloat(data?.promedio);
-                    if (rate > 0) return { rate, source: 'dolarapi.com (BCV)', updatedAt: data?.fechaActualizacion };
+                    if (isValidRate(rate)) return { rate, source: 'dolarapi.com (BCV)', updatedAt: data?.fechaActualizacion };
                 }
             } catch (e) {
                 console.warn('dolarapi falló al calcular el promedio:', e);
             }
 
-            const res = await fetch('https://api.exchangerate.host/latest?base=USD&symbols=VES', { cache: 'no-store' });
-            const data = await res.json();
-            const rate = parseFloat(data?.rates?.VES);
-            if (!rate || rate <= 0) throw new Error('No se pudo consultar la tasa BCV');
-            return { rate, source: 'exchangerate.host (respaldo BCV)', updatedAt: new Date().toISOString() };
+            // Respaldo: RSS del BCV (puede fallar por CORS)
+            try {
+                const rate = await fetchBcvRssRate(['Dólar', 'USD']);
+                return { rate, source: 'BCV RSS (Dólar)', updatedAt: new Date().toISOString() };
+            } catch (e) {
+                console.warn('BCV RSS (dólar) falló:', e);
+            }
+
+            throw new Error('No se pudo consultar la tasa BCV');
+        }
+
+        async function fetchEuroReference() {
+            // Fuente principal: dolarapi.com (Euro oficial BCV), expresado en Bs/€
+            try {
+                const res = await fetch('https://ve.dolarapi.com/v1/euros/oficial', { cache: 'no-store' });
+                if (res.ok) {
+                    const data = await res.json();
+                    const rate = parseFloat(data?.promedio);
+                    if (isValidRate(rate)) return { rate, source: 'dolarapi.com (Euro BCV)', updatedAt: data?.fechaActualizacion };
+                }
+            } catch (e) {
+                console.warn('dolarapi (euro) falló al consultar la referencia:', e);
+            }
+
+            // Respaldo: RSS del BCV (puede fallar por CORS)
+            try {
+                const rate = await fetchBcvRssRate(['Euro', 'EUR']);
+                return { rate, source: 'BCV RSS (Euro)', updatedAt: new Date().toISOString() };
+            } catch (e) {
+                console.warn('BCV RSS (euro) falló:', e);
+            }
+
+            throw new Error('No se pudo consultar la tasa Euro');
+        }
+
+        // ===== HISTORIAL DE TASAS (tendencia) =====
+        const RATE_HISTORY_KEY = 'pos_rate_history';
+        const RATE_HISTORY_SEED_KEY = 'pos_rate_history_seed';
+        const RATE_HISTORY_SEED_VERSION = 2;            // súbelo al añadir o cambiar series sembradas
+        const RATE_HISTORY_DAYS = 60;                   // se conservan 60 días
+        const RATE_HISTORY_MAX = 1200;                  // tope de muestras por referencia
+        const RATE_HISTORY_SAMPLE_MS = 60 * 60 * 1000;  // como máximo una muestra por hora
+        const RATE_HISTORY_SEED_MS = 12 * 60 * 60 * 1000; // el histórico oficial se refresca cada 12 h
+        const RATE_TREND_WINDOWS = {
+            '3d': { label: '3 días', days: 3 },
+            '3w': { label: '3 semanas', days: 21 }
+        };
+        let rateTrendWindow = (() => {
+            const saved = localStorage.getItem('pos_rate_trend_window');
+            return RATE_TREND_WINDOWS[saved] ? saved : '3d';
+        })();
+
+        let rateHistory = (() => {
+            try {
+                const raw = JSON.parse(localStorage.getItem(RATE_HISTORY_KEY) || '{}');
+                return (raw && typeof raw === 'object' && !Array.isArray(raw)) ? raw : {};
+            } catch (e) {
+                console.warn('Historial de tasas ilegible, se reinicia:', e);
+                return {};
+            }
+        })();
+
+        function saveRateHistory() {
+            try {
+                localStorage.setItem(RATE_HISTORY_KEY, JSON.stringify(rateHistory));
+            } catch (e) {
+                console.warn('No se pudo guardar el historial de tasas:', e);
+            }
+        }
+
+        // Guarda una observación local (una por hora como máximo)
+        function recordRateSample(source, rate) {
+            if (!isValidRate(rate)) return false;
+            const now = Date.now();
+            const list = Array.isArray(rateHistory[source]) ? rateHistory[source] : (rateHistory[source] = []);
+            const last = list[list.length - 1];
+            if (last && now - last.t < RATE_HISTORY_SAMPLE_MS) {
+                last.v = rate;   // dentro de la misma hora se actualiza la muestra
+                last.t = now;
+            } else {
+                list.push({ t: now, v: rate });
+            }
+            const cutoff = now - RATE_HISTORY_DAYS * 24 * 60 * 60 * 1000;
+            rateHistory[source] = list
+                .filter(sample => sample && sample.t >= cutoff && isValidRate(sample.v))
+                .slice(-RATE_HISTORY_MAX);
+            return true;
+        }
+
+        function rateDayKey(t) {
+            const d = new Date(t);
+            return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+        }
+
+        // Fusiona una serie diaria de referencia sin perder las mediciones propias del POS
+        function mergeReferenceSeries(existing, incoming, serie, proxy = false) {
+            const otras = (Array.isArray(existing) ? existing : [])
+                .filter(sample => sample && isValidRate(sample.v) && sample.serie !== serie);
+            const byDay = new Map();
+            (Array.isArray(existing) ? existing : []).forEach(sample => {
+                if (sample && isValidRate(sample.v) && sample.serie === serie) byDay.set(rateDayKey(sample.t), sample);
+            });
+            incoming.forEach(sample => byDay.set(rateDayKey(sample.t), { t: sample.t, v: sample.v, serie, proxy }));
+            return [...otras, ...byDay.values()].sort((a, b) => a.t - b.t).slice(-RATE_HISTORY_MAX);
+        }
+
+        // Promedio diario oficial/paralelo, con la misma fórmula que la referencia "Promedio" en vivo
+        function buildDailyAverage(oficial, paralelo) {
+            const porDia = new Map(paralelo.map(point => [rateDayKey(point.t), point.v]));
+            return oficial.map(point => {
+                const valorParalelo = porDia.get(rateDayKey(point.t));
+                return valorParalelo === undefined ? null : { t: point.t, v: (point.v + valorParalelo) / 2 };
+            }).filter(Boolean);
+        }
+
+        // Estado de la última descarga del histórico, por grupo de series
+        function readRateHistorySeed() {
+            try {
+                const raw = JSON.parse(localStorage.getItem(RATE_HISTORY_SEED_KEY) || '{}');
+                if (raw && typeof raw === 'object' && !Array.isArray(raw)) return { version: raw.version || 0, at: raw.at || {} };
+            } catch (e) {
+                console.warn('Estado del histórico ilegible, se vuelve a descargar:', e);
+            }
+            return { version: 0, at: {} };
+        }
+
+        // Histórico diario del BCV: dólar y euro oficiales son datos reales. Para Binance y el
+        // Promedio se usa el dólar paralelo como serie de referencia, porque Binance P2P no
+        // publica histórico (hoy el paralelo difiere ~0,4% de Binance P2P). Se marca como "ref."
+        // y el POS la sustituye en cuanto tiene mediciones propias suficientes.
+        async function seedRateHistoryFromApi({ force = false } = {}) {
+            const estado = readRateHistorySeed();
+            // Se vuelve a descargar si cambió la versión del sembrado, si pasaron 12 h o si
+            // alguna serie esperada no tiene datos (p. ej. al añadir una referencia nueva).
+            const hayQueActualizar = (clave, series) => force
+                || estado.version !== RATE_HISTORY_SEED_VERSION
+                || !Number.isFinite(estado.at[clave])
+                || Date.now() - estado.at[clave] >= RATE_HISTORY_SEED_MS
+                || series.some(nombre => (Array.isArray(rateHistory[nombre]) ? rateHistory[nombre] : []).filter(s => s.serie).length < 2);
+
+            const parseSeries = (data, serie) => (Array.isArray(data) ? data : [])
+                .filter(item => String(item?.fuente || 'oficial') === serie)
+                .map(item => ({ t: Date.parse(`${item?.fecha}T00:00:00`), v: parseFloat(item?.promedio) }))
+                .filter(point => Number.isFinite(point.t) && isValidRate(point.v));
+
+            const tareas = [];
+            if (hayQueActualizar('dolares', ['bcv', 'binance', 'promedio'])) {
+                tareas.push(async () => {
+                    const res = await fetch('https://ve.dolarapi.com/v1/historicos/dolares', { cache: 'no-store' });
+                    if (!res.ok) throw new Error('Sin histórico del dólar');
+                    const data = await res.json();
+
+                    const oficial = parseSeries(data, 'oficial').slice(-RATE_HISTORY_DAYS);
+                    if (oficial.length < 2) throw new Error('Histórico oficial insuficiente');
+                    rateHistory.bcv = mergeReferenceSeries(rateHistory.bcv, oficial, 'oficial');
+
+                    const paralelo = parseSeries(data, 'paralelo').slice(-RATE_HISTORY_DAYS);
+                    if (paralelo.length >= 2) {
+                        rateHistory.binance = mergeReferenceSeries(rateHistory.binance, paralelo, 'paralelo', true);
+                        const promedio = buildDailyAverage(oficial, paralelo);
+                        if (promedio.length >= 2) {
+                            rateHistory.promedio = mergeReferenceSeries(rateHistory.promedio, promedio, 'paralelo', true);
+                        }
+                    }
+                    estado.at.dolares = Date.now();
+                });
+            }
+            if (hayQueActualizar('euro', ['euro'])) {
+                tareas.push(async () => {
+                    const res = await fetch('https://ve.dolarapi.com/v1/historicos/euros/oficial', { cache: 'no-store' });
+                    if (!res.ok) throw new Error('Sin histórico del euro');
+                    const euro = parseSeries(await res.json(), 'oficial').slice(-RATE_HISTORY_DAYS);
+                    if (euro.length < 2) throw new Error('Histórico del euro insuficiente');
+                    rateHistory.euro = mergeReferenceSeries(rateHistory.euro, euro, 'euro');
+                    estado.at.euro = Date.now();
+                });
+            }
+            if (!tareas.length) return false;
+
+            let seeded = false;
+            await Promise.allSettled(tareas.map(async (tarea) => {
+                try {
+                    await tarea();
+                    seeded = true;
+                } catch (e) {
+                    console.warn('No se pudo descargar el histórico de tasas:', e.message || e);
+                }
+            }));
+
+            if (seeded) {
+                estado.version = RATE_HISTORY_SEED_VERSION;
+                saveRateHistory();
+                try {
+                    localStorage.setItem(RATE_HISTORY_SEED_KEY, JSON.stringify(estado));
+                } catch (e) {
+                    console.warn('No se pudo guardar el estado del histórico:', e);
+                }
+            }
+            return seeded;
+        }
+
+        // Variación entre la muestra más antigua y la más reciente dentro de la ventana elegida.
+        // Las mediciones propias del POS mandan cuando cubren al menos la mitad de la ventana;
+        // si no, se compara la serie de referencia completa (sin mezclar orígenes).
+        function getRateTrend(source, windowKey = rateTrendWindow) {
+            const config = RATE_TREND_WINDOWS[windowKey] || RATE_TREND_WINDOWS['3d'];
+            const windowMs = config.days * 24 * 60 * 60 * 1000;
+            const cutoff = Date.now() - windowMs;
+            const all = (Array.isArray(rateHistory[source]) ? rateHistory[source] : [])
+                .filter(sample => sample && sample.t >= cutoff && isValidRate(sample.v))
+                .sort((a, b) => a.t - b.t);
+            if (all.length < 2) return null;
+
+            const propias = all.filter(sample => !sample.serie);
+            const alcancePropias = propias.length >= 2 ? propias[propias.length - 1].t - propias[0].t : 0;
+            const usarPropias = alcancePropias >= windowMs * 0.5;
+            const referencias = all.filter(sample => sample.serie);
+            const samples = usarPropias ? propias : (referencias.length >= 2 ? referencias : all);
+            if (samples.length < 2) return null;
+
+            const first = samples[0];
+            const last = samples[samples.length - 1];
+            const delta = last.v - first.v;
+            const pct = first.v > 0 ? (delta / first.v) * 100 : 0;
+            const origen = usarPropias ? 'propias' : (samples.some(sample => sample.proxy) ? 'referencia' : 'bcv');
+            return { samples, first, last, delta, pct, config, origen, usarPropias };
+        }
+
+        function buildSparkline(samples) {
+            if (samples.length < 2) return '';
+            const width = 48, height = 14, pad = 2;
+            let min = Infinity, max = -Infinity;
+            samples.forEach(sample => {
+                if (sample.v < min) min = sample.v;
+                if (sample.v > max) max = sample.v;
+            });
+            const span = max - min;
+            const step = width / (samples.length - 1);
+            const points = samples.map((sample, index) => {
+                const ratio = span > 0 ? (sample.v - min) / span : 0.5;
+                const x = (index * step).toFixed(1);
+                const y = (height - pad - ratio * (height - pad * 2)).toFixed(1);
+                return `${x},${y}`;
+            }).join(' ');
+            return `<svg class="rate-spark" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" aria-hidden="true"><polyline points="${points}" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></svg>`;
+        }
+
+        function renderRateTrend(source) {
+            const trend = getRateTrend(source);
+            const config = RATE_TREND_WINDOWS[rateTrendWindow];
+
+            if (!trend) {
+                const registros = (Array.isArray(rateHistory[source]) ? rateHistory[source] : []).length;
+                const motivo = registros
+                    ? `solo hay ${registros} registro(s) y se necesitan 2 dentro de la ventana de ${config.label}`
+                    : 'todavía no hay registros de esta referencia';
+                return `<span class="rate-trend empty" title="Tendencia de ${rateSourceLabels[source]} (últimos ${config.label}): sin datos suficientes (${motivo}). El POS guarda una muestra por hora mientras está abierto; al abrirse descarga el histórico diario del BCV (dólar y euro) y el del dólar paralelo, que sirve de referencia para Binance y el Promedio.">— sin datos</span>`;
+            }
+
+            const { samples, first, last, delta, pct, origen } = trend;
+            const unit = getRateUnitSymbol(source);
+            const flat = Math.abs(pct) < 0.05;
+            const direction = flat ? 'flat' : (pct > 0 ? 'up' : 'down');
+            const arrow = flat ? '▬' : (pct > 0 ? '▲' : '▼');
+            const sign = delta > 0 ? '+' : '';
+            const fecha = (t) => new Date(t).toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit' });
+            const origenTexto = origen === 'propias'
+                ? `Serie: mediciones propias del POS (${samples.length} registros)`
+                : origen === 'referencia'
+                    ? `Serie: dólar paralelo del BCV como referencia (${samples.length} días)`
+                    : `Serie: histórico diario oficial del BCV (${samples.length} días)`;
+            const title = [
+                `${rateSourceLabels[source]} · últimos ${config.label}`,
+                `${fecha(first.t)}: ${first.v.toFixed(2)} Bs/${unit}`,
+                `${fecha(last.t)}: ${last.v.toFixed(2)} Bs/${unit}`,
+                `Variación: ${sign}${delta.toFixed(2)} Bs/${unit} (${sign}${pct.toFixed(2)}%)`,
+                `${samples.length} registro(s) entre el ${fecha(first.t)} y el ${fecha(last.t)}`,
+                origenTexto
+            ].join('\n');
+            const marca = origen === 'referencia'
+                ? `<span class="rate-trend-ref" title="Calculado con el dólar paralelo del BCV como referencia, porque Binance P2P no publica histórico. Hoy el paralelo difiere ~0,4% de Binance P2P; el POS lo reemplazará con sus propias mediciones.">ref.</span>`
+                : '';
+
+            return `<span class="rate-trend ${direction}" title="${title}">${buildSparkline(samples)}<span>${arrow} ${sign}${pct.toFixed(2)}%</span>${marca}</span>`;
+        }
+
+        function updateRateTrendWindowButtons() {
+            document.querySelectorAll('[data-rate-window]').forEach(button => {
+                button.classList.toggle('active', button.getAttribute('data-rate-window') === rateTrendWindow);
+            });
+        }
+
+        function setRateTrendWindow(key) {
+            if (!RATE_TREND_WINDOWS[key]) return;
+            rateTrendWindow = key;
+            localStorage.setItem('pos_rate_trend_window', key);
+            updateRateTrendWindowButtons();
+            renderRateOptions();
         }
 
         function renderRateOptions() {
             const container = document.getElementById('rateOptions');
             if (!container) return;
 
-            container.innerHTML = ['bcv', 'binance', 'promedio'].map(key => {
+            container.innerHTML = ['bcv', 'euro', 'binance', 'promedio'].map(key => {
                 const reference = automaticRates[key];
-                const value = reference ? `${reference.rate.toFixed(2)} Bs/$` : 'Sin consultar';
+                const unit = getRateUnitSymbol(key);
+                const value = reference ? `${reference.rate.toFixed(2)} Bs/${unit}` : 'Sin consultar';
                 const detail = reference?.source || 'Actualiza para consultar esta referencia';
                 const selected = key === selectedRateSource;
                 return `
                     <label style="display:flex;align-items:center;gap:10px;padding:10px;border:1px solid ${selected ? '#3b82f6' : '#cbd5e1'};border-radius:9px;background:${selected ? '#eff6ff' : '#fff'};cursor:pointer">
                         <input type="radio" name="automaticRateSource" value="${key}" ${selected ? 'checked' : ''} onchange="selectRateSource('${key}')" style="accent-color:#3b82f6">
                         <span style="flex:1"><strong>${rateSourceLabels[key]}</strong><br><small style="color:#64748b">${detail}</small></span>
-                        <strong style="white-space:nowrap">${value}</strong>
+                        <span style="text-align:right;white-space:nowrap">
+                            <strong>${value}</strong><br>
+                            ${renderRateTrend(key)}
+                        </span>
                     </label>`;
             }).join('');
 
             const preview = automaticRates[selectedRateSource];
             const valueEl = document.getElementById('autoRateValue');
-            if (valueEl) valueEl.textContent = preview ? `Previsualización: ${preview.rate.toFixed(2)} Bs/$` : 'Previsualización: -- Bs/$';
+            const previewUnit = getRateUnitSymbol(selectedRateSource);
+            if (valueEl) valueEl.textContent = preview ? `Previsualización: ${preview.rate.toFixed(2)} Bs/${previewUnit}` : `Previsualización: -- Bs/${previewUnit}`;
         }
 
         function selectRateSource(source) {
@@ -3172,12 +3502,15 @@ function filterAndDisplayProducts(searchTerm = '') {
             if (metaEl) metaEl.textContent = `Selección pendiente: ${rateSourceLabels[source]}. Pulsa Guardar para aplicarla.`;
         }
 
-        function applyActiveAutomaticRate(notify = false) {
-            const reference = automaticRates[rateSource];
-            if (!reference) return;
+        // ¿Hay una venta en curso? (modal de cobro o de confirmación abiertos)
+        function isSaleModalOpen() {
+            return ['processModal', 'confirmModal'].some(id => document.getElementById(id)?.classList.contains('active'));
+        }
 
+        // Vuelca una tasa ya validada en la interfaz y en localStorage
+        function commitExchangeRate(rate, notify = false) {
             const previousRate = exchangeRate;
-            exchangeRate = reference.rate;
+            exchangeRate = rate;
             localStorage.setItem('pos_exchange_rate', exchangeRate);
             localStorage.setItem(`pos_exchange_rate_${rateSource}`, exchangeRate);
             updateExchangeRateDisplay();
@@ -3185,40 +3518,113 @@ function filterAndDisplayProducts(searchTerm = '') {
             updateCartUI();
 
             if (notify && Math.abs(previousRate - exchangeRate) >= 0.01) {
-                showToast(`${rateSourceLabels[rateSource]} actualizada: ${exchangeRate.toFixed(2)} Bs/$`);
+                showToast(`${rateSourceLabels[rateSource]} actualizada: ${exchangeRate.toFixed(2)} Bs/${getRateUnitSymbol(rateSource)}`);
             }
         }
 
+        function applyActiveAutomaticRate(notify = false) {
+            const reference = automaticRates[rateSource];
+            if (!reference || !isValidRate(reference.rate)) return;
+
+            // Con una venta en curso el monto mostrado en el modal debe ser el que se
+            // cobra y se registra: se congela la tasa y se aplica al cerrar el modal.
+            if (isSaleModalOpen()) {
+                pendingAutomaticRate = { rate: reference.rate, source: rateSource };
+                return;
+            }
+
+            commitExchangeRate(reference.rate, notify);
+        }
+
+        // Aplica la tasa que quedó pendiente mientras había una venta en curso
+        function applyPendingAutomaticRate() {
+            const pending = pendingAutomaticRate;
+            if (!pending || isSaleModalOpen()) return;
+            pendingAutomaticRate = null;
+            // Si la referencia activa cambió entretanto, la próxima consulta se encarga
+            if (pending.source !== rateSource || !isValidRate(pending.rate)) return;
+            commitExchangeRate(pending.rate, true);
+        }
+
         async function refreshAutomaticRates({ applyActive = false, notify = false } = {}) {
-            const statusEl = document.getElementById('autoRateStatus');
-            const metaEl = document.getElementById('autoRateMeta');
-            const btn = statusEl?.parentElement?.querySelector('button');
-            if (btn) btn.disabled = true;
-            if (statusEl) { statusEl.textContent = 'Actualizando...'; statusEl.style.background = '#fef3c7'; statusEl.style.color = '#92400e'; }
+            // Evita consultas solapadas (temporizador + visibilitychange + botón + apertura del modal):
+            // sin esta guarda, la respuesta más lenta podía pisar a la más reciente.
+            if (ratesRefreshInFlight) return;
+            ratesRefreshInFlight = true;
 
-            const [bcvResult, binanceResult] = await Promise.allSettled([fetchBcvReference(), fetchBinanceReference()]);
-            if (bcvResult.status === 'fulfilled') automaticRates.bcv = bcvResult.value;
-            if (binanceResult.status === 'fulfilled') automaticRates.binance = binanceResult.value;
-            if (automaticRates.bcv && automaticRates.binance) {
-                automaticRates.promedio = {
-                    rate: (automaticRates.bcv.rate + automaticRates.binance.rate) / 2,
-                    source: 'Promedio de BCV y Binance / USDT',
-                    updatedAt: new Date().toISOString()
-                };
-            }
+            try {
+                const statusEl = document.getElementById('autoRateStatus');
+                const metaEl = document.getElementById('autoRateMeta');
+                const btn = statusEl?.parentElement?.querySelector('button');
+                if (btn) btn.disabled = true;
+                if (statusEl) { statusEl.textContent = 'Actualizando...'; statusEl.style.background = '#fef3c7'; statusEl.style.color = '#92400e'; }
 
-            const successfulRequests = [bcvResult, binanceResult].filter(result => result.status === 'fulfilled').length;
-            renderRateOptions();
-            if (successfulRequests) {
-                if (statusEl) { statusEl.textContent = 'Actualizado'; statusEl.style.background = '#dcfce7'; statusEl.style.color = '#166534'; }
-                if (metaEl) metaEl.textContent = `Última consulta: ${new Date().toLocaleString('es-VE')} • Se actualiza cada 5 min. mientras el POS esté visible.`;
-                if (applyActive && rateMode === 'auto') applyActiveAutomaticRate(notify);
-            } else {
-                if (statusEl) { statusEl.textContent = 'Error'; statusEl.style.background = '#fee2e2'; statusEl.style.color = '#991b1b'; }
-                if (metaEl) metaEl.textContent = 'No se pudieron actualizar las referencias. Se conserva la última tasa aplicada.';
-                if (notify) showToast('No se pudieron actualizar las tasas automáticas');
+                const [bcvResult, binanceResult, euroResult] = await Promise.allSettled([fetchBcvReference(), fetchBinanceReference(), fetchEuroReference()]);
+                const results = { bcv: bcvResult, binance: binanceResult, euro: euroResult };
+                const failed = [];
+                let historyChanged = false;
+
+                Object.entries(results).forEach(([key, result]) => {
+                    if (result.status !== 'fulfilled') { failed.push(key); return; }
+                    const reference = result.value;
+                    const previous = automaticRates[key];
+                    // Diagnóstico: un salto muy grande suele indicar una respuesta errónea de la API
+                    if (previous && isValidRate(previous.rate) && Math.abs(reference.rate - previous.rate) / previous.rate > 0.5) {
+                        console.warn(`Salto inusual en la referencia ${key}: ${previous.rate} -> ${reference.rate}`);
+                    }
+                    automaticRates[key] = reference;
+                    if (recordRateSample(key, reference.rate)) historyChanged = true;
+                });
+
+                // El promedio se recalcula SOLO si ambas referencias se consultaron en esta pasada;
+                // de lo contrario mezclaría un valor fresco con uno viejo y lo presentaría como nuevo.
+                if (bcvResult.status === 'fulfilled' && binanceResult.status === 'fulfilled') {
+                    automaticRates.promedio = {
+                        rate: (automaticRates.bcv.rate + automaticRates.binance.rate) / 2,
+                        source: 'Promedio de BCV y Binance / USDT',
+                        updatedAt: new Date().toISOString()
+                    };
+                    if (recordRateSample('promedio', automaticRates.promedio.rate)) historyChanged = true;
+                } else {
+                    delete automaticRates.promedio;
+                }
+
+                if (historyChanged) saveRateHistory();
+                const successful = Object.keys(results).length - failed.length;
+                renderRateOptions();
+
+                if (statusEl) {
+                    if (successful === Object.keys(results).length) {
+                        statusEl.textContent = 'Actualizado'; statusEl.style.background = '#dcfce7'; statusEl.style.color = '#166534';
+                    } else if (successful > 0) {
+                        statusEl.textContent = 'Parcial'; statusEl.style.background = '#fef3c7'; statusEl.style.color = '#92400e';
+                    } else {
+                        statusEl.textContent = 'Error'; statusEl.style.background = '#fee2e2'; statusEl.style.color = '#991b1b';
+                    }
+                }
+
+                if (metaEl) {
+                    if (selectedRateSource !== rateSource) {
+                        // No borrar el aviso de una selección aún no guardada
+                        metaEl.textContent = `Selección pendiente: ${rateSourceLabels[selectedRateSource]}. Pulsa Guardar para aplicarla.`;
+                    } else if (successful === Object.keys(results).length) {
+                        metaEl.textContent = `Última consulta: ${new Date().toLocaleString('es-VE')} • Se actualiza cada 5 min. mientras el POS esté visible.`;
+                    } else if (successful > 0) {
+                        metaEl.textContent = `Última consulta: ${new Date().toLocaleString('es-VE')} • Sin respuesta de: ${failed.map(key => rateSourceLabels[key]).join(', ')}. Se muestran los últimos valores disponibles.`;
+                    } else {
+                        metaEl.textContent = 'No se pudieron actualizar las referencias. Se conserva la última tasa aplicada.';
+                    }
+                }
+
+                if (successful > 0) {
+                    if (applyActive && rateMode === 'auto') applyActiveAutomaticRate(notify);
+                } else if (notify) {
+                    showToast('No se pudieron actualizar las tasas automáticas');
+                }
+                if (btn) btn.disabled = false;
+            } finally {
+                ratesRefreshInFlight = false;
             }
-            if (btn) btn.disabled = false;
         }
 
         function setupAutomaticRateRefresh() {
@@ -3235,63 +3641,6 @@ function filterAndDisplayProducts(searchTerm = '') {
             });
         }
 
-        function applyAutomaticRate(rate, source, updatedAt) {
-            const statusEl = document.getElementById('autoRateStatus');
-            const valueEl = document.getElementById('autoRateValue');
-            const metaEl = document.getElementById('autoRateMeta');
-
-            exchangeRate = rate;
-            localStorage.setItem('pos_exchange_rate', exchangeRate);
-            localStorage.setItem(`pos_exchange_rate_${rateSource}`, exchangeRate);
-            if (valueEl) valueEl.textContent = `${rate.toFixed(2)} Bs/$`;
-            if (statusEl) { statusEl.textContent = 'Actualizado'; statusEl.style.background = '#dcfce7'; statusEl.style.color = '#166534'; }
-            if (metaEl) {
-                const date = updatedAt ? new Date(updatedAt) : new Date();
-                metaEl.textContent = `Fuente: ${source} • Última actualización: ${date.toLocaleString('es-VE')}`;
-            }
-            updateExchangeRateDisplay();
-            renderProductList();
-            updateCartUI();
-            showToast(`Tasa ${rateSourceLabels[rateSource]} actualizada: ${rate.toFixed(2)} Bs/$`);
-        }
-
-        async function fetchSelectedRate() {
-            const sourceSelect = document.getElementById('rateSource');
-            rateSource = sourceSelect?.value || rateSource;
-            localStorage.setItem('pos_rate_source', rateSource);
-
-            if (rateSource === 'bcv') {
-                return fetchBcvRate();
-            }
-
-            const statusEl = document.getElementById('autoRateStatus');
-            const btn = statusEl?.parentElement?.querySelector('button');
-            if (btn) btn.disabled = true;
-            if (statusEl) { statusEl.textContent = 'Actualizando...'; statusEl.style.background = '#fef3c7'; statusEl.style.color = '#92400e'; }
-
-            try {
-                if (rateSource === 'binance') {
-                    const binance = await fetchBinanceReference();
-                    applyAutomaticRate(binance.rate, binance.source, binance.updatedAt);
-                } else {
-                    const [bcv, binance] = await Promise.all([fetchBcvReference(), fetchBinanceReference()]);
-                    applyAutomaticRate(
-                        (bcv.rate + binance.rate) / 2,
-                        'Promedio de BCV y Binance / USDT',
-                        new Date().toISOString()
-                    );
-                }
-            } catch (e) {
-                console.error(`Error al consultar ${rateSource}:`, e);
-                if (statusEl) { statusEl.textContent = 'Error'; statusEl.style.background = '#fee2e2'; statusEl.style.color = '#991b1b'; }
-                const metaEl = document.getElementById('autoRateMeta');
-                if (metaEl) metaEl.textContent = `Error: ${e.message}. Usando tasa guardada.`;
-                showToast(`No se pudo obtener la tasa ${rateSourceLabels[rateSource]}`);
-            } finally {
-                if (btn) btn.disabled = false;
-            }
-        }
-
         function openExchangeModal() {
             // Cargar modo guardado
             const savedMode = localStorage.getItem('pos_rate_mode') || 'manual';
@@ -3301,9 +3650,17 @@ function filterAndDisplayProducts(searchTerm = '') {
             document.getElementById('rateAuto').checked = (rateMode === 'auto');
             document.getElementById('rateManual').checked = (rateMode === 'manual');
             toggleRateModeUI(rateMode);
+            updateRateTrendWindowButtons();
             
-            // Si es manual, poner valor actual en input
-            document.getElementById('exchangeInput').value = exchangeRate;
+            // El campo manual siempre es "Bs por $": si la fuente activa es el euro
+            // (Bs/€), prellenar con una referencia del dólar para no guardar por error
+            // un valor en euros como si fuera la tasa del dólar.
+            let manualPrefill = exchangeRate;
+            if (rateMode === 'auto' && rateSource === 'euro') {
+                const dolarReference = automaticRates.bcv?.rate || parseFloat(localStorage.getItem('pos_exchange_rate_bcv'));
+                manualPrefill = dolarReference > 0 ? dolarReference : '';
+            }
+            document.getElementById('exchangeInput').value = manualPrefill;
             
             // Mostrar todas las referencias y actualizarlas al abrir.
             if (rateMode === 'auto') {
@@ -3337,7 +3694,7 @@ function filterAndDisplayProducts(searchTerm = '') {
             
             if (rateMode === 'manual') {
                 const newRate = parseFloat(document.getElementById('exchangeInput').value);
-                if (isNaN(newRate) || newRate <= 0) {
+                if (!isValidRate(newRate)) {
                     showToast('Tasa de cambio inválida');
                     return;
                 }
@@ -3363,7 +3720,8 @@ function filterAndDisplayProducts(searchTerm = '') {
 
         function updateExchangeRateDisplay() {
             const prefix = rateMode === 'auto' ? `⚡ ${rateSourceLabels[rateSource] || 'Automática'}: ` : '';
-            document.getElementById('currentRate').textContent = `${prefix}${exchangeRate.toFixed(2)} Bs/$`;
+            const unit = rateMode === 'auto' ? getRateUnitSymbol(rateSource) : '$';
+            document.getElementById('currentRate').textContent = `${prefix}${exchangeRate.toFixed(2)} Bs/${unit}`;
         }
 
         // ===== MODAL PROCESAMIENTO =====
@@ -3391,6 +3749,7 @@ function filterAndDisplayProducts(searchTerm = '') {
         function closeProcessModal() {
             document.getElementById('processModal').classList.remove('active');
             resetProcessModal();
+            applyPendingAutomaticRate();
         }
 
         function resetProcessModal() {
@@ -3686,8 +4045,9 @@ function filterAndDisplayProducts(searchTerm = '') {
             );
         }
 
-        function processSale() {
+        async function processSale() {
             try {
+                const reservedSaleId = await reserveSaleId();
                 // Capture specific payment details based on selected method
                 let finalPaymentDetails = { ...paymentDetails };
                 let combinedPaymentData = null; // Variable para datos de pago combinado
@@ -3712,7 +4072,7 @@ function filterAndDisplayProducts(searchTerm = '') {
                 }
                 
                 const saleData = {
-                    id: commitSaleId(),
+                    id: reservedSaleId,
                     items: cart.map(item => {
                         // Determine the correct price per unit based on product type
                         const basePrice = item.product.isBulk ? item.product.pricePerUnit : item.product.price;
@@ -3740,6 +4100,7 @@ function filterAndDisplayProducts(searchTerm = '') {
                     timestamp: new Date().toISOString(),
                     customer: customerData,
                     exchangeRate: exchangeRate,
+                    rateSource: rateMode === 'auto' ? rateSource : 'manual', // Referencia usada (euro => la tasa está en Bs/€)
                     ivaApplied: applyIVA // Store whether IVA was applied for this sale
                 };
                 
@@ -3756,8 +4117,6 @@ function filterAndDisplayProducts(searchTerm = '') {
                 if (customerData) {
                     fbUpsertClient({...customerData, lastSaleDate: new Date().toISOString()}).catch(() => {});
                 }
-                fbSaveNumero().catch(() => {});
-
                 printReceipt(saleData);
 
                 showToast('¡Venta procesada exitosamente!');
@@ -3883,6 +4242,7 @@ function filterAndDisplayProducts(searchTerm = '') {
         function closeConfirmModal() {
             document.getElementById('confirmModal').classList.remove('active');
             confirmCallback = null;
+            applyPendingAutomaticRate();
         }
 
         function executeConfirmAction() {
@@ -3909,6 +4269,7 @@ function filterAndDisplayProducts(searchTerm = '') {
             document.querySelectorAll('.modal').forEach(modal => {
                 modal.classList.remove('active');
             });
+            applyPendingAutomaticRate();
         }
 
         function formatCurrency(amount) {
@@ -4202,7 +4563,7 @@ async function printReceipt(saleData) {
             html += `<div class="r small">Bs. ${fmt(vesTotal)}</div>`;
         }
         if (config.showExchangeRate && rate !== 1) {
-            html += `<div class="r small">Tasa: Bs. ${fmt(rate)} / USD</div>`;
+            html += `<div class="r small">Tasa: Bs. ${fmt(rate)} / ${saleData.rateSource === 'euro' ? 'EUR' : 'USD'}</div>`;
         }
 
         // Método de Pago
@@ -4384,7 +4745,8 @@ async function ensureUserCloudStructure() {
                 if (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length > 0) return resolve();
                 const scripts = [
                     'https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js',
-                    'https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js'
+                    'https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js',
+                    'https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js'
                 ];
                 let loaded = 0;
                                 scripts.forEach(src => {
@@ -4607,5 +4969,6 @@ async function ensureUserCloudStructure() {
             }
         }
     </script>
+    <script src="sesion.js"></script>
 </body>
 </html>

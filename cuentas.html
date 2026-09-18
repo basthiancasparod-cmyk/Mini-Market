@@ -1378,7 +1378,9 @@
                 if (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length > 0) return resolve();
                 const scripts = [
                     'https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js',
-                    'https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js'
+                    'https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js',
+
+                    'https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js'
                 ];
                 let loaded = 0;
                 scripts.forEach(src => {
@@ -2294,5 +2296,6 @@
             }
         }
     </script>
+    <script src="sesion.js"></script>
 </body>
 </html>
