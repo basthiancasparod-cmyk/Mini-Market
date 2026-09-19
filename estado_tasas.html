@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8"><title>Diagnostico de tasas</title>
+<style>
+ body{font-family:system-ui,Segoe UI,Arial;margin:24px;background:#0f172a;color:#e2e8f0}
+ h1{font-size:1.2rem} p{color:#94a3b8;max-width:900px;line-height:1.5}
+ table{border-collapse:collapse;width:100%;margin-top:16px;font-size:.85rem}
+ th,td{border:1px solid #334155;padding:6px 8px;text-align:left;vertical-align:top}
+ th{background:#1e293b} .ok{color:#4ade80} .mal{color:#f87171} .ojo{color:#fbbf24}
+ code{background:#1e293b;padding:1px 4px;border-radius:4px} button{background:#2563eb;color:#fff;border:0;border-radius:6px;padding:8px 14px;cursor:pointer}
+</style></head><body>
+<h1>Diagnostico de tasas — se ejecuta en TU navegador</h1>
+<p>Cada fila consulta una fuente desde este equipo y red. <b>Verde</b> = responde y trae una tasa.
+<b>Rojo</b> = no responde (servidor caido, o el navegador lo bloquea por CORS: en ese caso la respuesta existe pero
+JavaScript no puede leerla; lo confirmas en F12 &rarr; Red). <b>Amarillo</b> = responde pero no encontre una tasa reconocible.</p>
+<p>Pulsa el boton y dime el resultado (o mandame una captura). Con eso se que fuentes sirven desde tu red y dejo la cadena de proveedores cerrada.</p>
+<button onclick="probar()">Probar las 12 fuentes</button>
+<table id="tabla"><thead><tr><th>Fuente</th><th>Resultado</th><th>Tiempo</th><th>Detalle</th></tr></thead><tbody></tbody></table>
+<script>
+const FUENTES = [["BCV oficial","https://ve.dolarapi.com/v1/dolares/oficial"],["Euro oficial","https://ve.dolarapi.com/v1/euros/oficial"],["Paralelo","https://ve.dolarapi.com/v1/dolares/paralelo"],["Binance (usdt.com.ve)","https://www.usdt.com.ve/api/v1/rates/current"],["Binance (CriptoYa)","https://criptoya.com/api/binancep2p/USDT/VES/1"],["BCV (pydolarve)","https://pydolarve.org/api/v1/dollar?page=bcv"],["Euro (pydolarve)","https://pydolarve.org/api/v1/dollar?page=euro"],["BCV (dolarvzla, pide clave)","https://api.dolarvzla.com/public/exchange-rate"],["Generico USD->VES (er-api)","https://open.er-api.com/v6/latest/USD"],["Generico USD->VES (exchangerate.host)","https://api.exchangerate.host/latest?base=USD&symbols=VES"],["BCV pagina OFICIAL (rss)","https://www.bcv.org.ve/rss/tasas.xml"],["BCV via r.jina.ai","https://r.jina.ai/https://www.bcv.org.ve/rss/tasas.xml"]];
+function conTiempo(url, ms) {
+  const c = new AbortController(); const t = setTimeout(() => c.abort(), ms);
+  return fetch(url, { cache: 'no-store', signal: c.signal }).finally(() => clearTimeout(t));
+}
+function buscarTasa(texto) {
+  const patrones = [/"?promedio"?\s*[:=]\s*"?([\d.,]+)/i, /"?price"?\s*[:=]\s*"?([\d.,]+)/i, /"?buy_rate"?\s*[:=]\s*"?([\d.,]+)/i, /"?(?:ask|totalAsk|bid|totalBid)"?\s*[:=]\s*"?([\d.,]+)/i, /"VES"\s*:\s*([\d.,]+)/i];
+  for (const p of patrones) { const m = texto.match(p); if (m) return m[1]; }
+  return null;
+}
+async function probar() {
+  const tb = document.querySelector('#tabla tbody'); tb.innerHTML = '';
+  await Promise.all(FUENTES.map(async ([nombre, url]) => {
+    const fila = document.createElement('tr');
+    const celdas = [nombre, 'consultando...', '', url].map((v, i) => { const td = document.createElement('td'); td.textContent = v; fila.appendChild(td); return td; });
+    tb.appendChild(fila);
+    const t0 = Date.now();
+    try {
+      const r = await conTiempo(url, 10000);
+      const txt = await r.text();
+      const ms = Date.now() - t0;
+      if (!r.ok) { celdas[1].innerHTML = '<span class="mal">HTTP ' + r.status + '</span>'; celdas[2].textContent = ms + ' ms'; celdas[3].textContent = txt.replace(/\s+/g, ' ').slice(0, 140); return; }
+      const tasa = buscarTasa(txt);
+      celdas[1].innerHTML = r.ok ? '<span class="ok">responde</span>' : '<span class="mal">HTTP ' + r.status + '</span>';
+      celdas[2].textContent = ms + ' ms';
+      celdas[3].textContent = (tasa ? 'tasa detectada: ' + tasa + ' | ' : 'sin tasa reconocible | ') + txt.replace(/\s+/g, ' ').slice(0, 120);
+      if (!tasa) celdas[1].innerHTML = '<span class="ojo">responde, sin tasa clara</span>';
+    } catch (e) {
+      celdas[1].innerHTML = '<span class="mal">' + (e.name === 'AbortError' ? 'timeout (no respondio)' : 'no se pudo leer') + '</span>';
+      celdas[2].textContent = (Date.now() - t0) + ' ms';
+      celdas[3].textContent = e.name === 'AbortError' ? 'pasaron 10 s sin respuesta' : 'puede ser CORS (mira F12 -> Red) o servidor caido';
+    }
+  }));
+}
+</script></body></html>
