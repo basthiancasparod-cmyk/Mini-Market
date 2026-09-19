@@ -1789,6 +1789,10 @@
 /**
  * Crea automáticamente la estructura BBDD/{email}/suscripcion/cloudSync = false
  * si el usuario no existe aún en Firebase. Así el admin puede activarlo manualmente.
+ * También crea `suscripcion/modoSync = false` (interruptor del motor
+ * de operaciones, E1), para que el dueño solo tenga que cambiarlo a `true` desde
+ * la consola de Firebase. Ninguno de los dos se pisa nunca si ya existe: ni
+ * booleano ni cadena.
  * Recibe el correo por parámetro: antes lo leía de la sesión, que todavía no existía.
  */
 async function ensureUserCloudStructure(email) {
@@ -1812,6 +1816,15 @@ async function ensureUserCloudStructure(email) {
             console.log(`[CloudInit] Nodo suscripcion creado para estructura existente: ${email}`);
         }
         
+        // Interruptor del motor de operaciones (E1), igual que `cloudSync`: se crea
+        // el nodo por comodidad para que el dueño solo tenga que cambiar
+        // false -> true desde la consola. Si YA existe no se toca nunca, ni si es
+        // booleano ni si es una cadena ('operaciones').
+        if (snap.child('suscripcion/modoSync').val() === null) {
+            await db.ref(`${userPath}/suscripcion/modoSync`).set(false);
+            console.log(`[CloudInit] Nodo suscripcion/modoSync creado: ${email}`);
+        }
+
         // Limpiamos cache de cloud-access.js para que lea el valor fresco
         sessionStorage.removeItem('cloudSync');
         sessionStorage.removeItem('cloudSyncEmail');

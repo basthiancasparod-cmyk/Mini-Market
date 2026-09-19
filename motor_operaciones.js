@@ -38,12 +38,18 @@
 
    OTRAS DESVIACIONES DECLARADAS (ninguna silenciosa)
    --------------------------------------------------
-   1. `iniciar({ modoSync })` NO ejecuta nada si el valor no es exactamente
-      'operaciones': devuelve `{ activo:false, modo:'clasico' }` sin tocar disco,
-      sin generar `installId` y sin leer la red. Es la garantía dura de que un
-      cliente en modo clásico no nota absolutamente nada. Si `modoSync` no se
-      pasa, el motor lo lee de `suscripcion/modoSync` (nodo ausente o error de
-      lectura -> 'clasico', sin cachear el fallo).
+   1. `iniciar({ modoSync })` acepta DOS formas del interruptor, por comodidad:
+      el booleano `true` (en la consola de Firebase el dueño solo cambia
+      `false` -> `true`, igual que con `cloudSync`) y la cadena `'operaciones'`
+      (forma canónica, con sitio para futuros modos: `'compras'`, etc.).
+      CUALQUIER otro valor —`false`, `'clasico'`, ausente, un número, un texto
+      distinto o un error de lectura— es modo clásico: `iniciar` NO ejecuta nada
+      más (devuelve `{ activo:false, modo:'clasico' }` sin tocar disco, sin
+      generar `installId` y sin leer la red). Es la garantía dura de que un
+      cliente en modo clásico no nota absolutamente nada, y de que NUNCA se
+      activa por accidente (ante duda, clásico: nunca al revés). Si `modoSync`
+      no se pasa, el motor lo lee de `suscripcion/modoSync` (nodo ausente o error
+      de lectura -> 'clasico', sin cachear el fallo).
    1b. PERMISO DE NUBE (`cloudSync`, que es lo que se cobra): con `modoSync` en
       'operaciones' pero SIN `suscripcion/cloudSync === true` el motor arranca
       igual, pero en MODO SOLO-LOCAL: `registrarOperacion`, la ventana caliente,
@@ -1250,11 +1256,15 @@
     }
 
     /**
-     * Arranca el motor. Con cualquier valor distinto de 'operaciones' NO se
-     * ejecuta nada más: ni disco, ni installId, ni red (garantía dura del modo
-     * clásico). Con 'operaciones' pero SIN permiso de nube (`cloudSync !== true`)
-     * arranca en MODO SOLO-LOCAL: cola y ventana caliente en el equipo, cero
-     * escrituras en la nube. Devuelve siempre un objeto, nunca lanza.
+     * Arranca el motor. El interruptor acepta `true` (booleano, cómodo en la
+     * consola de Firebase, igual que `cloudSync`) o la cadena `'operaciones'`
+     * (forma canónica, con sitio para futuros modos). Con CUALQUIER otro valor
+     * —`false`, `'clasico'`, ausente, un número, un texto distinto o un error de
+     * lectura— NO se ejecuta nada más: ni disco, ni installId, ni red (garantía
+     * dura del modo clásico; ante duda, clásico, nunca al revés). Con el motor
+     * activo pero SIN permiso de nube (`cloudSync !== true`) arranca en MODO
+     * SOLO-LOCAL: cola y ventana caliente en el equipo, cero escrituras en la
+     * nube. Devuelve siempre un objeto, nunca lanza.
      */
     async function iniciar(opciones) {
         opciones = opciones || {};
@@ -1277,7 +1287,10 @@
                         modo = null;                 // fallo de lectura -> 'clasico', sin cachear nada
                     }
                 }
-                _modo = (modo === 'operaciones') ? 'operaciones' : 'clasico';
+                // Dos formas válidas del interruptor: el booleano `true` (cómodo,
+                // igual que `cloudSync`) y la cadena 'operaciones' (canónica, con
+                // sitio para futuros modos). Todo lo demás es clásico.
+                _modo = (modo === 'operaciones' || modo === true) ? 'operaciones' : 'clasico';
                 if (_modo !== 'operaciones') {
                     _motivoInactivo = leidoDeNube ? 'interruptor-en-clasico' : 'interruptor-no-operaciones';
                     return { ok: true, activo: false, modo: 'clasico', motivo: _motivoInactivo };

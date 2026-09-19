@@ -11,8 +11,8 @@
     <!-- Guardián de almacenamiento local: medición, cuota, respaldo y restauración -->
     <script src="almacenamiento.js"></script>
     <!-- Fase B (E1): motor de operaciones. Solo se usa si el negocio tiene
-         BBDD/<email>/suscripcion/modoSync = 'operaciones'; si no, no se ejecuta
-         ni una línea suya y el POS se comporta exactamente como siempre. -->
+         BBDD/<email>/suscripcion/modoSync = true (o la cadena 'operaciones'); si no,
+         no se ejecuta ni una línea suya y el POS se comporta exactamente como siempre. -->
     <script src="motor_operaciones.js"></script>
     <script>
         // Guardián de almacenamiento: comprueba la cuota una sola vez al cargar la página.
@@ -25,9 +25,24 @@
             // competir con el arranque del POS. Sin await: nunca bloquea la interfaz.
             setTimeout(function () {
                 try {
-                    if (typeof window.aplicarPoliticaAlmacenamiento === 'function') {
-                        window.aplicarPoliticaAlmacenamiento().catch(function () { /* la política nunca debe romper la página */ });
-                    }
+                    // El contexto de archivo (nube + modo del motor) se pide ANTES de
+                    // aplicar la política: `permisoNubeOps()` deja el permiso cacheado
+                    // cuando la nube contesta de verdad. Si no contesta (o falla), el
+                    // contexto viaja sin `nube` y la política decide de forma
+                    // conservadora: no archivar ni borrar nada.
+                    var contextoListo = (typeof permisoNubeOps === 'function')
+                        ? permisoNubeOps()
+                        : Promise.resolve(false);
+                    contextoListo.then(function () {
+                        try {
+                            if (typeof window.aplicarPoliticaAlmacenamiento === 'function') {
+                                var ctxArchivo = (typeof contextoArchivoLocal === 'function') ? contextoArchivoLocal() : undefined;
+                                window.aplicarPoliticaAlmacenamiento(ctxArchivo).catch(function () { /* la política nunca debe romper la página */ });
+                            }
+                        } catch (e) { /* la política nunca debe romper la página */ }
+                    });
+                    // El recorte del histórico de tasas no toca las ventas ni la copia
+                    // de la nube: sigue igual que siempre.
                     if (typeof window.recortarHistorialTasas === 'function') {
                         window.recortarHistorialTasas();
                     }
@@ -4259,10 +4274,14 @@ function filterAndDisplayProducts(searchTerm = '') {
                 // de 6 meses y, si archivó alguna, aplica la política de límite local.
                 // Sin await: el flujo de la venta sigue igual y no se bloquea la UI.
                 if (typeof window.archivarVentasAntiguas === 'function') {
-                    window.archivarVentasAntiguas().then(function (archivado) {
+                    // Contexto de archivo (nube + modo del motor): con nube en modo
+                    // clásico la política local NO toca nada (la nube es la fuente de
+                    // verdad y la subida clásica manda el arreglo completo de ventas).
+                    const ctxArchivo = (typeof contextoArchivoLocal === 'function') ? contextoArchivoLocal() : undefined;
+                    window.archivarVentasAntiguas(ctxArchivo).then(function (archivado) {
                         if (archivado && archivado.archivadas > 0 &&
                             typeof window.aplicarPoliticaAlmacenamiento === 'function') {
-                            return window.aplicarPoliticaAlmacenamiento();
+                            return window.aplicarPoliticaAlmacenamiento(ctxArchivo);
                         }
                         return null;
                     }).catch(function () { /* el archivado nunca debe romper la venta */ });
@@ -4891,7 +4910,8 @@ async function printReceipt(saleData) {
 
         /* ===== FASE B (E1): interruptor del motor de operaciones =====
            El motor (motor_operaciones.js) SOLO se usa si el negocio tiene
-           `BBDD/<email>/suscripcion/modoSync = 'operaciones'`. Con cualquier otro
+           `BBDD/<email>/suscripcion/modoSync = true` (booleano, como cloudSync) o
+           la cadena `'operaciones'`. Con cualquier otro
            valor —nodo ausente, valor inválido o lectura fallida— todo sigue
            EXACTAMENTE como hoy: mismo fbSaveVentas, mismas marcas, mismo todo, y
            ni una línea del motor se ejecuta (ver `iniciar` del propio motor, que
@@ -4929,8 +4949,12 @@ async function printReceipt(saleData) {
                     const db = await initFirebase();
                     if (!db) return 'desconocido';
                     const snap = await db.ref('BBDD/' + sanitizeEmailForDb(email) + '/suscripcion/modoSync').once('value');
-                    // Valor ausente o distinto de 'operaciones' -> 'clasico' (definitivo).
-                    const modo = (snap.val() === 'operaciones') ? 'operaciones' : 'clasico';
+                    // Dos formas válidas del interruptor: el booleano `true` (cómodo
+                    // en la consola, igual que cloudSync) y la cadena 'operaciones'.
+                    // Cualquier otro valor —false, 'clasico', ausente o fallo de
+                    // lectura— es 'clasico' (definitivo).
+                    const valorModo = snap.val();
+                    const modo = (valorModo === true || valorModo === 'operaciones') ? 'operaciones' : 'clasico';
                     try {
                         sessionStorage.setItem(OPS_CACHE_EMAIL, email);
                         sessionStorage.setItem(OPS_CACHE_CLAVE, modo);
@@ -4977,6 +5001,27 @@ async function printReceipt(saleData) {
             } catch (e) {
                 return false;                  // fallo de lectura: sin nube
             }
+        }
+
+        /**
+         * Contexto para la política de archivo local del módulo `almacenamiento.js`
+         * (`puedeTocarArchivoLocal`): decide si se puede archivar/borrar en el equipo.
+         *
+         * `nube` viaja SOLO cuando la nube ya contestó de verdad: `checkCloudAccess()`
+         * cachea únicamente respuestas reales del servidor (`_cloudAccessChecked`), así
+         * que si todavía no se sabe —o la lectura falló— el contexto va sin `nube` y la
+         * política resuelve de forma conservadora: NO archivar ni borrar nada.
+         *
+         * `modoOps` es 'operaciones' SOLO si el motor está ACTIVO de verdad
+         * (`modoOperacionesActivo()`), no con solo leer el interruptor: si el motor no
+         * arrancó, el POS sigue subiendo el arreglo completo de ventas (camino clásico)
+         * y recortar `pos_sales` podría truncar la copia de la nube. En cualquier otro
+         * caso cuenta como clásico.
+         */
+        function contextoArchivoLocal() {
+            const ctx = { modoOps: modoOperacionesActivo() ? 'operaciones' : 'clasico' };
+            if (_cloudAccessChecked) ctx.nube = _cloudAccess === true;
+            return ctx;
         }
 
         /**
@@ -5145,8 +5190,10 @@ async function printReceipt(saleData) {
 
 /**
  * Verifica si existe la estructura del usuario en Firebase.
- * Si NO existe, crea el nodo BBDD/{email}/suscripcion/cloudSync = false
- * para que el administrador pueda activarlo manualmente desde la consola.
+ * Si NO existe, crea los nodos BBDD/{email}/suscripcion/cloudSync = false y
+ * suscripcion/modoSync = false (interruptor del motor de operaciones, E1), para
+ * que el administrador pueda activarlos manualmente cambiando false -> true en
+ * la consola. Ninguno de los dos se pisa nunca si ya existe: ni booleano ni cadena.
  */
 async function ensureUserCloudStructure() {
     const email = getCurrentUserEmail();
@@ -5180,6 +5227,15 @@ async function ensureUserCloudStructure() {
             }
         }
         
+        // Interruptor del motor de operaciones (E1), igual que cloudSync: se crea
+        // el nodo por comodidad para que el dueño solo tenga que cambiar
+        // false -> true desde la consola. Si YA existe no se toca nunca, ni si es
+        // booleano ni si es una cadena ('operaciones').
+        if (snap.child('suscripcion/modoSync').val() === null) {
+            await db.ref(`${userPath}/suscripcion/modoSync`).set(false);
+            console.log('[CloudInit] Nodo suscripcion/modoSync creado para estructura existente.');
+        }
+
         // Importante: limpiamos el cache de cloud-access.js para que 
         // la próxima vez que pregunte, lea el valor fresco de Firebase
         sessionStorage.removeItem('cloudSync');

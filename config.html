@@ -2996,6 +2996,10 @@
                     ' · liberado: ' + liberado + ' · registros borrados: ' + borrados;
                 if (res && typeof res.porcentaje === 'number') texto += ' · uso actual: ' + res.porcentaje + ' %';
                 if (res && res.aviso) texto += ' — ' + res.aviso;
+                // Si la política no puede tocar el almacén local (por ejemplo, con nube
+                // en modo clásico, o si esta página no puede saber si hay nube), el
+                // botón lo explica en vez de borrar nada.
+                if (res && res.permitido === false && res.motivo) texto += ' — No se tocó nada: ' + res.motivo;
                 const esError = !!(res && res.tipoAviso === 'error');
                 if (res && res.aviso) showToast(res.aviso);
                 await almacenamientoRefrescar();

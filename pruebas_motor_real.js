@@ -39,12 +39,14 @@
    P4  dos equipos con el mismo negocio conservan las dos ventas
    P5  installId distinto evita la colisión de claves
    P6  la verificación de liberadas recientes re-sube lo que falte (y se poda a 48 h)
-   P7  con modoSync = 'clasico' el motor no se activa (y el POS lo respeta)
+   P7  el interruptor modoSync: el booleano true y la cadena 'operaciones' activan
+       el motor; false, 'clasico', un valor raro o un fallo de lectura -> clásico
    P8  el histórico antiguo se lee paginado y no se reescribe
    P9  caída automática de OPFS a IndexedDB (extra)
    P10 sin ningún almacén durable el motor no arranca (extra)
    P11 el POS real de punta a punta: processSale en clásico y en operaciones (extra)
    P12 sin permiso de nube (cloudSync != true) el motor es SOLO-LOCAL (extra)
+   P13 el campo modoSync se crea solo en false y NUNCA se pisa si ya existe (extra)
 
    Formato: OK/FALLA por comprobación, resumen final y código de salida.
    ===================================================================== */
@@ -835,9 +837,9 @@ const rutaDeClave = (clave) => RAIZ + '/ops/' + clave;
     }
 
     /* ------------------------------------------------------------------
-       P7 · modoSync = 'clasico': el motor no se activa
+       P7 · Interruptor modoSync: true (booleano) o 'operaciones' activan; lo demás no
        ------------------------------------------------------------------ */
-    titulo('P7 · Interruptor: con modoSync distinto de "operaciones" el motor NO se activa');
+    titulo('P7 · Interruptor modoSync: true y "operaciones" activan el motor; false, "clasico" y valores raros NO');
     {
         const servidor = crearNube();
         const disco = crearDisco();
@@ -882,6 +884,78 @@ const rutaDeClave = (clave) => RAIZ + '/ops/' + clave;
             rConNodo.activo === true && rConNodo.modo === 'operaciones', json(rConNodo));
         check('P7 · si la lectura del interruptor falla se usa clasico (nunca por accidente)',
             rFallo.activo === false && rFallo.modo === 'clasico', json(rFallo));
+
+        // --- El interruptor acepta DOS formas, y solo dos: el booleano `true`
+        //     (cómodo en la consola de Firebase, igual que `cloudSync`) y la cadena
+        //     'operaciones' (forma canónica, con sitio para futuros modos). Todo lo
+        //     demás —false, 'clasico', un número, un texto distinto, ausente o un
+        //     fallo de lectura— es SIEMPRE clásico: nunca se activa por accidente.
+        async function arranqueConInterruptor(nombre, preparar, extra) {
+            const servidorI = crearNube();
+            if (preparar) preparar(servidorI);
+            const discoI = crearDisco();
+            const localI = crearLocalStorageFalso({ pos_device_id: 'EQP5EEEE' });
+            const envI = crearEntorno({ disco: discoI, nav: crearNavigatorOPFS(discoI), local: localI });
+            const rI = await envI.motor.iniciar(Object.assign(
+                { deviceId: 'EQP5EEEE', emailPath: EMAIL_PATH, db: crearDbFalso(servidorI) }, extra || {}));
+            nota('interruptor ' + nombre + ' -> ' + json({ activo: rI.activo, modo: rI.modo, motivo: rI.motivo }));
+            return { r: rI, disco: discoI, local: localI, servidor: servidorI };
+        }
+
+        const iBool = await arranqueConInterruptor('true (booleano)', null, { modoSync: true });
+        check('P7 · modoSync booleano true SÍ activa el motor (comodidad, igual que cloudSync)',
+            iBool.r.ok === true && iBool.r.activo === true && iBool.r.modo === 'operaciones', json(iBool.r));
+        check('P7 · con el booleano true el motor arranca de verdad y genera installId en el equipo',
+            iBool.local.getItem('pos_install_id') !== null, String(iBool.local.getItem('pos_install_id')));
+
+        const iCadena = await arranqueConInterruptor("'operaciones' (cadena)", null, { modoSync: 'operaciones' });
+        check("P7 · modoSync con la cadena 'operaciones' SÍ activa el motor (forma canónica de hoy)",
+            iCadena.r.activo === true && iCadena.r.modo === 'operaciones', json(iCadena.r));
+
+        const iNubeBool = await arranqueConInterruptor('true leído de la nube',
+            (s) => escribirEn(s.datos, RAIZ + '/suscripcion/modoSync', true));
+        check('P7 · el interruptor leído de la nube como booleano true también activa el motor',
+            iNubeBool.r.activo === true && iNubeBool.r.modo === 'operaciones', json(iNubeBool.r));
+
+        const iFalse = await arranqueConInterruptor('false (booleano)', null, { modoSync: false });
+        const iModoClasico = await arranqueConInterruptor("'clasico' (cadena)", null, { modoSync: 'clasico' });
+        const iUno = await arranqueConInterruptor('el número 1 (valor raro)', null, { modoSync: 1 });
+        const iTexto = await arranqueConInterruptor("la cadena 'TRUE' (valor raro)", null, { modoSync: 'TRUE' });
+        check('P7 · modoSync booleano false deja el motor INACTIVO',
+            iFalse.r.activo === false && iFalse.r.modo === 'clasico', json(iFalse.r));
+        check("P7 · modoSync con la cadena 'clasico' deja el motor INACTIVO",
+            iModoClasico.r.activo === false && iModoClasico.r.modo === 'clasico', json(iModoClasico.r));
+        check('P7 · un valor raro (el número 1) es clásico',
+            iUno.r.activo === false && iUno.r.modo === 'clasico', json(iUno.r));
+        check("P7 · un valor raro (la cadena 'TRUE') es clásico",
+            iTexto.r.activo === false && iTexto.r.modo === 'clasico', json(iTexto.r));
+
+        const inactivos = [['false', iFalse], ["'clasico'", iModoClasico], ['el número 1', iUno], ["'TRUE'", iTexto]];
+        check('P7 · con el modo clásico NO se ejecuta ni una línea del motor (ni disco, ni installId, ni red)',
+            inactivos.every(([, x]) => x.r.activo === false && x.r.modo === 'clasico' &&
+                Object.keys(x.disco.archivos).length === 0 &&
+                x.local.getItem('pos_install_id') === null &&
+                x.servidor.escrituras.length === 0 && x.servidor.lecturas.length === 0),
+            json(inactivos.map(([n, x]) => ({
+                n, activo: x.r.activo, archivos: Object.keys(x.disco.archivos).length,
+                installId: x.local.getItem('pos_install_id'), lecturas: x.servidor.lecturas.length
+            }))));
+
+        // El POS REAL también tiene que entender el booleano: si su propia puerta
+        // (`leerModoSyncNube`, la que decide si se llega a llamar al motor) solo
+        // aceptara la cadena, el dueño pondría `true` en la consola y no pasaría NADA.
+        const servidorPosBool = crearNube();
+        escribirEn(servidorPosBool.datos, 'BBDD/cliente_at_ejemplo_com/suscripcion/cloudSync', true);
+        escribirEn(servidorPosBool.datos, 'BBDD/cliente_at_ejemplo_com/suscripcion/modoSync', true);
+        const posBool = crearEntornoPOS({
+            servidor: servidorPosBool,
+            localInicial: { pos_device_id: 'POS5EEEE', pos_last_sale_number: '0' }
+        });
+        const modoPosBool = await posBool.ctx.esperarModoSync();
+        const activoPosBool = (modoPosBool === 'operaciones') ? await posBool.ctx.asegurarMotorOps() : false;
+        nota('POS real con modoSync booleano true -> modo: ' + modoPosBool + ' | motor: ' + activoPosBool);
+        check('P7 · el POS real acepta modoSync booleano true y llega a arrancar el motor',
+            modoPosBool === 'operaciones' && activoPosBool === true, json({ modoPosBool, activoPosBool }));
 
         // --- Invariantes del POS: el motor solo se usa con el interruptor en operaciones ---
         const pos = fs.readFileSync(RUTA_POS, 'utf8').replace(/\r\n/g, '\n');
@@ -1324,12 +1398,175 @@ const rutaDeClave = (clave) => RAIZ + '/ops/' + clave;
             json({ activo: pagando.activo, estado: pagando.estado, punto: pagando.punto, color: pagando.color }));
     }
 
+    /* ------------------------------------------------------------------
+       P13 · El campo del interruptor se crea SOLO y nunca se pisa (extra)
+       ------------------------------------------------------------------ */
+    titulo('P13 · ensureUserCloudStructure crea suscripcion/modoSync = false sin pisar lo que ya exista');
+    {
+        const PATRON_CLOUD = 'BBDD/cliente_at_ejemplo_com';
+        const EMAIL_CLOUD = 'cliente@ejemplo.com';
+
+        /** Extrae una función del HTML: de su firma a la llave de cierre en columna 0. */
+        function extraerFuncion(texto, firma) {
+            const i = texto.indexOf(firma);
+            if (i === -1) return '';
+            const fin = texto.indexOf('\n}', i);
+            return fin === -1 ? '' : texto.slice(i, fin + 2);
+        }
+
+        /** La parte de la nube falsa que usa ensureUserCloudStructure: once/child/set. */
+        function crearDbCloudInit(servidor) {
+            function snapshotDe(valor) {
+                return {
+                    val: () => clonar(valor),
+                    exists: () => valor !== null && valor !== undefined,
+                    child: (ruta) => snapshotDe(leerDe(valor, ruta))
+                };
+            }
+            return {
+                ref(ruta) {
+                    return {
+                        async once() {
+                            if (servidor.negarLecturas) {
+                                const e = new Error('PERMISSION_DENIED: rules denied read at ' + ruta);
+                                e.code = 'PERMISSION_DENIED';
+                                throw e;
+                            }
+                            servidor.lecturas.push(ruta);
+                            return snapshotDe(leerDe(servidor.datos, ruta));
+                        },
+                        async set(valor) {
+                            if (servidor.negar) {
+                                const e = new Error('PERMISSION_DENIED: rules denied write at ' + ruta);
+                                e.code = 'PERMISSION_DENIED';
+                                throw e;
+                            }
+                            servidor.escrituras.push({ ruta, valor: clonar(valor) });
+                            escribirEn(servidor.datos, ruta, valor);
+                            return true;
+                        }
+                    };
+                }
+            };
+        }
+
+        /**
+         * Carga la función REAL de creación de estructura de la página y la ejecuta
+         * contra una nube falsa. Devuelve si compiló, si la llamada terminó sin lanzar
+         * (nunca debe romper el arranque) y la nube resultante.
+         */
+        async function ejecutarCreacion(html, esIndex, preparar) {
+            const firma = esIndex
+                ? 'async function ensureUserCloudStructure(email)'
+                : 'async function ensureUserCloudStructure()';
+            const codigo = extraerFuncion(html, firma);
+            const servidor = crearNube();
+            if (preparar) preparar(servidor);
+            const dbCloud = crearDbCloudInit(servidor);
+            const ctx = {
+                console: { log: () => {}, warn: () => {}, error: () => {} },
+                JSON, Object, Array, String, Number, Boolean, Promise, Error, RegExp,
+                sessionStorage: crearLocalStorageFalso(),
+                db: dbCloud,
+                emailToPath: (email) => String(email || '').trim().toLowerCase().replace('@', '_at_').replace(/\./g, '_'),
+                getCurrentUserEmail: () => EMAIL_CLOUD,
+                getUserDataPath: () => PATRON_CLOUD,
+                initFirebase: async () => dbCloud
+            };
+            ctx.window = ctx;
+            ctx.globalThis = ctx;
+            vm.createContext(ctx);
+            let lanzo = '';
+            let compila = false;
+            try {
+                new vm.Script(codigo, { filename: 'ensureUserCloudStructure' });
+                compila = true;
+                vm.runInContext(codigo, ctx, { filename: 'ensureUserCloudStructure' });
+                const llamada = esIndex
+                    ? 'ensureUserCloudStructure(' + JSON.stringify(EMAIL_CLOUD) + ')'
+                    : 'ensureUserCloudStructure()';
+                await vm.runInContext(llamada, ctx);
+            } catch (e) {
+                lanzo = e.message;
+            }
+            return { servidor, codigo, compila, lanzo };
+        }
+
+        const PAGINAS = [
+            { nombre: 'index.html', ruta: path.join(__dirname, 'index.html'), esIndex: true },
+            { nombre: 'mini_market_pos.html', ruta: RUTA_POS, esIndex: false }
+        ];
+
+        for (const pagina of PAGINAS) {
+            const html = fs.readFileSync(pagina.ruta, 'utf8').replace(/\r\n/g, '\n');
+            const val = (servidor) => leerDe(servidor.datos, PATRON_CLOUD + '/suscripcion/modoSync');
+            const valCloud = (servidor) => leerDe(servidor.datos, PATRON_CLOUD + '/suscripcion/cloudSync');
+
+            // (a) Negocio nuevo: su nodo no existe -> se crean los DOS campos en false.
+            const nuevo = await ejecutarCreacion(html, pagina.esIndex);
+            check('P13 · ' + pagina.nombre + ': la función real de la página se extrae y compila',
+                nuevo.codigo !== '' && nuevo.compila === true, nuevo.lanzo || nuevo.codigo.slice(0, 60));
+            check('P13 · ' + pagina.nombre + ': negocio nuevo -> cloudSync = false y modoSync = false',
+                valCloud(nuevo.servidor) === false && val(nuevo.servidor) === false,
+                json({ cloudSync: valCloud(nuevo.servidor), modoSync: val(nuevo.servidor) }));
+
+            // (b) El dueño YA activó el motor con el booleano: la creación NO lo pisa.
+            const yaTrue = await ejecutarCreacion(html, pagina.esIndex, (s) => {
+                escribirEn(s.datos, PATRON_CLOUD + '/suscripcion/cloudSync', true);
+                escribirEn(s.datos, PATRON_CLOUD + '/suscripcion/modoSync', true);
+            });
+            check('P13 · ' + pagina.nombre + ': modoSync = true ya presente -> sigue siendo el booleano true',
+                val(yaTrue.servidor) === true, json(val(yaTrue.servidor)));
+            check('P13 · ' + pagina.nombre + ': con todo ya creado la función no escribe NADA (cero set)',
+                yaTrue.servidor.escrituras.length === 0, json(yaTrue.servidor.escrituras));
+
+            // (c) Forma canónica (cadena): tampoco se pisa.
+            const yaCadena = await ejecutarCreacion(html, pagina.esIndex, (s) => {
+                escribirEn(s.datos, PATRON_CLOUD + '/suscripcion/cloudSync', false);
+                escribirEn(s.datos, PATRON_CLOUD + '/suscripcion/modoSync', 'operaciones');
+            });
+            check('P13 · ' + pagina.nombre + ': la cadena operaciones ya presente -> sigue siendo la cadena',
+                val(yaCadena.servidor) === 'operaciones' && yaCadena.servidor.escrituras.length === 0,
+                json({ valor: val(yaCadena.servidor), escrituras: yaCadena.servidor.escrituras.length }));
+
+            // (d) Un false explícito ya guardado: se respeta (no se reescribe).
+            const yaFalse = await ejecutarCreacion(html, pagina.esIndex, (s) => {
+                escribirEn(s.datos, PATRON_CLOUD + '/suscripcion/cloudSync', false);
+                escribirEn(s.datos, PATRON_CLOUD + '/suscripcion/modoSync', false);
+            });
+            check('P13 · ' + pagina.nombre + ': un false ya guardado se respeta (cero escrituras)',
+                val(yaFalse.servidor) === false && yaFalse.servidor.escrituras.length === 0,
+                json({ valor: val(yaFalse.servidor), escrituras: yaFalse.servidor.escrituras.length }));
+
+            // (e) Usuario antiguo: tiene nodo y cloudSync, pero le falta el interruptor.
+            const antiguo = await ejecutarCreacion(html, pagina.esIndex, (s) => {
+                escribirEn(s.datos, PATRON_CLOUD + '/suscripcion/cloudSync', true);
+            });
+            check('P13 · ' + pagina.nombre + ': usuario antiguo sin el campo -> se le crea modoSync = false',
+                val(antiguo.servidor) === false && valCloud(antiguo.servidor) === true,
+                json({ cloudSync: valCloud(antiguo.servidor), modoSync: val(antiguo.servidor) }));
+
+            // (f) Lectura rota: no rompe nada y no escribe (el motor, ante duda, clásico).
+            const roto = await ejecutarCreacion(html, pagina.esIndex, (s) => { s.negarLecturas = true; });
+            check('P13 · ' + pagina.nombre + ': si la lectura falla no rompe el arranque ni escribe',
+                roto.compila === true && roto.lanzo === '' && roto.servidor.escrituras.length === 0,
+                json({ lanzo: roto.lanzo, escrituras: roto.servidor.escrituras.length }));
+
+            // (g) Reglas que niegan la escritura: el try/catch de la función lo absorbe.
+            const negado = await ejecutarCreacion(html, pagina.esIndex, (s) => { s.negar = true; });
+            check('P13 · ' + pagina.nombre + ': si las reglas niegan la escritura, la función no revienta',
+                negado.compila === true && negado.lanzo === '', negado.lanzo);
+        }
+    }
+
     console.log('\n================ ' + ok + ' OK, ' + fallos + ' FALLAS ================');
     if (fallos === 0) {
-        console.log('El motor real (motor_operaciones.js) supera los 8 casos obligatorios + 3 extra,');
+        console.log('El motor real (motor_operaciones.js) supera los 8 casos obligatorios + 4 extra,');
         console.log('incluido el POS real (processSale) cargado en un vm con OPFS y Firebase falsos.');
         console.log('P12 cubre el permiso de nube (cloudSync): sin permiso, el motor es solo-local y no');
         console.log('escribe NADA en la nube (ni ops/*, ni índices, ni ventas/historial).');
+        console.log('P13 comprueba que suscripcion/modoSync se crea solo en false y que NUNCA');
+        console.log('se pisa lo que ya exista (ni el booleano true ni la cadena operaciones).');
         console.log('Recordatorio: los mocks de OPFS/IndexedDB/Firebase reproducen la semántica del');
         console.log('navegador y del SDK v8; NO prueban un corte de energía ni dos pestañas a la vez.');
     }

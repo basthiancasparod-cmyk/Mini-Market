@@ -17,6 +17,20 @@ const RAIZ = __dirname;
 let pruebas = 0;
 let fallos = 0;
 
+/**
+ * Contexto del caso normal del PLAN GRATUITO (cliente SIN nube: `cloudSync`
+ * distinto de true): es el único caso en el que el archivado y la política local
+ * deben actuar como siempre. Los casos con nube y sin contexto se prueban en la
+ * sección 11.
+ */
+const SIN_NUBE = { nube: false };
+
+/** Contexto de un cliente CON nube en modo clásico (la nube manda). */
+const NUBE_CLASICO = { nube: true, modoOps: 'clasico' };
+
+/** Contexto de un cliente CON nube y con el motor de operaciones activo. */
+const NUBE_OPS = { nube: true, modoOps: 'operaciones' };
+
 function check(nombre, condicion) {
     pruebas++;
     if (!condicion) fallos++;
@@ -336,7 +350,7 @@ async function pruebaArchivado() {
     const ctx = crearContexto({ pos_sales: JSON.stringify(ventas) });
 
     const idsAntes = ventas.map(function (v) { return v.id; }).sort();
-    const res = await ctx.window.archivarVentasAntiguas();
+    const res = await ctx.window.archivarVentasAntiguas(SIN_NUBE);
 
     check('historialDisponible() = true con IndexedDB falso', ctx.window.historialDisponible() === true);
     check('devuelve { archivadas, quedan, error } sin error', res.error === null && res.archivadas === 2 && res.quedan === 3);
@@ -357,14 +371,14 @@ async function pruebaArchivado() {
     check('NINGUNA venta se perdió: ids antes = ' + idsAntes.join(',') + ' / ids después = ' + idsDespues.join(','),
         JSON.stringify(idsAntes) === JSON.stringify(idsDespues));
 
-    const res2 = await ctx.window.archivarVentasAntiguas();
+    const res2 = await ctx.window.archivarVentasAntiguas(SIN_NUBE);
     check('una segunda llamada no archiva nada (archivadas = 0)', res2.archivadas === 0 && res2.error === null);
 
     // Sin IndexedDB no se debe quitar nada de localStorage.
     const ctxSinIdb = crearContexto({ pos_sales: JSON.stringify([ventas[0]]) });
     ctxSinIdb.indexedDB = undefined;
     ctxSinIdb.window.indexedDB = undefined;
-    const resSin = await ctxSinIdb.window.archivarVentasAntiguas();
+    const resSin = await ctxSinIdb.window.archivarVentasAntiguas(SIN_NUBE);
     check('sin IndexedDB avisa y NO quita la venta de localStorage',
         resSin.archivadas === 0 && !!resSin.error && JSON.parse(ctxSinIdb.localStorage.getItem('pos_sales')).length === 1);
 
@@ -375,7 +389,7 @@ async function pruebaArchivado() {
             { id: 'A-2', timestamp: new Date().toISOString(), total: 2 }
         ])
     });
-    const enCurso = ctxCarrera.window.archivarVentasAntiguas();
+    const enCurso = ctxCarrera.window.archivarVentasAntiguas(SIN_NUBE);
     const mientras = JSON.parse(ctxCarrera.localStorage.getItem('pos_sales'));
     mientras.push({ id: 'A-NUEVA', timestamp: new Date().toISOString(), total: 3 });   // venta nueva
     ctxCarrera.localStorage.setItem('pos_sales', JSON.stringify(mientras));
@@ -419,7 +433,7 @@ async function pruebaPolitica() {
         medidaInicial.limiteBytes === Math.round(limiteMB * 1048576));
     check('necesitaRespaldo() = true antes de descargar un respaldo', ctx.window.necesitaRespaldo() === true);
 
-    const sinRespaldo = await ctx.window.aplicarPoliticaAlmacenamiento();
+    const sinRespaldo = await ctx.window.aplicarPoliticaAlmacenamiento(SIN_NUBE);
     const trasAviso = await ctx.window.contarHistorial('ventas');
     check('al 100 % sin respaldo devuelve accion = "requiere-respaldo"', sinRespaldo.accion === 'requiere-respaldo');
     check('el aviso pide descargar un respaldo', typeof sinRespaldo.aviso === 'string' &&
@@ -436,7 +450,7 @@ async function pruebaPolitica() {
         ctx.window.marcarRespaldoHecho() === true && ctx.window.necesitaRespaldo() === false &&
         !!ctx.localStorage.getItem('respaldoHecho'));
 
-    const conRespaldo = await ctx.window.aplicarPoliticaAlmacenamiento();
+    const conRespaldo = await ctx.window.aplicarPoliticaAlmacenamiento(SIN_NUBE);
     const restantes = await ctx.window.contarHistorial('ventas');
     const quedan = await ctx.window.leerHistorial('ventas', 0);
 
@@ -462,7 +476,7 @@ async function pruebaPolitica() {
 
     // Por debajo del 80 %: no hace nada.
     ctx.localStorage.setItem('limiteLocalMB', '99999');
-    const holgado = await ctx.window.aplicarPoliticaAlmacenamiento();
+    const holgado = await ctx.window.aplicarPoliticaAlmacenamiento(SIN_NUBE);
     check('con espacio de sobra devuelve accion = "nada" y sin aviso', holgado.accion === 'nada' && holgado.aviso === null);
 
     // Entre 80 % y 100 %: solo aviso.
@@ -470,7 +484,7 @@ async function pruebaPolitica() {
     const bytesHist2 = await ctx.window.tamanoHistorial();
     const limite85 = ((bytesLocal2 + bytesHist2) / 1048576) / 0.85;
     ctx.localStorage.setItem('limiteLocalMB', String(limite85));
-    const enAviso = await ctx.window.aplicarPoliticaAlmacenamiento();
+    const enAviso = await ctx.window.aplicarPoliticaAlmacenamiento(SIN_NUBE);
     check('entre 80 % y 100 % devuelve accion = "aviso" con el texto del límite',
         enAviso.accion === 'aviso' && enAviso.aviso.indexOf('% de tu límite') !== -1 &&
         enAviso.aviso.indexOf('Activa la nube o descarga un respaldo') !== -1);
@@ -939,6 +953,273 @@ async function pruebaAvisarSiLleno() {
 }
 
 /* ------------------------------------------------------------------ */
+/* 11. Política de archivo local según nube y modo del motor          */
+/* ------------------------------------------------------------------ */
+
+function pruebaTablaDeDecision() {
+    titulo('11a. puedeTocarArchivoLocal(): tabla de decisión (nube / modo del motor)');
+
+    const ctx = crearContexto({});
+
+    const casos = [
+        ['sin nube (plan local)', { nube: false }, true],
+        ['sin nube y motor en operaciones (solo-local)', { nube: false, modoOps: 'operaciones' }, true],
+        ['con nube y modo operaciones', { nube: true, modoOps: 'operaciones' }, true],
+        ['con nube y modo operaciones en booleano (forma del motor)', { nube: true, modoOps: true }, true],
+        ['con nube y modo clásico', { nube: true, modoOps: 'clasico' }, false],
+        ['con nube y modo sin resolver (null)', { nube: true, modoOps: null }, false],
+        ['con nube y modoOps ausente', { nube: true }, false],
+        ['con nube y modo desconocido', { nube: true, modoOps: 'lo-que-sea' }, false],
+        ['sin datos de nube (solo el modo)', { modoOps: 'operaciones' }, false],
+        ['sin contexto', undefined, false],
+        ['contexto vacío', {}, false],
+        ['contexto no objeto (cadena)', 'sin nube', false],
+        ['nube con valor raro ("false" en texto)', { nube: 'false' }, false],
+        ['nube ausente y modo clásico', { nube: undefined, modoOps: 'clasico' }, false]
+    ];
+    casos.forEach(function (caso) {
+        const d = ctx.window.puedeTocarArchivoLocal(caso[1]);
+        check('puedeTocarArchivoLocal(' + caso[0] + ') -> permitido = ' + caso[2],
+            d.permitido === caso[2] && typeof d.motivo === 'string' && d.motivo.length > 0);
+    });
+
+    const planLocal = ctx.window.puedeTocarArchivoLocal({ nube: false });
+    check('el motivo del plan local dice que no hay copia en la nube que recortar',
+        planLocal.motivo.indexOf('Sin nube') === 0);
+    const clasico = ctx.window.puedeTocarArchivoLocal(NUBE_CLASICO);
+    check('el motivo de nube + clásico dice que la nube es la fuente de verdad',
+        clasico.motivo.indexOf('modo clásico') !== -1 && clasico.motivo.indexOf('fuente de verdad') !== -1);
+    const ops = ctx.window.puedeTocarArchivoLocal(NUBE_OPS);
+    check('el motivo de nube + operaciones habla de lo confirmado en la nube',
+        ops.motivo.indexOf('operaciones') !== -1 && ops.motivo.indexOf('confirmado') !== -1);
+    const duda = ctx.window.puedeTocarArchivoLocal({});
+    check('ante la duda el motivo dice que no se archiva ni se borra nada',
+        duda.motivo.indexOf('No consta') === 0 && duda.motivo.indexOf('no se archiva ni se borra') !== -1);
+}
+
+async function pruebaNubeClasicoNoTocaNada() {
+    titulo('11b. Con nube + modo clásico: ni archiva ni borra, y devuelve el motivo');
+
+    // --- Archivado: las ventas de más de 6 meses deben quedarse donde están ---
+    const ventas = [
+        { id: 'C-1', timestamp: ventaAntigua(0, 9), total: 10 },
+        { id: 'C-2', timestamp: ventaAntigua(1, 8), total: 20 },
+        { id: 'C-3', timestamp: new Date().toISOString(), total: 30 }
+    ];
+    const ctx = crearContexto({ pos_sales: JSON.stringify(ventas) });
+    const idsAntes = JSON.parse(ctx.localStorage.getItem('pos_sales')).map(function (v) { return v.id; });
+
+    const res = await ctx.window.archivarVentasAntiguas(NUBE_CLASICO);
+    const idsDespues = JSON.parse(ctx.localStorage.getItem('pos_sales')).map(function (v) { return v.id; });
+    check('archivarVentasAntiguas({ nube: true, modoOps: "clasico" }) no archiva nada',
+        res.archivadas === 0 && res.error === null && res.quedan === 3);
+    check('devuelve permitido = false y el motivo explicativo',
+        res.permitido === false && typeof res.motivo === 'string' && res.motivo.indexOf('fuente de verdad') !== -1);
+    check('pos_sales queda EXACTAMENTE igual (' + idsAntes.join(',') + ')',
+        JSON.stringify(idsAntes) === JSON.stringify(idsDespues));
+    check('el historial de IndexedDB sigue vacío', (await ctx.window.contarHistorial('ventas')) === 0);
+
+    // --- Política: con el límite al ~200 % y el respaldo ya hecho, lo ÚNICO que
+    //     puede impedir el borrado es la propia decisión de la política ---
+    const registros = [];
+    for (let i = 0; i < 250; i++) {
+        const d = new Date('2020-01-01T00:00:00.000Z');
+        d.setHours(d.getHours() + i);
+        registros.push({ id: 'H-' + i, timestamp: d.toISOString(), payload: 'z'.repeat(300) });
+    }
+    const guardado = await ctx.window.guardarEnHistorial('ventas', registros);
+    check('preparación: 250 registros archivados para llenar el límite',
+        guardado.ok === true && guardado.guardados === 250);
+    const bytesLocal = ctx.window.medirAlmacenamiento().totalBytes;
+    const bytesHistorial = await ctx.window.tamanoHistorial();
+    ctx.localStorage.setItem('limiteLocalMB', String(((bytesLocal + bytesHistorial) / 1048576) / 2));
+    ctx.window.marcarRespaldoHecho();   // ya hay respaldo: nada más frenaría el borrado
+    check('preparación: uso por encima del 100 % (' + ctx.window.medirTodo().porcentaje + ' %) y respaldo hecho',
+        ctx.window.medirTodo().porcentaje > 100 && ctx.window.necesitaRespaldo() === false);
+
+    const politica = await ctx.window.aplicarPoliticaAlmacenamiento(NUBE_CLASICO);
+    const trasPolitica = await ctx.window.contarHistorial('ventas');
+    check('aplicarPoliticaAlmacenamiento con nube + clásico -> accion = "no-permitido"',
+        politica.accion === 'no-permitido' && politica.permitido === false &&
+        typeof politica.motivo === 'string' && politica.motivo.indexOf('fuente de verdad') !== -1);
+    check('NO borró ningún registro (siguen los 250) ni liberó bytes',
+        trasPolitica === 250 && politica.borrados === 0 && politica.liberadoBytes === 0);
+    check('no recortó pos_sales (siguen las 3 ventas) y no publicó ningún aviso',
+        JSON.parse(ctx.localStorage.getItem('pos_sales')).length === 3 && politica.aviso === null &&
+        ctx._documentoFalso.body.hijos.length === 0);
+
+    // --- Y la prueba de que el freno es la política: el MISMO estado (mismo
+    //     historial, mismo límite y mismo respaldo) con el contexto del plan
+    //     local SÍ recorta ---
+    const politicaLocal = await ctx.window.aplicarPoliticaAlmacenamiento(SIN_NUBE);
+    const trasLocal = await ctx.window.contarHistorial('ventas');
+    check('con el mismo estado y contexto sin nube SÍ recorta (accion = "recortado")',
+        politicaLocal.accion === 'recortado' && politicaLocal.borrados >= 100 && trasLocal < 250 &&
+        politicaLocal.permitido === true);
+}
+
+async function pruebaSinContexto() {
+    titulo('11c. Sin contexto: opción conservadora (no borrar) y motivo presente');
+
+    const ctx = crearContexto({
+        pos_sales: JSON.stringify([
+            { id: 'S-1', timestamp: ventaAntigua(0, 8), total: 1 },
+            { id: 'S-2', timestamp: new Date().toISOString(), total: 2 }
+        ])
+    });
+
+    const sinCtx = await ctx.window.archivarVentasAntiguas();
+    check('archivarVentasAntiguas() sin contexto no archiva y devuelve permitido = false con motivo',
+        sinCtx.archivadas === 0 && sinCtx.error === null && sinCtx.permitido === false &&
+        typeof sinCtx.motivo === 'string' && sinCtx.motivo.length > 0);
+    check('pos_sales no se toca sin contexto y el historial sigue vacío',
+        JSON.parse(ctx.localStorage.getItem('pos_sales')).length === 2 &&
+        (await ctx.window.contarHistorial('ventas')) === 0);
+
+    const conBasura = await ctx.window.archivarVentasAntiguas('sin nube');
+    check('un contexto que no es objeto tampoco archiva (conservador)',
+        conBasura.archivadas === 0 && conBasura.permitido === false && !!conBasura.motivo);
+
+    // Política sin contexto: el mismo freno, con el límite al ~150 % y respaldo hecho.
+    const registros = [];
+    for (let i = 0; i < 120; i++) {
+        const d = new Date('2020-01-01T00:00:00.000Z');
+        d.setHours(d.getHours() + i);
+        registros.push({ id: 'N-' + i, timestamp: d.toISOString(), payload: 'w'.repeat(300) });
+    }
+    await ctx.window.guardarEnHistorial('ventas', registros);
+    const bytesLocal = ctx.window.medirAlmacenamiento().totalBytes;
+    const bytesHistorial = await ctx.window.tamanoHistorial();
+    ctx.localStorage.setItem('limiteLocalMB', String(((bytesLocal + bytesHistorial) / 1048576) / 1.5));
+    ctx.window.marcarRespaldoHecho();
+
+    const politica = await ctx.window.aplicarPoliticaAlmacenamiento();
+    check('aplicarPoliticaAlmacenamiento() sin contexto -> accion = "no-permitido" con motivo',
+        politica.accion === 'no-permitido' && politica.permitido === false &&
+        typeof politica.motivo === 'string' && politica.motivo.length > 0);
+    check('no borró nada sin contexto (siguen los 120 registros)',
+        (await ctx.window.contarHistorial('ventas')) === 120 &&
+        politica.borrados === 0 && politica.liberadoBytes === 0 && politica.aviso === null);
+
+    // Por debajo del 80 % el resultado sigue siendo "nada" (no hay nada que hacer),
+    // pero el motivo viaja igual en el resultado.
+    ctx.localStorage.setItem('limiteLocalMB', '99999');
+    const holgado = await ctx.window.aplicarPoliticaAlmacenamiento();
+    check('con espacio de sobra y sin contexto -> accion = "nada" y el motivo sigue presente',
+        holgado.accion === 'nada' && holgado.permitido === false &&
+        typeof holgado.motivo === 'string' && holgado.motivo.length > 0);
+}
+
+async function pruebaNubeOperaciones() {
+    titulo('11d. Con nube + modo operaciones: no libera nada que no esté confirmado');
+
+    // El archivado en modo operaciones mueve a IndexedDB SOLO lo que queda
+    // guardado y comprobado (nada se pierde) y la política solo borra del
+    // historial local: nunca de la ventana caliente `pos_sales`, que es la que el
+    // motor libera únicamente tras la confirmación de la nube.
+    const ventas = [
+        { id: 'O-1', timestamp: ventaAntigua(0, 9), total: 10 },
+        { id: 'O-2', timestamp: ventaAntigua(1, 7), total: 20 },
+        { id: 'O-3', timestamp: new Date().toISOString(), total: 30 }
+    ];
+    const ctx = crearContexto({ pos_sales: JSON.stringify(ventas) });
+    const idsAntes = ventas.map(function (v) { return v.id; }).sort();
+
+    const res = await ctx.window.archivarVentasAntiguas(NUBE_OPS);
+    check('en modo operaciones SÍ archiva (permitido = true, con el motivo del motor)',
+        res.permitido === true && res.archivadas === 2 && res.error === null &&
+        res.motivo.indexOf('confirmado') !== -1);
+
+    const quedan = JSON.parse(ctx.localStorage.getItem('pos_sales')).map(function (v) { return v.id; });
+    const historial = (await ctx.window.leerHistorial('ventas', 0)).map(function (v) { return v.id; });
+    const idsDespues = quedan.concat(historial).sort();
+    check('no se perdió ninguna venta: ' + idsAntes.join(',') + ' = ' + idsDespues.join(','),
+        JSON.stringify(idsAntes) === JSON.stringify(idsDespues));
+    check('lo único que salió de pos_sales está YA verificado en el historial local',
+        quedan.length === 1 && quedan[0] === 'O-3' && historial.length === 2);
+
+    // La política de límite no toca `pos_sales`: solo borra del historial local.
+    const registros = [];
+    for (let i = 0; i < 250; i++) {
+        const d = new Date('2019-01-01T00:00:00.000Z');
+        d.setHours(d.getHours() + i);
+        registros.push({ id: 'P-' + i, timestamp: d.toISOString(), payload: 'q'.repeat(300) });
+    }
+    await ctx.window.guardarEnHistorial('ventas', registros);
+    const bytesLocal = ctx.window.medirAlmacenamiento().totalBytes;
+    const bytesHistorial = await ctx.window.tamanoHistorial();
+    ctx.localStorage.setItem('limiteLocalMB', String(((bytesLocal + bytesHistorial) / 1048576) / 2));
+    ctx.window.marcarRespaldoHecho();
+
+    const politica = await ctx.window.aplicarPoliticaAlmacenamiento(NUBE_OPS);
+    const ventasTrasPolitica = JSON.parse(ctx.localStorage.getItem('pos_sales'));
+    check('la política en modo operaciones recorta el historial local (accion = "recortado")',
+        politica.accion === 'recortado' && politica.permitido === true && politica.borrados >= 100);
+    check('la política NO libera NADA de pos_sales: las ventas de la ventana caliente siguen ahí',
+        ventasTrasPolitica.length === 1 && ventasTrasPolitica[0].id === 'O-3');
+    check('lo borrado son registros ya archivados, no ventas por confirmar',
+        (await ctx.window.contarHistorial('ventas')) === 2 + 250 - politica.borrados);
+}
+
+function pruebaContextoDelPOS() {
+    titulo('11e. mini_market_pos.html y config.html: contexto de nube y motor');
+
+    const html = fs.readFileSync(path.join(RAIZ, 'mini_market_pos.html'), 'utf8');
+    check('el POS define contextoArchivoLocal()', /function contextoArchivoLocal\(\) \{/.test(html));
+    check('el POS pasa el contexto al archivado de cada venta',
+        /window\.archivarVentasAntiguas\(ctxArchivo\)/.test(html));
+    check('el POS pasa el contexto a la política de límite',
+        /window\.aplicarPoliticaAlmacenamiento\(ctxArchivo\)/.test(html));
+    check('el POS pide el permiso de nube ANTES de aplicar la política del arranque',
+        /var contextoListo = \(typeof permisoNubeOps === 'function'\)[\s\S]{0,600}window\.aplicarPoliticaAlmacenamiento\(ctxArchivo\)/.test(html));
+    check('el POS solo manda "nube" cuando la nube ya contestó de verdad',
+        /if \(_cloudAccessChecked\) ctx\.nube = _cloudAccess === true;/.test(html));
+    check('el POS solo cuenta como operaciones si el motor está activo de verdad',
+        /modoOps: modoOperacionesActivo\(\) \? 'operaciones' : 'clasico'/.test(html));
+
+    const config = fs.readFileSync(path.join(RAIZ, 'config.html'), 'utf8');
+    check('el botón del panel de config.html explica el motivo cuando la política no está permitida',
+        /res\.permitido === false && res\.motivo/.test(config));
+
+    const bloque = (html.match(/ {8}function contextoArchivoLocal\(\) \{[\s\S]*?\r?\n {8}\}/) || [])[0];
+    check('se pudo extraer el bloque contextoArchivoLocal() del POS para ejecutarlo', !!bloque);
+    if (!bloque) return;
+
+    // El helper del POS se ejecuta de verdad y su decisión se comprueba contra el
+    // módulo real (almacenamiento.js).
+    function ctxDelPOS(opsActivo, checked, access) {
+        const sandbox = {
+            console: console,
+            modoOperacionesActivo: function () { return opsActivo; },
+            _cloudAccessChecked: checked,
+            _cloudAccess: access
+        };
+        sandbox.window = sandbox;
+        vm.createContext(sandbox);
+        vm.runInContext(bloque, sandbox, { filename: 'mini_market_pos.html#contextoArchivoLocal' });
+        return sandbox.contextoArchivoLocal();
+    }
+
+    const modulo = crearContexto({});
+    const casos = [
+        // [descripción, motor activo, permiso cacheado, cloudSync, permitido esperado]
+        ['nube leída como false (plan gratuito)', false, true, false, true],
+        ['nube leída como true y motor inactivo (clásico)', false, true, true, false],
+        ['nube leída como true y motor activo (operaciones)', true, true, true, true],
+        ['nube todavía sin respuesta (lectura fallida o lenta)', false, false, false, false]
+    ];
+    casos.forEach(function (caso) {
+        const ctx = ctxDelPOS(caso[1], caso[2], caso[3]);
+        const traeNube = Object.prototype.hasOwnProperty.call(ctx, 'nube');
+        check('POS -> ' + caso[0] + ': nube ' + (traeNube ? 'presente (' + ctx.nube + ')' : 'ausente') +
+            ' · modoOps ' + ctx.modoOps,
+            traeNube === caso[2] && ctx.modoOps === (caso[1] ? 'operaciones' : 'clasico'));
+        const d = modulo.window.puedeTocarArchivoLocal(ctx);
+        check('   y la política decide permitido = ' + caso[4] + ' para ' + caso[0], d.permitido === caso[4]);
+    });
+}
+
+/* ------------------------------------------------------------------ */
 /* Ejecución                                                          */
 /* ------------------------------------------------------------------ */
 (async function () {
@@ -955,6 +1236,13 @@ async function pruebaAvisarSiLleno() {
     await pruebaPanelConfig();
     pruebaEstadoSimple();
     await pruebaAvisarSiLleno();
+
+    // Política de archivo local según la nube y el modo del motor.
+    pruebaTablaDeDecision();
+    await pruebaNubeClasicoNoTocaNada();
+    await pruebaSinContexto();
+    await pruebaNubeOperaciones();
+    pruebaContextoDelPOS();
 
     console.log('\n----------------------------------------');
     console.log('RESULTADO: ' + (pruebas - fallos) + '/' + pruebas + ' comprobaciones OK' + (fallos ? ' · ' + fallos + ' FALLA(S)' : ' · sin fallos'));

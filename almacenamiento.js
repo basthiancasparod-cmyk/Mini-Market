@@ -8,6 +8,14 @@
  * Este módulo NO toca la nube ni la sincronización: solo mide, avisa, guarda de
  * forma segura y permite respaldar/restaurar los datos locales.
  *
+ * Política de archivo local (13.0): `puedeTocarArchivoLocal({ nube, modoOps })`
+ * decide si `archivarVentasAntiguas()` y `aplicarPoliticaAlmacenamiento()` pueden
+ * tocar los datos del equipo. Sin nube sí (plan local: el límite manda); con nube
+ * solo en modo operaciones (el motor libera lo confirmado); con nube en modo
+ * clásico NO (la nube es la fuente de verdad y el POS sube el arreglo completo de
+ * ventas). Sin contexto se decide de forma conservadora: no borrar, y el motivo
+ * viaja siempre en el resultado.
+ *
  * Todo el código está dentro de try/catch: ninguna función lanza hacia fuera.
  * Funciones expuestas en window:
  *   medirAlmacenamiento()            -> tamaño por clave
@@ -1605,6 +1613,78 @@
     /* 13. Archivado de ventas antiguas y política de límite              */
     /* ------------------------------------------------------------------ */
 
+    /* --- 13.0. ¿Puede la política local tocar los datos del equipo? --- */
+
+    /**
+     * Decide si el archivado local (archivarVentasAntiguas) y la política de
+     * límite (aplicarPoliticaAlmacenamiento) pueden tocar los datos guardados en
+     * este equipo. Tabla de decisión (cuando hay nube, la nube manda):
+     *
+     *   - `nube === false` -> PERMITIDO. Cliente sin nube (plan gratuito/local):
+     *     no existe copia en la nube que se pueda recortar y el límite local
+     *     manda, así que se archiva y se libera espacio como siempre.
+     *   - `nube === true` y `modoOps === 'operaciones'` -> PERMITIDO. En modo
+     *     operaciones el POS NO sube el arreglo completo de ventas: sube cada
+     *     venta por la cola y el motor solo libera lo CONFIRMADO en la nube
+     *     (garantía del propio motor). Aquí no se toca nada de lo que el motor
+     *     da por no confirmado; la liberación confirmada la sigue gobernando él.
+     *   - `nube === true` y cualquier otro modo (clásico) -> NO PERMITIDO. En el
+     *     camino clásico el POS sube el arreglo completo de ventas a
+     *     `ventas/historial`; si se recortara `pos_sales` (o su historial local),
+     *     esa subida reescribiría la copia de la nube con menos ventas. La nube
+     *     es la fuente de verdad y el localStorage no se recorta.
+     *   - Datos incompletos (sin `nube`, o `nube: true` con el modo del motor sin
+     *     resolver) -> NO PERMITIDO. Ante la duda, la opción conservadora para
+     *     los datos es no borrar; el `motivo` lo explica.
+     *
+     * @param {{nube: (boolean|undefined), modoOps: (string|undefined)}} [contexto]
+     *   `nube`: true si el negocio tiene nube (`cloudSync`), false si consta que
+     *   no la tiene, ausente si todavía no se sabe. `modoOps`: 'operaciones' si
+     *   el motor de operaciones gobierna las ventas; cualquier otro valor cuenta
+     *   como clásico.
+     * @returns {{permitido: boolean, motivo: string}}
+     */
+    function puedeTocarArchivoLocal(contexto) {
+        try {
+            var ctx = (contexto && typeof contexto === 'object') ? contexto : {};
+            // Estricto a propósito: solo el booleano true significa "tiene nube" y
+            // solo 'operaciones' (o el booleano true, forma cómoda que también
+            // acepta el motor) significa "gobierna el motor de operaciones".
+            // Cualquier otro valor (cadenas raras, 1, null) es dato incompleto.
+            var hayNube = (ctx.nube === true);
+            var ops = (ctx.modoOps === 'operaciones' || ctx.modoOps === true);
+
+            if (ctx.nube === false) {
+                return {
+                    permitido: true,
+                    motivo: 'Sin nube (plan local): no hay copia en la nube que se pueda recortar y el límite local manda.'
+                };
+            }
+            if (hayNube && ops) {
+                return {
+                    permitido: true,
+                    motivo: 'Con nube y modo operaciones: el motor sube y libera solo lo confirmado en la nube; no se toca nada sin confirmar.'
+                };
+            }
+            if (hayNube) {
+                return {
+                    permitido: false,
+                    motivo: 'Con nube y modo clásico: la nube es la fuente de verdad y el POS sube el arreglo completo de ventas, así que no se archiva ni se borra nada en este equipo.'
+                };
+            }
+            return {
+                permitido: false,
+                motivo: 'No consta si este negocio tiene nube (o el modo del motor no está resuelto): por seguridad no se archiva ni se borra nada.'
+            };
+        } catch (e) {
+            // Ante cualquier duda, la opción conservadora para los datos: no tocar.
+            return {
+                permitido: false,
+                motivo: 'No se pudo evaluar el contexto de la nube: por seguridad no se archiva ni se borra nada.'
+            };
+        }
+    }
+
     /** Meses de ventas que se conservan en localStorage antes de archivar. */
     var ARCHIVAR_MESES = 6;
 
@@ -1636,12 +1716,28 @@
      * Mueve a IndexedDB las ventas de más de 6 meses y las quita de `pos_sales`.
      * Garantía: la venta se guarda en el historial (y se comprueba que está)
      * ANTES de quitarla de localStorage. Si algo falla, no se quita nada.
-     * @returns {Promise<{archivadas: number, quedan: number, error: (string|null)}>}
+     *
+     * Antes de tocar nada pregunta a puedeTocarArchivoLocal(contexto): con nube y
+     * modo clásico (o si el contexto no permite decidir) NO archiva nada y
+     * devuelve el `motivo` en el resultado.
+     * @param {{nube: (boolean|undefined), modoOps: (string|undefined)}} [contexto]
+     * @returns {Promise<{archivadas: number, quedan: number, error: (string|null), permitido: boolean, motivo: string}>}
      */
-    function archivarVentasAntiguas() {
+    function archivarVentasAntiguas(contexto) {
         return new Promise(function (resolve) {
-            var salida = { archivadas: 0, quedan: 0, error: null };
+            var decision = puedeTocarArchivoLocal(contexto);
+            var salida = {
+                archivadas: 0, quedan: 0, error: null,
+                permitido: decision.permitido, motivo: decision.motivo
+            };
             try {
+                if (!decision.permitido) {
+                    // Política conservadora (nube en modo clásico, o contexto sin
+                    // resolver): no se quita NINGUNA venta de `pos_sales`.
+                    salida.quedan = contarArreglo('pos_sales');
+                    resolve(salida);
+                    return;
+                }
                 if (_archivando) {
                     salida.quedan = contarArreglo('pos_sales');
                     resolve(salida);
@@ -1809,15 +1905,21 @@
      *
      * Reglas:
      *   - < 80 %: no hace nada.
+     *   - >= 80 %: si puedeTocarArchivoLocal(contexto) NO lo permite (nube en modo
+     *     clásico, o contexto sin resolver), no se borra ni se archiva nada y se
+     *     devuelve accion 'no-permitido' con el motivo: la nube es la fuente de
+     *     verdad y el almacenamiento local no se recorta.
      *   - >= 80 % y < 100 %: aviso (activar la nube o descargar respaldo).
      *   - >= 100 %: exige un respaldo la PRIMERA vez; después borra el historial
      *     más antiguo en lotes de 100 hasta bajar del 90 %.
      *
-     * @returns {Promise<{accion: string, porcentaje: number, liberadoBytes: number, aviso: (string|null)}>}
-     *   accion: 'nada' | 'aviso' | 'requiere-respaldo' | 'recortado' | 'lleno' | 'error'
+     * @param {{nube: (boolean|undefined), modoOps: (string|undefined)}} [contexto]
+     * @returns {Promise<{accion: string, porcentaje: number, liberadoBytes: number, aviso: (string|null), permitido: boolean, motivo: string}>}
+     *   accion: 'nada' | 'aviso' | 'requiere-respaldo' | 'recortado' | 'lleno' | 'no-permitido' | 'error'
      */
-    function aplicarPoliticaAlmacenamiento() {
+    function aplicarPoliticaAlmacenamiento(contexto) {
         return new Promise(function (resolve) {
+            var decision = puedeTocarArchivoLocal(contexto);
             var base = {
                 accion: 'error',
                 porcentaje: 0,
@@ -1828,7 +1930,9 @@
                 localBytes: 0,
                 historialBytes: 0,
                 limiteBytes: 0,
-                origenLimite: 'por-defecto'
+                origenLimite: 'por-defecto',
+                permitido: decision.permitido,
+                motivo: decision.motivo
             };
             try {
                 medirTodoAsync().then(function (medida) {
@@ -1843,7 +1947,9 @@
                         localBytes: medida.localBytes,
                         historialBytes: medida.historialBytes,
                         limiteBytes: medida.limiteBytes,
-                        origenLimite: medida.origenLimite
+                        origenLimite: medida.origenLimite,
+                        permitido: decision.permitido,
+                        motivo: decision.motivo
                     };
 
                     function publicar(texto, tipo, botones) {
@@ -1853,7 +1959,24 @@
                     }
 
                     // --- Por debajo del 80 %: nada que hacer ---
+                    // Da igual que la política esté permitida o no: no hay nada que
+                    // borrar y el `motivo` viaja igual en el resultado.
                     if (medida.porcentajeExacto < UMBRAL_AVISO) {
+                        resolve(salida);
+                        return;
+                    }
+
+                    // --- Política no permitida: ni se archiva ni se borra (y no se
+                    // avisa de nada) ---
+                    // Con nube y modo clásico la nube es la fuente de verdad: el POS
+                    // sube el arreglo completo de ventas, así que recortar el almacén
+                    // local reescribiría la copia de la nube. Tampoco se publica el
+                    // aviso de "activa la nube o descarga un respaldo" porque aquí
+                    // sería falso (el aviso llano del 95 % de avisarSiLleno() sigue
+                    // intacto). Solo se explica el motivo.
+                    if (!decision.permitido) {
+                        salida.accion = 'no-permitido';
+                        salida.motivo = decision.motivo;
                         resolve(salida);
                         return;
                     }
@@ -1884,8 +2007,10 @@
                                         if (respaldo && respaldo.ok) {
                                             marcarRespaldoHecho();
                                             // Con el respaldo hecho, la política ya puede liberar espacio.
+                                            // Se le vuelve a pasar el MISMO contexto: si la política no
+                                            // está permitida, tampoco se borra después del respaldo.
                                             setTimeout(function () {
-                                                try { aplicarPoliticaAlmacenamiento(); } catch (e) { /* nada */ }
+                                                try { aplicarPoliticaAlmacenamiento(contexto); } catch (e) { /* nada */ }
                                             }, 500);
                                         }
                                     } catch (e) { /* la descarga nunca debe romper la página */ }
@@ -2231,6 +2356,8 @@
     window.limiteLocalMB = limiteLocalMB;
     window.medirTodo = medirTodo;
     window.medirTodoAsync = medirTodoAsync;
+    // Política de archivo: decide si se puede tocar el almacén local (nube/modo).
+    window.puedeTocarArchivoLocal = puedeTocarArchivoLocal;
     window.archivarVentasAntiguas = archivarVentasAntiguas;
     window.aplicarPoliticaAlmacenamiento = aplicarPoliticaAlmacenamiento;
     window.recortarHistorialTasas = recortarHistorialTasas;
