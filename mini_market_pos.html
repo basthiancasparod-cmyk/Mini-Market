@@ -8,6 +8,33 @@
     <link rel="icon" type="image/x-icon" href="icono.ico">
     <script src="cloud-access.js"></script>
     <script src="sincronizacion.js"></script>
+    <!-- Guardián de almacenamiento local: medición, cuota, respaldo y restauración -->
+    <script src="almacenamiento.js"></script>
+    <!-- Fase B (E1): motor de operaciones. Solo se usa si el negocio tiene
+         BBDD/<email>/suscripcion/modoSync = 'operaciones'; si no, no se ejecuta
+         ni una línea suya y el POS se comporta exactamente como siempre. -->
+    <script src="motor_operaciones.js"></script>
+    <script>
+        // Guardián de almacenamiento: comprueba la cuota una sola vez al cargar la página.
+        document.addEventListener('DOMContentLoaded', function () {
+            try {
+                if (typeof window.avisarSiLleno === 'function') window.avisarSiLleno();
+            } catch (e) { /* un aviso nunca debe romper la página */ }
+
+            // Política de límite local (almacenamiento.js): a los 3 s, para no
+            // competir con el arranque del POS. Sin await: nunca bloquea la interfaz.
+            setTimeout(function () {
+                try {
+                    if (typeof window.aplicarPoliticaAlmacenamiento === 'function') {
+                        window.aplicarPoliticaAlmacenamiento().catch(function () { /* la política nunca debe romper la página */ });
+                    }
+                    if (typeof window.recortarHistorialTasas === 'function') {
+                        window.recortarHistorialTasas();
+                    }
+                } catch (e) { /* la política nunca debe romper la página */ }
+            }, 3000);
+        });
+    </script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         /* Estilos CSS existentes */
@@ -2050,7 +2077,19 @@
     try {
         // 1. NUEVO: Creamos la estructura base si no existe
         await ensureUserCloudStructure();
-        
+
+        // Fase B (E1): interruptor por cliente. Si no está en 'operaciones' NO se
+        // ejecuta ni una línea del motor y el arranque clásico de abajo sigue igual.
+        // El motor (si toca) se arranca ANTES de la subida/descarga para que la cola
+        // y la ventana caliente ya estén abiertas.
+        const modoOps = await esperarModoSync();
+        const opsActivo = (modoOps === 'operaciones') ? await asegurarMotorOps() : false;
+        if (opsActivo) {
+            await proyectarVentanaCalienteOps();
+            await recuperarVentasSinOperacion();
+            await sincronizarOps();      // vacía la cola + reverifica las liberadas recientes
+        }
+
         // 2. Lógica original de sincronización
         if (_fbPending) {
             // Fase A (C1/C4): primero subimos lo pendiente; nunca descargamos encima de
@@ -2059,8 +2098,12 @@
         } else if (typeof puedeSobrescribirLocalSync === 'function' && !puedeSobrescribirLocalSync()) {
             // Algún módulo tiene cambios sin confirmar: no pisamos los datos locales.
             setFirebaseDot('#f59e0b', 'Hay cambios pendientes de subir');
+            if (opsActivo) actualizarPuntoEstadoOps();
         } else {
-            const existsInCloud = await syncFromFirebase();
+            // Fase B (E1): en modo operaciones el histórico de ventas de la nube está
+            // CONGELADO, así que no se descarga encima de lo local (el catálogo, las
+            // categorías y la empresa sí se descargan igual que siempre).
+            const existsInCloud = await syncFromFirebase(opsActivo ? { omitirHistorialVentas: true } : undefined);
             if (existsInCloud) {
                 setFirebaseDot('#22c55e', 'Firebase conectado'); // la nube respondió: hay conexión
                 loadInventoryProducts();
@@ -2079,6 +2122,7 @@
                     if (localInv) await fbSaveProductos(JSON.parse(localInv));
                 }
             }
+            if (opsActivo) actualizarPuntoEstadoOps();
         }
     } catch (e) {
         setFirebaseDot('#ef4444', 'Error: ' + e.message);
@@ -3295,6 +3339,20 @@ function filterAndDisplayProducts(searchTerm = '') {
             '3d': { label: '3 días', days: 3 },
             '3w': { label: '3 semanas', days: 21 }
         };
+        // Almacenamiento (almacenamiento.js): días de cada ventana de tendencia.
+        // El recorte de `pos_rate_history` conserva SIEMPRE al menos la ventana más
+        // larga publicada aquí (y nunca menos de 60 días), para que cambiar de '3d'
+        // a '3w' no deje la gráfica sin datos. No cambia RATE_TREND_WINDOWS ni el
+        // comportamiento del selector.
+        // >>> RATE_TREND_WINDOWS_DIAS
+        try {
+            window.RATE_TREND_WINDOWS_DIAS = Object.keys(RATE_TREND_WINDOWS).reduce(function (acc, clave) {
+                const dias = Number(RATE_TREND_WINDOWS[clave] && RATE_TREND_WINDOWS[clave].days);
+                if (isFinite(dias) && dias > 0) acc[clave] = dias;
+                return acc;
+            }, {});
+        } catch (e) { /* sin este dato, el histórico se recorta con el valor por defecto */ }
+        // <<< RATE_TREND_WINDOWS_DIAS
         let rateTrendWindow = (() => {
             const saved = localStorage.getItem('pos_rate_trend_window');
             return RATE_TREND_WINDOWS[saved] ? saved : '3d';
@@ -4190,19 +4248,68 @@ function filterAndDisplayProducts(searchTerm = '') {
                 
                 // Guardar venta
                 ventas.push(saleData);
-                localStorage.setItem('pos_sales', JSON.stringify(ventas));
+                // Guardián de almacenamiento (almacenamiento.js): avisa si la cuota está llena.
+                if (typeof window.guardarLocalSeguro === 'function') {
+                    window.guardarLocalSeguro('pos_sales', JSON.stringify(ventas));
+                } else {
+                    localStorage.setItem('pos_sales', JSON.stringify(ventas));
+                }
+
+                // Historial (almacenamiento.js): mueve a IndexedDB las ventas de más
+                // de 6 meses y, si archivó alguna, aplica la política de límite local.
+                // Sin await: el flujo de la venta sigue igual y no se bloquea la UI.
+                if (typeof window.archivarVentasAntiguas === 'function') {
+                    window.archivarVentasAntiguas().then(function (archivado) {
+                        if (archivado && archivado.archivadas > 0 &&
+                            typeof window.aplicarPoliticaAlmacenamiento === 'function') {
+                            return window.aplicarPoliticaAlmacenamiento();
+                        }
+                        return null;
+                    }).catch(function () { /* el archivado nunca debe romper la venta */ });
+                }
                 
                 updateInventory();
+
+                // Fase B (E1): con el interruptor en 'operaciones' la venta se registra
+                // como OPERACIÓN (la cola durable se escribe primero) y la subida y la
+                // liberación las lleva el motor. Con 'clasico' o sin resolver, el camino
+                // clásico de abajo queda EXACTAMENTE igual que siempre.
+                const modoVenta = _opsModo;
+                let ventaEnMotor = false;
+                if (modoVenta === 'operaciones' && await asegurarMotorOps()) {
+                    const registro = await window.motorOperaciones.registrarOperacion('venta', saleData);
+                    if (registro && registro.ok) {
+                        ventaEnMotor = true;
+                        actualizarPuntoEstadoOps();
+                    } else {
+                        // El almacén durable falló justo al encolar: la venta NO se
+                        // pierde (sigue en pos_sales) pero tampoco se sube el arreglo
+                        // completo, para no reescribir el histórico congelado. Se
+                        // reintenta el registro en el próximo arranque.
+                        anotarVentaSinOperacion(saleData);
+                        console.warn('[E1] no se pudo registrar la venta como operación:', registro && registro.motivo);
+                        setFirebaseDot('#ef4444', 'La venta quedó guardada aquí, pero no se pudo encolar');
+                    }
+                } else if (modoVenta === null) {
+                    // El interruptor todavía no se ha resuelto (nube lenta): se pide otra
+                    // vez sin bloquear el cobro. Mientras tanto se aplica el camino clásico.
+                    esperarModoSync();
+                }
 
                 // Fase A (auditoría C1): la marca se pone ANTES de intentar subir y solo se
                 // limpia si el servidor confirmó. Antes se marcaba en el catch, pero sin
                 // internet la promesa de .set() no resuelve ni rechaza: el catch nunca se
                 // ejecutaba y una venta hecha sin conexión se perdía al cerrar el equipo.
-                marcarPendienteSync('pos');
-                _fbPending = true;
-                fbSaveVentas(ventas).then((subida) => {
-                    if (subida) { _fbPending = false; limpiarPendienteSync('pos'); }
-                }).catch(() => { _fbPending = true; });
+                const subirClasico = (modoVenta !== 'operaciones') || !modoOperacionesActivo();
+                if (!ventaEnMotor) {
+                    marcarPendienteSync('pos');
+                    _fbPending = true;
+                    if (subirClasico) {
+                        fbSaveVentas(ventas).then((subida) => {
+                            if (subida) { _fbPending = false; limpiarPendienteSync('pos'); }
+                        }).catch(() => { _fbPending = true; });
+                    }
+                }
                 if (customerData) {
                     fbUpsertClient({...customerData, lastSaleDate: new Date().toISOString()}).catch(() => {});
                 }
@@ -4274,7 +4381,12 @@ function filterAndDisplayProducts(searchTerm = '') {
                 }
             });
             
-            localStorage.setItem('ciervo_inventory', JSON.stringify(inventory));
+            // Guardián de almacenamiento (almacenamiento.js): avisa si la cuota está llena.
+            if (typeof window.guardarLocalSeguro === 'function') {
+                window.guardarLocalSeguro('ciervo_inventory', JSON.stringify(inventory));
+            } else {
+                localStorage.setItem('ciervo_inventory', JSON.stringify(inventory));
+            }
             
             // Fase A (C1): igual que en las ventas, marcar antes de intentar subir.
             marcarPendienteSync('pos');
@@ -4777,6 +4889,260 @@ async function printReceipt(saleData) {
             return 'BBDD/' + sanitizeEmailForDb(email);
         }
 
+        /* ===== FASE B (E1): interruptor del motor de operaciones =====
+           El motor (motor_operaciones.js) SOLO se usa si el negocio tiene
+           `BBDD/<email>/suscripcion/modoSync = 'operaciones'`. Con cualquier otro
+           valor —nodo ausente, valor inválido o lectura fallida— todo sigue
+           EXACTAMENTE como hoy: mismo fbSaveVentas, mismas marcas, mismo todo, y
+           ni una línea del motor se ejecuta (ver `iniciar` del propio motor, que
+           también se protege por si alguien lo llama desde otro sitio). */
+        const OPS_CACHE_CLAVE = 'modoSyncOps';
+        const OPS_CACHE_EMAIL = 'modoSyncOpsEmail';
+        const OPS_MS_ESPERA_MODO = 1500;      // el POS nunca se queda colgado esperando a la nube
+        const OPS_SIN_OP_CLAVE = 'pos_ventas_sin_operacion';
+        let _opsModo = null;                  // 'clasico' | 'operaciones' | null (sin resolver)
+        let _opsActivo = false;               // true solo si el motor arrancó con almacén durable
+        let _opsModoPromesa = null;           // lectura del interruptor en curso
+        let _opsIniciando = null;             // promesa de motorOperaciones.iniciar
+
+        /** ¿El motor está activo de verdad? Comprobación SÍNCRONA: el camino
+            clásico no puede depender de ninguna promesa. */
+        function modoOperacionesActivo() { return _opsActivo === true; }
+
+        /**
+         * Lee `suscripcion/modoSync` (una vez por carga de página). Se cachea en
+         * sessionStorage con el correo como clave, nunca en localStorage: un modo
+         * pegado en disco sobreviviría a un cambio hecho en la consola. Si la
+         * lectura FALLA no se cachea nada (el siguiente intento vuelve a preguntar).
+         */
+        async function leerModoSyncNube() {
+            const email = getCurrentUserEmail();
+            if (!email) return 'desconocido';       // sin sesión no se decide nada
+            try {
+                const cacheado = sessionStorage.getItem(OPS_CACHE_CLAVE);
+                if (sessionStorage.getItem(OPS_CACHE_EMAIL) === email &&
+                    (cacheado === 'clasico' || cacheado === 'operaciones')) return cacheado;
+            } catch (e) { /* sin sessionStorage: se pregunta a la nube */ }
+            if (_opsModoPromesa) return _opsModoPromesa;
+            const intento = (async () => {
+                try {
+                    const db = await initFirebase();
+                    if (!db) return 'desconocido';
+                    const snap = await db.ref('BBDD/' + sanitizeEmailForDb(email) + '/suscripcion/modoSync').once('value');
+                    // Valor ausente o distinto de 'operaciones' -> 'clasico' (definitivo).
+                    const modo = (snap.val() === 'operaciones') ? 'operaciones' : 'clasico';
+                    try {
+                        sessionStorage.setItem(OPS_CACHE_EMAIL, email);
+                        sessionStorage.setItem(OPS_CACHE_CLAVE, modo);
+                    } catch (e) { /* sin sessionStorage: se volverá a preguntar */ }
+                    return modo;
+                } catch (e) {
+                    return 'desconocido';           // fallo de lectura: NO se cachea el fallo
+                }
+            })();
+            _opsModoPromesa = intento;
+            // El candado se suelta cuando el intento termina de verdad (aunque tarde).
+            intento.then(() => { _opsModoPromesa = null; }, () => { _opsModoPromesa = null; });
+            return intento;
+        }
+
+        /** Modo para decidir una venta. Nunca espera más de OPS_MS_ESPERA_MODO. */
+        async function esperarModoSync() {
+            if (_opsModo === 'clasico' || _opsModo === 'operaciones') return _opsModo;
+            try {
+                const modo = await Promise.race([
+                    leerModoSyncNube(),
+                    new Promise((resolve) => setTimeout(() => resolve('desconocido'), OPS_MS_ESPERA_MODO))
+                ]);
+                if (modo === 'operaciones' || modo === 'clasico') _opsModo = modo;
+                return modo;
+            } catch (e) {
+                return 'desconocido';
+            }
+        }
+
+        /**
+         * Permiso de nube del cliente (`suscripcion/cloudSync`), que es lo que se
+         * cobra. Se reutiliza `checkCloudAccess()` (misma semántica: nodo ausente
+         * o lectura fallida -> sin nube, sin cachear el fallo) con el mismo tope de
+         * tiempo que el interruptor: si la nube no contesta, el motor arranca en
+         * SOLO-LOCAL, nunca se sube sin permiso.
+         */
+        async function permisoNubeOps() {
+            try {
+                return await Promise.race([
+                    checkCloudAccess(),
+                    new Promise((resolve) => setTimeout(() => resolve(false), OPS_MS_ESPERA_MODO))
+                ]) === true;
+            } catch (e) {
+                return false;                  // fallo de lectura: sin nube
+            }
+        }
+
+        /**
+         * Arranca el motor una sola vez. Devuelve true si quedó activo. Si no hay
+         * almacén durable o falta el deviceId, el motor NO se activa y la página
+         * sigue con el camino clásico (nunca se finge una durabilidad que no hay).
+         */
+        async function asegurarMotorOps() {
+            if (_opsActivo) return true;
+            if (!window.motorOperaciones || typeof window.motorOperaciones.iniciar !== 'function') return false;
+            if (_opsIniciando) return await _opsIniciando;
+            const intento = (async () => {
+                try {
+                    const email = getCurrentUserEmail();
+                    const db = await initFirebase();
+                    let operador = '';
+                    try {
+                        const u = JSON.parse(sessionStorage.getItem('currentUser') || 'null');
+                        if (u) operador = String(u.name || u.nombre || u.usuario || u.email || '');
+                    } catch (e) { /* sin operador: el motor lo omite */ }
+                    const r = await window.motorOperaciones.iniciar({
+                        modoSync: 'operaciones',        // ya se leyó el interruptor: aquí solo se enciende
+                        cloudSync: await permisoNubeOps(),   // permiso de nube (lo que se cobra): sin él -> solo-local
+                        deviceId: getPosDeviceId(),
+                        emailPath: email ? sanitizeEmailForDb(email) : '',
+                        db: db,
+                        operador: operador
+                    });
+                    _opsActivo = !!(r && r.activo === true);
+                    if (!_opsActivo) {
+                        console.warn('[E1] el motor de operaciones no pudo arrancar:', r && r.motivo);
+                        setFirebaseDot('#f59e0b', 'Modo operaciones pedido, pero el motor no arrancó: se sigue en clásico');
+                    }
+                    return _opsActivo;
+                } catch (e) {
+                    _opsActivo = false;
+                    console.warn('[E1] error al arrancar el motor de operaciones:', e && e.message);
+                    return false;
+                }
+            })();
+            _opsIniciando = intento;
+            intento.then(() => { _opsIniciando = null; }, () => { _opsIniciando = null; });
+            return await intento;
+        }
+
+        /**
+         * Punto de estado del header en modo operaciones (§10.3): verde = cola
+         * vacía, ámbar = pendientes de subir a la nube (con el número), rojo = error.
+         * En MODO SOLO-LOCAL (cliente sin `cloudSync`: no hay nada que subir) el
+         * punto es GRIS (neutro, #94a3b8, el mismo con el que arranca el punto en
+         * el HTML) y lo dice: "solo en este equipo (sin nube)". Verde significaría
+         * "todo subido" y aquí no hay nube, así que no se usa ese color. Es lo
+         * normal para el cliente gratuito: no se marca pendiente ni se avisa.
+         * Además la marca por módulo del §10.1 pasa a ser un resumen derivado de la cola.
+         */
+        function actualizarPuntoEstadoOps() {
+            if (!modoOperacionesActivo() || typeof window.motorOperaciones.estado !== 'function') return;
+            try {
+                const est = window.motorOperaciones.estado();
+                // Modo solo-local: el cliente no tiene nube (cloudSync != true) y las
+                // ventas se guardan en el equipo. Eso es lo NORMAL para el cliente
+                // gratuito: punto GRIS (neutro: no hay nada confirmado en la nube,
+                // porque no hay nube), sin marca de pendiente y sin avisos. Verde se
+                // reserva para "todo subido y confirmado".
+                const soloLocal = (est.modoLocal === true) || (est.nube !== true);
+                if (est.ultimoError) {
+                    setFirebaseDot('#ef4444', 'Modo operaciones · error: ' + est.ultimoError);
+                } else if (soloLocal) {
+                    setFirebaseDot('#94a3b8', 'Modo operaciones · solo en este equipo (sin nube)' +
+                        (est.pendientes > 0 ? ' · ' + est.pendientes + ' guardadas' : ''));
+                } else if (est.pendientes > 0) {
+                    setFirebaseDot('#f59e0b', 'Modo operaciones · ' + est.pendientes + ' pendientes de subir a la nube');
+                } else {
+                    setFirebaseDot('#22c55e', 'Modo operaciones · todo subido');
+                }
+                if (soloLocal) { if (!_fbPending) limpiarPendienteSync('pos'); }
+                else if (est.pendientes > 0) marcarPendienteSync('pos');
+                else if (!_fbPending) limpiarPendienteSync('pos');
+            } catch (e) { /* el punto de estado nunca debe romper una venta */ }
+        }
+
+        /** Vacía la cola y deja el punto de estado al día. */
+        async function sincronizarOps() {
+            if (!modoOperacionesActivo()) return null;
+            try {
+                const r = await window.motorOperaciones.vaciarCola();
+                actualizarPuntoEstadoOps();
+                return r;
+            } catch (e) {
+                actualizarPuntoEstadoOps();
+                return null;
+            }
+        }
+
+        /**
+         * Arranque en modo operaciones: la ventana caliente del equipo se refleja
+         * en `pos_sales` (la proyección que ya usa el render y el recibo) y el
+         * contador local nunca queda por debajo de lo ya vendido.
+         */
+        async function proyectarVentanaCalienteOps() {
+            if (!modoOperacionesActivo()) return;
+            try {
+                const calientes = await window.motorOperaciones.leerVentas(30);
+                if (!calientes || !calientes.length) return;
+                const porId = new Map();
+                (ventas || []).forEach(v => { if (v && v.id) porId.set(String(v.id), v); });
+                let agregadas = 0;
+                calientes.forEach(v => {
+                    if (v && v.id && !porId.has(String(v.id))) { porId.set(String(v.id), v); agregadas++; }
+                });
+                let maximo = 0;
+                calientes.forEach(v => {
+                    const m = /-(\d+)$/.exec(String((v && v.id) || ''));
+                    const n = m ? parseInt(m[1], 10) : 0;
+                    if (n > maximo) maximo = n;
+                });
+                const actual = parseInt(localStorage.getItem('pos_last_sale_number') || '0') || 0;
+                if (maximo > actual) localStorage.setItem('pos_last_sale_number', String(maximo));
+                if (agregadas > 0) {
+                    ventas = Array.from(porId.values())
+                        .sort((a, b) => String(a.timestamp || '').localeCompare(String(b.timestamp || '')));
+                    if (typeof window.guardarLocalSeguro === 'function') {
+                        window.guardarLocalSeguro('pos_sales', JSON.stringify(ventas));
+                    } else {
+                        localStorage.setItem('pos_sales', JSON.stringify(ventas));
+                    }
+                    saleId = peekSaleId();
+                    const el = document.getElementById('saleId');
+                    if (el) el.textContent = saleId;
+                }
+            } catch (e) { /* la ventana caliente nunca debe romper el arranque */ }
+        }
+
+        /**
+         * Red de seguridad del §3.2.1: si el almacén durable falla justo al
+         * encolar, la venta NO se pierde (sigue en pos_sales) y tampoco se sube el
+         * arreglo completo (eso reescribiría el histórico congelado). Se anota para
+         * volver a intentar el registro en el próximo arranque.
+         */
+        function anotarVentaSinOperacion(saleData) {
+            try {
+                const lista = JSON.parse(localStorage.getItem(OPS_SIN_OP_CLAVE) || '[]');
+                if (!Array.isArray(lista)) return;
+                if (lista.some(v => v && v.id === saleData.id)) return;
+                lista.push(saleData);
+                localStorage.setItem(OPS_SIN_OP_CLAVE, JSON.stringify(lista));
+            } catch (e) { /* si ni esto se puede, la venta sigue guardada en pos_sales */ }
+        }
+
+        /** Reintenta registrar las ventas que no se pudieron encolar. */
+        async function recuperarVentasSinOperacion() {
+            if (!modoOperacionesActivo()) return 0;
+            let lista = [];
+            try { lista = JSON.parse(localStorage.getItem(OPS_SIN_OP_CLAVE) || '[]'); } catch (e) { lista = []; }
+            if (!Array.isArray(lista) || !lista.length) return 0;
+            const quedan = [];
+            let recuperadas = 0;
+            for (const v of lista) {
+                const r = await window.motorOperaciones.registrarOperacion('venta', v);
+                if (r && r.ok) recuperadas++; else quedan.push(v);
+            }
+            try { localStorage.setItem(OPS_SIN_OP_CLAVE, JSON.stringify(quedan)); } catch (e) { /* nada */ }
+            if (recuperadas > 0) console.log('[E1] ventas recuperadas del registro sin operación:', recuperadas);
+            return recuperadas;
+        }
+
 /**
  * Verifica si existe la estructura del usuario en Firebase.
  * Si NO existe, crea el nodo BBDD/{email}/suscripcion/cloudSync = false
@@ -4869,6 +5235,9 @@ async function ensureUserCloudStructure() {
                     // Fase A (C6): al recuperar la conexión el permiso se vuelve a preguntar.
                     _cloudAccessChecked = false;
                     if (!await checkCloudAccess()) return;
+                    // Fase B (E1): con el motor activo, reconectar significa vaciar la cola
+                    // (nunca subir el arreglo completo de ventas).
+                    if (modoOperacionesActivo()) { await sincronizarOps(); return; }
                     if (_fbPending || (typeof hayPendientesSync === 'function' && hayPendientesSync('pos'))) {
                         // Fase A (C1): la marca se limpia SOLO si el servidor confirmó.
                         try {
@@ -4986,9 +5355,12 @@ async function ensureUserCloudStructure() {
             });
         }
 
-        async function syncFromFirebase() {
+        async function syncFromFirebase(opciones) {
             try {
                 if (!await checkCloudAccess()) return false;
+                // Fase B (E1): en modo operaciones el histórico viejo está congelado y no
+                // se descarga encima de lo local (el catálogo sí sigue igual que siempre).
+                const omitirHistorialVentas = !!(opciones && opciones.omitirHistorialVentas);
                 // Fase A (C1): con cambios locales sin confirmar, la nube NO pisa lo local.
                 if (typeof puedeSobrescribirLocalSync === 'function' && !puedeSobrescribirLocalSync()) {
                     console.warn('Hay cambios pendientes de subir: no se descargan datos de la nube.');
@@ -5007,7 +5379,7 @@ async function ensureUserCloudStructure() {
                     changed = true;
                 }
                 if (data.ventas) {
-                    if (data.ventas.historial) {
+                    if (data.ventas.historial && !omitirHistorialVentas) {
                         localStorage.setItem('pos_sales', JSON.stringify(data.ventas.historial));
                         ventas = data.ventas.historial;
                     }
@@ -5057,6 +5429,15 @@ async function ensureUserCloudStructure() {
         async function uploadToFirebase() {
             try {
                 await initFirebase();
+                // Fase B (E1): con el motor activo las ventas suben por la COLA, nunca
+                // como arreglo completo (el histórico viejo está congelado). El
+                // consecutivo de la nube se sigue manteniendo igual.
+                if (modoOperacionesActivo()) {
+                    await window.motorOperaciones.vaciarCola();
+                    await fbSaveNumero();
+                    actualizarPuntoEstadoOps();
+                    return;
+                }
                 // Fase A (C1): subir no es olvidar. La marca se limpia solo con confirmación
                 // del servidor, y si no hay nube no se limpia nada (los datos quedan seguros).
                 const subidaVentas = await fbSaveVentas(ventas);
@@ -5087,6 +5468,11 @@ async function ensureUserCloudStructure() {
                 toggleIcon.classList.toggle('rotated');
             }
         }
+
+        // Fase B (E1): se dispara ya la lectura del interruptor para que, cuando el
+        // usuario cobre la primera venta, el modo esté decidido. Sin await y sin
+        // bloquear nada: si falla o tarda, la venta usa el camino clásico.
+        try { esperarModoSync(); } catch (e) { /* la carga de la página nunca se rompe por esto */ }
     </script>
     <script src="sesion.js"></script>
 </body>

@@ -7,6 +7,16 @@
     <link rel="icon" type="image/x-icon" href="icono.ico">
     <script src="cloud-access.js"></script>
     <script src="sincronizacion.js"></script>
+    <!-- Guardián de almacenamiento local: medición, cuota, respaldo y restauración -->
+    <script src="almacenamiento.js"></script>
+    <script>
+        // Guardián de almacenamiento: comprueba la cuota una sola vez al cargar la página.
+        document.addEventListener('DOMContentLoaded', function () {
+            try {
+                if (typeof window.avisarSiLleno === 'function') window.avisarSiLleno();
+            } catch (e) { /* un aviso nunca debe romper la página */ }
+        });
+    </script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="preconnect" href="https://cdn.jsdelivr.net">
     <link rel="preconnect" href="https://cdnjs.cloudflare.com">
@@ -2748,7 +2758,12 @@ function handleStockKeydown(event) {
         }
 
         async function saveCategories() {
-            localStorage.setItem('ciervo_categories', JSON.stringify(categories));
+            // Guardián de almacenamiento (almacenamiento.js): avisa si la cuota está llena.
+            if (typeof window.guardarLocalSeguro === 'function') {
+                window.guardarLocalSeguro('ciervo_categories', JSON.stringify(categories));
+            } else {
+                localStorage.setItem('ciervo_categories', JSON.stringify(categories));
+            }
             // Fase A (C1): marcar antes de subir, limpiar solo con confirmación.
             _pendingChanges = true;
             marcarPendienteSync('inventario');
@@ -2937,7 +2952,12 @@ function handleStockKeydown(event) {
         }
 
         async function saveProducts() {
-            localStorage.setItem('ciervo_inventory', JSON.stringify(products));
+            // Guardián de almacenamiento (almacenamiento.js): avisa si la cuota está llena.
+            if (typeof window.guardarLocalSeguro === 'function') {
+                window.guardarLocalSeguro('ciervo_inventory', JSON.stringify(products));
+            } else {
+                localStorage.setItem('ciervo_inventory', JSON.stringify(products));
+            }
             // Fase A (C1): marcar ANTES de intentar subir; limpiar solo con confirmación.
             // (Sin internet la promesa de .set() no resuelve ni rechaza, así que el catch
             // de antes nunca se ejecutaba y el cambio quedaba sin marcar.)

@@ -14,6 +14,8 @@
     <!-- Firebase Realtime Database -->
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <!-- Guardián de almacenamiento local: medición, cuota, respaldo y restauración -->
+    <script src="almacenamiento.js"></script>
     <style>
         /* CSS Variables for Theming */
         :root {
@@ -1539,6 +1541,95 @@
                     </button>
                 </div>
             </section>
+            <!-- Almacenamiento: nivel visible para el cliente + nivel avanzado oculto -->
+            <section class="config-section">
+                <div class="section-header">
+                    <div class="section-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <ellipse cx="12" cy="5" rx="9" ry="3"/>
+                            <path d="M3 5v14a9 3 0 0 0 18 0V5"/>
+                            <path d="M3 12a9 3 0 0 0 18 0"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="section-title">Almacenamiento</h3>
+                        <p class="section-description">
+                            Tu copia de seguridad y el espacio libre que queda en este equipo.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- ============ NIVEL VISIBLE (cliente) ============ -->
+                <div style="margin-bottom: 1rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 0.5rem;">
+                        <span id="almEstadoUsoSimple" style="font-size: 1rem; font-weight: 600; color: var(--section-header-text);">Midiendo…</span>
+                    </div>
+                    <div style="width: 100%; height: 14px; border-radius: 999px; background: var(--general-settings-bg); border: 1px solid var(--config-container-border); overflow: hidden;">
+                        <div id="almBarraUso" style="width: 0%; height: 100%; background: linear-gradient(to right, #10b981, #059669); transition: width 0.4s ease;"></div>
+                    </div>
+
+                    <div id="almEstadoCopia" style="margin-top: 0.75rem; font-size: 0.9rem; color: var(--section-description-text);">Última copia de seguridad: …</div>
+
+                    <!-- Frase llana: solo aparece si el espacio está casi lleno o lleno -->
+                    <div id="almAvisoLlano" hidden style="margin-top: 0.75rem; padding: 0.85rem 1rem; border-radius: 10px; background: var(--general-settings-bg); color: var(--general-settings-text); font-size: 0.9rem; line-height: 1.5;">
+                        Puedes seguir vendiendo. Descarga una copia para no perder datos antiguos.
+                    </div>
+
+                    <div style="margin-top: 1.25rem;">
+                        <button type="button" class="btn btn-primary" id="almBtnCopia" onclick="almacenamientoDescargarCopiaVisible()" style="font-size: 1rem; padding: 0.9rem 1.6rem; width: 100%; max-width: 420px;">Descargar copia de seguridad</button>
+                    </div>
+
+                    <div style="margin-top: 1rem;">
+                        <button type="button" class="btn btn-secondary" id="almBtnAvanzado" onclick="almacenamientoAlternarAvanzado()" aria-expanded="false" aria-controls="almAvanzado" style="font-size: 0.8rem; opacity: 0.75;">Avanzado</button>
+                    </div>
+                </div>
+
+                <!-- ============ NIVEL AVANZADO (oculto por defecto) ============ -->
+                <div id="almAvanzado" hidden style="border-top: 1px solid var(--config-container-border); padding-top: 1.25rem;">
+                    <!-- Uso técnico frente al límite local -->
+                    <div style="margin-bottom: 1.5rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 0.5rem;">
+                            <span id="almEstadoUso" style="font-size: 0.85rem; font-weight: 600; color: var(--section-header-text);">Midiendo…</span>
+                            <span id="almEstadoPersistencia" style="font-size: 0.8rem; color: var(--section-description-text);">Persistencia: sin comprobar</span>
+                        </div>
+                        <div id="almEstadoLimite" style="margin-top: 0.5rem; font-size: 0.8rem; color: var(--section-description-text);">Límite local: calculando…</div>
+                        <div id="almEstadoCuota" style="margin-top: 0.25rem; font-size: 0.8rem; color: var(--section-description-text);">Cuota del navegador: sin comprobar</div>
+                        <div id="almEstadoHistorial" style="margin-top: 0.25rem; font-size: 0.8rem; color: var(--section-description-text);">Historial archivado: calculando…</div>
+                    </div>
+
+                    <!-- Las 8 claves que más ocupan -->
+                    <div style="overflow-x: auto; margin-bottom: 1.5rem;">
+                        <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem; color: var(--section-header-text);">
+                            <thead>
+                                <tr>
+                                    <th style="text-align: left; padding: 0.5rem; border-bottom: 1px solid var(--config-container-border); color: var(--section-description-text); font-weight: 600;">Clave</th>
+                                    <th style="text-align: right; padding: 0.5rem; border-bottom: 1px solid var(--config-container-border); color: var(--section-description-text); font-weight: 600;">Tamaño</th>
+                                </tr>
+                            </thead>
+                            <tbody id="almTablaClaves">
+                                <tr><td colspan="2" style="padding: 0.5rem; color: var(--section-description-text);">Sin datos todavía.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Diagnóstico -->
+                    <div id="almDiagnostico" style="background: var(--general-settings-bg); border-radius: 12px; padding: 1rem; font-size: 0.85rem; line-height: 1.7; color: var(--general-settings-text); margin-bottom: 1.5rem;">
+                        Pulsa «Refrescar medición» para ver el diagnóstico del almacenamiento.
+                    </div>
+
+                    <!-- Acciones técnicas -->
+                    <div class="fold-actions" style="justify-content: flex-start; flex-wrap: wrap;">
+                        <button type="button" class="btn btn-secondary" id="almBtnRefrescar" onclick="almacenamientoRefrescar()">Refrescar medición</button>
+                        <button type="button" class="btn btn-secondary" id="almBtnPersistencia" onclick="almacenamientoPedirPersistencia()">Pedir persistencia</button>
+                        <button type="button" class="btn btn-secondary" id="almBtnPolitica" onclick="almacenamientoAplicarPolitica()">Aplicar política de almacenamiento</button>
+                        <button type="button" class="btn btn-secondary" id="almBtnRecortarTasas" onclick="almacenamientoRecortarTasas()">Recortar histórico de tasas</button>
+                        <button type="button" class="btn btn-secondary" id="almBtnRestaurar" onclick="document.getElementById('almArchivoRespaldo').click()">Restaurar respaldo</button>
+                        <input type="file" id="almArchivoRespaldo" accept="application/json" hidden onchange="almacenamientoRestaurarRespaldo(this)">
+                    </div>
+
+                    <div id="almEstado" style="margin-top: 1rem; font-size: 0.85rem; color: var(--section-description-text);"></div>
+                </div>
+            </section>
         </div>
     </main>
 
@@ -2657,6 +2748,333 @@
         });
     </script>
     <script src="sesion.js"></script>
+    <!-- Panel de almacenamiento: usa las funciones de almacenamiento.js -->
+    <script>
+        /**
+         * Panel "Almacenamiento y respaldo" de config.html.
+         * No duplica lógica: solo pinta lo que devuelven las funciones de
+         * almacenamiento.js (medición, cuota, persistencia, respaldo y restauración).
+         */
+
+        /** Convierte bytes a texto en MB con dos decimales. */
+        function almMB(bytes) {
+            const b = Number(bytes) || 0;
+            return (b / 1048576).toFixed(2) + ' MB';
+        }
+
+        /** Número con separador de miles al estilo español (1024 -> "1.024"). */
+        function almNumero(valor) {
+            const n = Math.round(Number(valor) || 0);
+            return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        }
+
+        /** Texto legible del origen del límite local. */
+        function almOrigenLimite(origen) {
+            if (origen === 'consola') return 'consola';
+            if (origen === 'local') return 'local';
+            return 'por defecto';
+        }
+
+        /** Escribe texto en un elemento si existe. */
+        function almEscribir(id, texto) {
+            const el = document.getElementById(id);
+            if (el) el.textContent = texto;
+        }
+
+        /** Escapa texto antes de insertarlo con innerHTML. */
+        function almEscapar(texto) {
+            return String(texto === null || typeof texto === 'undefined' ? '' : texto)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        /** Deja un mensaje de estado en la zona inferior del panel. */
+        function almEstado(texto, esError) {
+            const el = document.getElementById('almEstado');
+            if (!el) return;
+            el.textContent = texto;
+            el.style.color = esError ? '#ef4444' : 'var(--section-description-text)';
+        }
+
+        /**
+         * Refresca la barra de uso, la tabla de las 8 claves más grandes y el diagnóstico.
+         */
+        async function almacenamientoRefrescar() {
+            try {
+                almEstado('Midiendo almacenamiento…');
+                const cuota = (typeof window.estimarCuota === 'function')
+                    ? await window.estimarCuota()
+                    : { uso: 0, cuota: 0, porcentaje: 0, soportado: false };
+                const medida = (typeof window.medirAlmacenamiento === 'function')
+                    ? window.medirAlmacenamiento()
+                    : { totalBytes: 0, porClave: [], claves: 0 };
+                const medido = (typeof window.medirTodo === 'function')
+                    ? window.medirTodo()
+                    : { localBytes: medida.totalBytes, historialBytes: 0, totalBytes: medida.totalBytes, limiteBytes: 1024 * 1048576, porcentaje: 0, limiteMB: 1024, origenLimite: 'por-defecto' };
+                const diag = (typeof window.diagnosticoAlmacenamiento === 'function')
+                    ? window.diagnosticoAlmacenamiento()
+                    : null;
+
+                // --- NIVEL VISIBLE: una sola frase llana y la fecha de la copia ---
+                const simple = (typeof window.estadoAlmacenamientoSimple === 'function')
+                    ? window.estadoAlmacenamientoSimple()
+                    : { estado: 'ok', texto: almMB(medido.totalBytes) + ' usados · Todo en orden', ultimaCopia: 'nunca' };
+                almEscribir('almEstadoUsoSimple', simple.texto);
+                almEscribir('almEstadoCopia', 'Última copia de seguridad: ' + simple.ultimaCopia);
+                const avisoLlano = document.getElementById('almAvisoLlano');
+                if (avisoLlano) {
+                    if (simple.estado === 'ok') {
+                        avisoLlano.hidden = true;
+                    } else {
+                        avisoLlano.hidden = false;
+                        avisoLlano.textContent = (simple.estado === 'lleno')
+                            ? 'Puedes seguir vendiendo. Descarga una copia para no perder datos antiguos. Para conservar todo el historial hace falta la nube.'
+                            : 'Puedes seguir vendiendo. Descarga una copia para no perder datos antiguos.';
+                    }
+                }
+
+                // --- Uso frente al LÍMITE LOCAL (dato principal) ---
+                const porcentaje = Number(medido.porcentaje) || 0;
+                const barra = document.getElementById('almBarraUso');
+                if (barra) {
+                    barra.style.width = Math.max(0, Math.min(100, porcentaje)) + '%';
+                    barra.style.background = porcentaje >= 95
+                        ? 'linear-gradient(to right, #ef4444, #dc2626)'
+                        : porcentaje >= 80
+                            ? 'linear-gradient(to right, #f59e0b, #ea580c)'
+                            : 'linear-gradient(to right, #10b981, #059669)';
+                }
+                almEscribir('almEstadoUso', almMB(medido.totalBytes) + ' de ' + almMB(medido.limiteBytes) + ' del límite local (' + porcentaje + ' %)');
+                almEscribir('almEstadoLimite', 'Límite local: ' + almNumero(medido.limiteMB) + ' MB (origen: ' + almOrigenLimite(medido.origenLimite) + ')');
+
+                // --- Cuota del navegador (dato secundario) ---
+                if (cuota.soportado && cuota.cuota > 0) {
+                    almEscribir('almEstadoCuota', 'Cuota del navegador: ' + almMB(cuota.uso) + ' de ' + almMB(cuota.cuota) + ' (' + cuota.porcentaje + ' %)');
+                } else {
+                    almEscribir('almEstadoCuota', 'Cuota del navegador: no informada por este navegador');
+                }
+
+                // --- Historial archivado (IndexedDB) ---
+                let ventasArchivadas = 0;
+                let comprasArchivadas = 0;
+                let bytesHistorial = Number(medido.historialBytes) || 0;
+                if (typeof window.contarHistorial === 'function') {
+                    ventasArchivadas = await window.contarHistorial('ventas');
+                    comprasArchivadas = await window.contarHistorial('compras');
+                }
+                if (typeof window.tamanoHistorial === 'function') {
+                    bytesHistorial = await window.tamanoHistorial();
+                }
+                almEscribir('almEstadoHistorial', 'Historial archivado: ' + ventasArchivadas + ' ventas, ' + comprasArchivadas + ' compras (' + almMB(bytesHistorial) + ')');
+
+                // --- Tabla: las 8 claves que más ocupan ---
+                const cuerpo = document.getElementById('almTablaClaves');
+                if (cuerpo) {
+                    const filas = medida.porClave.slice(0, 8);
+                    if (!filas.length) {
+                        cuerpo.innerHTML = '<tr><td colspan="2" style="padding: 0.5rem; color: var(--section-description-text);">No hay datos guardados.</td></tr>';
+                    } else {
+                        cuerpo.innerHTML = filas.map(function (f) {
+                            return '<tr>' +
+                                '<td style="padding: 0.45rem; border-bottom: 1px solid var(--config-container-border); word-break: break-all;">' + almEscapar(f.clave) + '</td>' +
+                                '<td style="padding: 0.45rem; border-bottom: 1px solid var(--config-container-border); text-align: right; white-space: nowrap;">' + almMB(f.bytes) + '</td>' +
+                                '</tr>';
+                        }).join('');
+                    }
+                }
+
+                // --- Líneas del diagnóstico ---
+                if (diag) {
+                    const img = diag.imagenesIncrustadas;
+                    const lineas = [
+                        'Total en localStorage: ' + almMB(diag.totalBytes) + ' repartido en ' + medida.claves + ' claves.',
+                        'Productos: ' + diag.datos.productos + ' · Categorías: ' + diag.datos.categorias + ' · Proveedores: ' + diag.datos.proveedores,
+                        'Ventas: ' + diag.datos.ventas + ' (' + almMB(diag.datos.ventasBytes) + ') · Compras: ' + diag.datos.compras,
+                        'Clientes: ' + diag.datos.clientes + ' · Cuentas: ' + diag.datos.cuentas,
+                        'Imágenes incrustadas: ' + img.productosConBase64 + ' producto(s) con base64 (' + almMB(img.bytesBase64) + ') · Logo con base64: ' + (img.logoTieneBase64 ? 'sí (' + almMB(img.logoBytes) + ')' : 'no'),
+                        'Claves mayores de 100 KB: ' + diag.clavesGrandes + ' · Versión del diagnóstico: ' + diag.version
+                    ];
+                    const cont = document.getElementById('almDiagnostico');
+                    if (cont) {
+                        cont.innerHTML = lineas.map(function (l) { return '<div>' + almEscapar(l) + '</div>'; }).join('');
+                    }
+                }
+
+                almEstado('Medición actualizada: ' + new Date().toLocaleString());
+            } catch (e) {
+                almEstado('No se pudo medir el almacenamiento: ' + (e && e.message ? e.message : e), true);
+            }
+        }
+
+        /**
+         * Pide al navegador almacenamiento persistente.
+         */
+        async function almacenamientoPedirPersistencia() {
+            try {
+                if (typeof window.pedirPersistencia !== 'function') {
+                    almEstado('El módulo almacenamiento.js no está cargado.', true);
+                    return;
+                }
+                almEstado('Solicitando almacenamiento persistente…');
+                const res = await window.pedirPersistencia();
+                almEscribir('almEstadoPersistencia', 'Persistencia: ' + (res.soportado ? (res.persistido ? 'activada' : 'no concedida') : 'no soportada'));
+                almEstado(!res.soportado
+                    ? 'Este navegador no ofrece almacenamiento persistente.'
+                    : res.persistido
+                        ? 'Almacenamiento persistente activado: el navegador no borrará los datos automáticamente.'
+                        : 'El navegador no concedió la persistencia: los datos podrían borrarse al limpiar el navegador. Descarga respaldos con frecuencia.');
+            } catch (e) {
+                almEstado('No se pudo solicitar la persistencia: ' + (e && e.message ? e.message : e), true);
+            }
+        }
+
+        /**
+         * Descarga un respaldo JSON con las claves de negocio.
+         */
+        function almacenamientoDescargarRespaldo() {
+            try {
+                if (typeof window.descargarRespaldo !== 'function') {
+                    almEstado('El módulo almacenamiento.js no está cargado.', true);
+                    return;
+                }
+                const res = window.descargarRespaldo();
+                if (res.ok) {
+                    almEstado('Respaldo descargado: ' + res.claves + ' claves · ' + almMB(res.bytes) + '.');
+                } else {
+                    almEstado('No se descargó el respaldo: ' + (res.error || 'desconocido'), true);
+                }
+            } catch (e) {
+                almEstado('No se pudo descargar el respaldo: ' + (e && e.message ? e.message : e), true);
+            }
+        }
+
+        /**
+         * Restaura el respaldo elegido en el <input type="file">.
+         */
+        async function almacenamientoRestaurarRespaldo(input) {
+            try {
+                const archivo = input && input.files && input.files[0];
+                if (!archivo) return;
+                if (typeof window.restaurarRespaldo !== 'function') {
+                    almEstado('El módulo almacenamiento.js no está cargado.', true);
+                    return;
+                }
+                almEstado('Restaurando respaldo…');
+                const res = await window.restaurarRespaldo(archivo);
+                if (res.ok) {
+                    almEstado('Respaldo restaurado: ' + res.restauradas + ' claves. Recarga la página (F5) para ver los datos.');
+                    almacenamientoRefrescar();
+                } else {
+                    almEstado('Restauración no realizada: ' + (res.error || 'desconocido'), true);
+                }
+            } catch (e) {
+                almEstado('No se pudo restaurar el respaldo: ' + (e && e.message ? e.message : e), true);
+            } finally {
+                if (input) input.value = '';
+            }
+        }
+
+        /**
+         * Aplica la política de límite local: avisa al 80 % y, al 100 %, exige
+         * respaldo y borra los registros más antiguos del historial.
+         */
+        async function almacenamientoAplicarPolitica() {
+            try {
+                if (typeof window.aplicarPoliticaAlmacenamiento !== 'function') {
+                    almEstado('El módulo almacenamiento.js no está cargado.', true);
+                    return;
+                }
+                almEstado('Aplicando la política de almacenamiento…');
+                const res = await window.aplicarPoliticaAlmacenamiento();
+                const accion = (res && res.accion) ? res.accion : 'sin resultado';
+                const liberado = (res && res.liberadoBytes) ? almMB(res.liberadoBytes) : '0.00 MB';
+                const borrados = (res && res.borrados) ? res.borrados : 0;
+                let texto = 'Política de almacenamiento — acción: ' + accion +
+                    ' · liberado: ' + liberado + ' · registros borrados: ' + borrados;
+                if (res && typeof res.porcentaje === 'number') texto += ' · uso actual: ' + res.porcentaje + ' %';
+                if (res && res.aviso) texto += ' — ' + res.aviso;
+                const esError = !!(res && res.tipoAviso === 'error');
+                if (res && res.aviso) showToast(res.aviso);
+                await almacenamientoRefrescar();
+                // El refresco deja su propio mensaje: se vuelve a poner el resultado
+                // de la política para que el usuario lo vea.
+                almEstado(texto, esError);
+            } catch (e) {
+                almEstado('No se pudo aplicar la política: ' + (e && e.message ? e.message : e), true);
+            }
+        }
+
+        /**
+         * Recorta el histórico de tasas a la ventana que usa la tendencia.
+         */
+        async function almacenamientoRecortarTasas() {
+            try {
+                if (typeof window.recortarHistorialTasas !== 'function') {
+                    almEstado('El módulo almacenamiento.js no está cargado.', true);
+                    return;
+                }
+                const quitados = window.recortarHistorialTasas();
+                const texto = quitados > 0
+                    ? 'Histórico de tasas: se quitaron ' + quitados + ' punto(s) fuera de la ventana de la tendencia.'
+                    : 'Histórico de tasas: no había puntos fuera de la ventana de la tendencia.';
+                if (quitados > 0) showToast('Histórico de tasas recortado: ' + quitados + ' punto(s) eliminados.');
+                await almacenamientoRefrescar();
+                // Igual que en la política: el mensaje del resultado se pierde al
+                // refrescar, así que se vuelve a escribir después.
+                almEstado(texto);
+            } catch (e) {
+                almEstado('No se pudo recortar el histórico de tasas: ' + (e && e.message ? e.message : e), true);
+            }
+        }
+
+        /**
+         * Muestra u oculta el bloque técnico "Avanzado" (empieza cerrado).
+         */
+        function almacenamientoAlternarAvanzado() {
+            try {
+                const cont = document.getElementById('almAvanzado');
+                const boton = document.getElementById('almBtnAvanzado');
+                if (!cont) return;
+                const abrir = !!cont.hidden;
+                cont.hidden = !abrir;
+                if (boton) {
+                    boton.textContent = abrir ? 'Ocultar avanzado' : 'Avanzado';
+                    boton.setAttribute('aria-expanded', abrir ? 'true' : 'false');
+                }
+            } catch (e) { /* el bloque avanzado nunca debe romper la página */ }
+        }
+
+        /**
+         * Botón visible del cliente: descarga la copia de seguridad y refresca la
+         * línea "Última copia de seguridad" del panel.
+         */
+        async function almacenamientoDescargarCopiaVisible() {
+            try {
+                almacenamientoDescargarRespaldo();
+                await almacenamientoRefrescar();
+            } catch (e) {
+                almEstado('No se pudo descargar la copia de seguridad: ' + (e && e.message ? e.message : e), true);
+            }
+        }
+
+        // Estado inicial de la persistencia (solo consulta, no pide permisos).
+        try {
+            if (typeof navigator !== 'undefined' && navigator.storage && typeof navigator.storage.persisted === 'function') {
+                navigator.storage.persisted().then(function (persistido) {
+                    almEscribir('almEstadoPersistencia', 'Persistencia: ' + (persistido ? 'activada' : 'no activada'));
+                }).catch(function () { /* informativo */ });
+            }
+        } catch (e) { /* informativo */ }
+
+        // Al cargar la página: medir el almacenamiento y avisar si va lleno.
+        almacenamientoRefrescar();
+        if (typeof window.avisarSiLleno === 'function') {
+            window.avisarSiLleno().catch(function () { /* el aviso nunca debe romper la página */ });
+        }
+    </script>
     <script src="cerrar_sesion.js"></script>
 </body>
 </html>

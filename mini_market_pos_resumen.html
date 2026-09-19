@@ -7,6 +7,9 @@
     <link rel="icon" type="image/x-icon" href="icono.ico">
     <script src="cloud-access.js"></script>
     <script src="sincronizacion.js"></script>
+    <!-- Fase B (E2): el motor de operaciones y el lector unificado de ventas -->
+    <script src="motor_operaciones.js"></script>
+    <script src="lector_ventas.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
@@ -1076,6 +1079,26 @@
             opacity: 1;
         }
 
+        /* Aviso discreto de datos incompletos (E2) */
+        .aviso-datos {
+            display: none;
+            max-width: 1400px;
+            margin: 0.75rem auto 0;
+            padding: 0.6rem 1rem;
+            background: #fef3c7;
+            border: 1px solid #fcd34d;
+            border-left: 4px solid #f59e0b;
+            border-radius: 10px;
+            color: #92400e;
+            font-size: 0.85rem;
+        }
+
+        .dark-mode .aviso-datos {
+            background: #422006;
+            border-color: #78350f;
+            color: #fde68a;
+        }
+
         /* Theme Toggle */
         .theme-toggle {
             background: none;
@@ -1237,6 +1260,9 @@
 
     <!-- Toast Notification -->
     <div class="toast" id="toast"></div>
+
+    <!-- Aviso discreto: faltan datos de algunos días (E2) -->
+    <div class="aviso-datos" id="avisoDatosIncompletos">Faltan datos de algunos días: se muestran los disponibles</div>
 
     <!-- Dashboard -->
     <div class="dashboard">
@@ -1448,6 +1474,12 @@
             quickFilter: 'all'
         };
 
+        // Fase B (E2): estado de la última lectura unificada de ventas.
+        let _lecturaActual = null;        // lectura del lector (los dos mundos)
+        let _modoLectura = 'clasico';     // modo con el que se leyó
+        let _recargaVentasTimer = null;   // relectura con retardo tras cambios en ops
+        let _modoSyncResumen = null;      // 'clasico' | 'operaciones' | null (sin resolver)
+
         function escapeHtml(str) {
             if (typeof str !== 'string') return str;
             const div = document.createElement('div');
@@ -1552,16 +1584,138 @@
             document.getElementById('dateTo').value = today;
         }
 
-        async function loadSales() {
-    try {
-        await syncFromFirebase();
-        setupRealtimeListener();
+        /* ==================== LECTOR DE VENTAS (E2) ==================== */
 
-        const storedSales = localStorage.getItem('pos_sales');
-        if (storedSales) {
-            allSales = JSON.parse(storedSales);
+        /**
+         * Lee `suscripcion/modoSync` una sola vez por carga. Cualquier duda
+         * (nodo ausente, valor raro, error de red) deja el modo SIN resolver y el
+         * resumen se comporta como siempre: clásico.
+         */
+        async function modoSyncResumen() {
+            if (_modoSyncResumen) return _modoSyncResumen;
+            try {
+                const email = getCurrentUserEmail();
+                if (!email) return null;
+                const db = await initFirebase();
+                if (!db) return null;
+                const snap = await db.ref('BBDD/' + sanitizeEmailForDb(email) + '/suscripcion/modoSync').once('value');
+                const valor = snap.val();
+                if (valor === null) return null;      // sin respuesta: no se decide ni se cachea
+                _modoSyncResumen = (valor === 'operaciones') ? 'operaciones' : 'clasico';
+                return _modoSyncResumen;
+            } catch (e) {
+                return null;                          // fallo de lectura: se sigue en clásico
+            }
+        }
+
+        /**
+         * Opciones comunes para `lector_ventas.js`. El permiso de nube
+         * (`cloudSync`, que es lo que se cobra) se respeta: sin él el lector
+         * trabaja solo con lo local, igual que hacía `syncFromFirebase`.
+         */
+        async function opcionesLector(modo) {
+            const modoLectura = (modo === 'operaciones' || modo === 'clasico') ? modo : 'clasico';
+            let db = null;
+            try { if (await checkCloudAccess()) db = await initFirebase(); } catch (e) { db = null; }
+            const email = getCurrentUserEmail();
+            return {
+                modoSync: modoLectura,
+                db: db,
+                emailPath: email ? sanitizeEmailForDb(email) : '',
+                puedeSobrescribir: (typeof puedeSobrescribirLocalSync !== 'function') ? true : puedeSobrescribirLocalSync()
+            };
+        }
+
+        /**
+         * Lee las ventas de los DOS MUNDOS con el lector (E2): operaciones
+         * confirmadas + histórico congelado + lo local, sin duplicar nada.
+         * Devuelve null si el lector no está o no pudo leer, y entonces la
+         * página usa el camino clásico de siempre.
+         */
+        async function cargarVentasConLector(modo) {
+            if (!window.lectorVentas || typeof window.lectorVentas.leerVentas !== 'function') return null;
+            try {
+                const opciones = await opcionesLector(modo);
+                opciones.desde = null;        // el resumen carga todo y filtra en pantalla
+                opciones.hasta = null;
+                const r = await window.lectorVentas.leerVentas(opciones);
+                if (!r || r.ok !== true) {
+                    if (r && r.error) console.warn('El lector de ventas no pudo leer:', r.error);
+                    return null;
+                }
+                return r;
+            } catch (e) {
+                console.warn('El lector de ventas falló:', e && e.message);
+                return null;
+            }
+        }
+
+        /** Aviso discreto cuando faltan días: se muestran los disponibles. */
+        function mostrarAvisoDatos(incompleto) {
+            const aviso = document.getElementById('avisoDatosIncompletos');
+            if (aviso) aviso.style.display = incompleto ? 'block' : 'none';
+        }
+
+        /**
+         * Decide si hay que avisar. Además de lo que diga la lectura, cuando el
+         * filtro es de UN solo día se le pregunta al lector por ese día
+         * (`resumenDelDia`), que es quien sabe si `ventas_idx` estaba completo.
+         */
+        async function actualizarAvisoDatos(lectura, modo) {
+            let incompleto = !!(lectura && (lectura.completo === false || (lectura.faltantes || []).length > 0));
+            try {
+                const desdeEl = document.getElementById('dateFrom');
+                const hastaEl = document.getElementById('dateTo');
+                const desde = desdeEl ? desdeEl.value : '';
+                const hasta = hastaEl ? hastaEl.value : '';
+                if (!incompleto && desde && desde === hasta &&
+                    window.lectorVentas && typeof window.lectorVentas.resumenDelDia === 'function') {
+                    const opciones = await opcionesLector(modo);
+                    const r = await window.lectorVentas.resumenDelDia(desde, opciones);
+                    if (r && r.ok === true && r.completo === false) incompleto = true;
+                }
+            } catch (e) { /* el aviso nunca puede romper la pantalla */ }
+            mostrarAvisoDatos(incompleto);
+        }
+
+        /** Relee las ventas con el lector cuando cambian las operaciones. */
+        function recargarVentasConLector() {
+            if (_recargaVentasTimer) clearTimeout(_recargaVentasTimer);
+            _recargaVentasTimer = setTimeout(async () => {
+                _recargaVentasTimer = null;
+                try {
+                    const modo = _modoSyncResumen || await modoSyncResumen();
+                    const lectura = await cargarVentasConLector(modo);
+                    if (!lectura) return;
+                    _lecturaActual = lectura;
+                    allSales = Array.isArray(lectura.ventas) ? lectura.ventas : [];
+                    allSales.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                    applyFilters();
+                } catch (e) { /* la relectura nunca rompe la pantalla */ }
+            }, 400);
+        }
+
+        async function loadSales() {
+    let modo = null;
+    try {
+        modo = await modoSyncResumen();
+        _modoLectura = (modo === 'operaciones') ? 'operaciones' : 'clasico';
+
+        // Productos y categorías: igual que siempre. Las VENTAS del histórico solo
+        // pisan `pos_sales` en modo clásico (E2: en operaciones ese archivo quedó
+        // CONGELADO y `pos_sales` lo proyecta el POS con la ventana caliente).
+        await syncFromFirebase(modo);
+
+        const lectura = await cargarVentasConLector(modo);
+        if (lectura) {
+            _lecturaActual = lectura;
+            allSales = Array.isArray(lectura.ventas) ? lectura.ventas : [];
+            mostrarAvisoDatos(lectura.completo === false || (lectura.faltantes || []).length > 0);
         } else {
-            allSales = [];
+            // Sin lector (o sin nada legible): el camino clásico EXACTO de antes.
+            const storedSales = localStorage.getItem('pos_sales');
+            allSales = storedSales ? JSON.parse(storedSales) : [];
+            mostrarAvisoDatos(false);
         }
 
         const storedInventory = localStorage.getItem('ciervo_inventory');
@@ -1578,6 +1732,7 @@
 
     allSales.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
     applyFilters();
+    setupRealtimeListener(modo);
 }
 
         function loadCharts() {
@@ -2080,6 +2235,8 @@ function applyFilters() {
     // 5. Renderiza todo (sin cambios)
     renderMetrics(metrics);
     loadCharts();
+    // E2: el aviso de días incompletos se recalcula con el filtro actual.
+    actualizarAvisoDatos(_lecturaActual, _modoLectura);
     currentPage = 1;
     renderResults();
 }                                      
@@ -2834,7 +2991,7 @@ function recalculateTotalFromItems(sale) {
             return snap.val();
         }
 
-        async function syncFromFirebase() {
+        async function syncFromFirebase(modo) {
             try {
                 if (!await checkCloudAccess()) return false;
                 const data = await fbLoadAll();
@@ -2849,8 +3006,13 @@ function recalculateTotalFromItems(sale) {
                     changed = true;
                 }
                 if (data.ventas && data.ventas.historial) {
-                    localStorage.setItem('pos_sales', JSON.stringify(data.ventas.historial));
-                    changed = true;
+                    // E2: en modo operaciones `ventas/historial` está CONGELADO y
+                    // `pos_sales` lo proyecta el POS con la ventana caliente: aquí
+                    // no se pisa. En clásico se hace EXACTAMENTE lo de siempre.
+                    if (modo !== 'operaciones') {
+                        localStorage.setItem('pos_sales', JSON.stringify(data.ventas.historial));
+                        changed = true;
+                    }
                 }
                 if (changed) {
                     setFirebaseDot('#22c55e', 'Firebase conectado');
@@ -2862,13 +3024,21 @@ function recalculateTotalFromItems(sale) {
             }
         }
 
-        function setupRealtimeListener() {
+        function setupRealtimeListener(modo) {
             checkCloudAccess().then(allowed => {
                 if (!allowed) return;
             initFirebase().then(db => {
                 if (!db) return;
                 const email = getCurrentUserEmail();
                 if (!email) return;
+                // E2: en modo operaciones el histórico está CONGELADO; lo que
+                // cambia son las OPERACIONES, así que se relee con el lector.
+                if (modo === 'operaciones') {
+                    db.ref('BBDD/' + sanitizeEmailForDb(email) + '/ops/venta').on('value', () => {
+                        recargarVentasConLector();
+                    });
+                    return;
+                }
                 const path = 'BBDD/' + sanitizeEmailForDb(email) + '/ventas/historial';
                 db.ref(path).on('value', snap => {
                     const ventas = snap.val();
