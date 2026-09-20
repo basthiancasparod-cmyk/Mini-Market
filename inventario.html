@@ -5,10 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Control de Inventario - Ciervo Administrativo</title>
     <link rel="icon" type="image/x-icon" href="icono.ico">
+    <!-- Aislamiento de datos por cuenta (fase 2): cada cuenta ve SOLO sus claves de
+         localStorage. Va primero, antes que el resto de scripts de la página. -->
+    <script src="datos_cuenta.js"></script>
     <script src="cloud-access.js"></script>
     <script src="sincronizacion.js"></script>
     <!-- Guardián de almacenamiento local: medición, cuota, respaldo y restauración -->
     <script src="almacenamiento.js"></script>
+    <!-- Guardián de "una cuenta por equipo": los datos locales no se comparten entre cuentas -->
+    <script src="cuenta_local.js"></script>
     <script>
         // Guardián de almacenamiento: comprueba la cuota una sola vez al cargar la página.
         document.addEventListener('DOMContentLoaded', function () {
@@ -2478,6 +2483,12 @@ body.dark-mode .dropdown-divider {
 
         // Initialize the application
         document.addEventListener('DOMContentLoaded', function() {
+            // Aislamiento por cuenta (fase 2, datos_cuenta.js): activa el prefijo de la
+            // cuenta y migra UNA sola vez los datos que quedaron sin prefijo. Se pasa el
+            // correo tal cual (activarYMigrar lo normaliza) y solo si existe: esta llamada
+            // no puede lanzar ni frenar el arranque de la página.
+            var emailDeLaCuenta = getCurrentUserEmail();
+            if (window.datosCuenta && emailDeLaCuenta) datosCuenta.activarYMigrar(emailDeLaCuenta);
             if (typeof lucide !== 'undefined') {
                 lucide.createIcons();
             }
@@ -2740,20 +2751,14 @@ function handleStockKeydown(event) {
             if (savedCategories) {
                 categories = JSON.parse(savedCategories);
             } else {
+                // Sin lista de categorías de EJEMPLO. Antes se sembraban 10 categorías
+                // fijas (Electrónicos, Ropa, Hogar, Deportes, Libros, Belleza, Automotriz,
+                // Frutas y Hortalizas, Charcutería, Otros) y se guardaban en
+                // ciervo_categories + nube sin que el cliente las hubiera creado.
+                // Solo se deja la opción vacía, que es el rótulo del desplegable.
                 categories = [
-                    { value: "", text: "Seleccionar categoría", isBulk: false },
-                    { value: "Electrónicos", text: "Electrónicos", isBulk: false },
-                    { value: "Ropa", text: "Ropa", isBulk: false },
-                    { value: "Hogar", text: "Hogar", isBulk: false },
-                    { value: "Deportes", text: "Deportes", isBulk: false },
-                    { value: "Libros", text: "Libros", isBulk: false },
-                    { value: "Belleza", text: "Belleza", isBulk: false },
-                    { value: "Automotriz", text: "Automotriz", isBulk: false },
-                    { value: "Frutas y Hortalizas", text: "Frutas y Hortalizas", isBulk: true },
-                    { value: "Charcutería", text: "Charcutería", isBulk: true },
-                    { value: "Otros", text: "Otros", isBulk: false }
+                    { value: "", text: "Seleccionar categoría", isBulk: false }
                 ];
-                saveCategories();
             }
         }
 
@@ -2787,7 +2792,16 @@ function handleStockKeydown(event) {
         function renderCategoryList() {
             const categoryList = document.getElementById('categoryList');
             categoryList.innerHTML = '';
-            categories.filter(cat => cat.value !== "").forEach(cat => {
+            const visibles = categories.filter(cat => cat.value !== "");
+            if (visibles.length === 0) {
+                // Estado vacío: la cuenta aún no ha creado ninguna categoría.
+                const vacio = document.createElement('li');
+                vacio.textContent = 'Aún no hay categorías. Agrega la primera abajo.';
+                vacio.style.color = 'var(--text-color-secondary, #64748b)';
+                categoryList.appendChild(vacio);
+                return;
+            }
+            visibles.forEach(cat => {
                 const li = document.createElement('li');
                 const span = document.createElement('span');
                 span.textContent = cat.text + (cat.isBulk ? ' (Granel)' : '');
@@ -2972,10 +2986,12 @@ function handleStockKeydown(event) {
         }
 
         function loadSampleData() {
-            // Esta función ahora inicializa un inventario vacío.
+            // NEUTRALIZADA (datos de muestra): un inventario nuevo arranca VACÍO.
+            // Ya NO llama a saveProducts(): antes escribía ciervo_inventory en
+            // localStorage y lo subía a la nube aunque no hubiera nada que guardar.
             products = [];
             nextProductId = 1;
-            saveProducts();
+            return products;
         }
 
         function renderProducts() {

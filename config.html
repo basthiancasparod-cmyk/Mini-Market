@@ -6,6 +6,9 @@
     <title>Configuraciones - Ciervo Administrativo</title>
     <link rel="icon" type="image/x-icon" href="icono.ico">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdgNsLEaO/P/2g/f/YQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <!-- Aislamiento de datos por cuenta (fase 2): cada cuenta ve SOLO sus claves de
+         localStorage. Va primero, antes que el resto de scripts de la página. -->
+    <script src="datos_cuenta.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.1/dist/umd/lucide.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
@@ -16,6 +19,8 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
     <!-- Guardián de almacenamiento local: medición, cuota, respaldo y restauración -->
     <script src="almacenamiento.js"></script>
+    <!-- Guardián de "una cuenta por equipo": los datos locales no se comparten entre cuentas -->
+    <script src="cuenta_local.js"></script>
     <style>
         /* CSS Variables for Theming */
         :root {
@@ -1617,6 +1622,11 @@
                         Pulsa «Refrescar medición» para ver el diagnóstico del almacenamiento.
                     </div>
 
+                    <!-- Datos de EJEMPLO ya plantados: SOLO LECTURA, no borra nada -->
+                    <div id="almMuestras" style="background: var(--general-settings-bg); border-radius: 12px; padding: 1rem; font-size: 0.85rem; line-height: 1.7; color: var(--general-settings-text); margin-bottom: 1.5rem;">
+                        Comprobando si quedan datos de ejemplo…
+                    </div>
+
                     <!-- Acciones técnicas -->
                     <div class="fold-actions" style="justify-content: flex-start; flex-wrap: wrap;">
                         <button type="button" class="btn btn-secondary" id="almBtnRefrescar" onclick="almacenamientoRefrescar()">Refrescar medición</button>
@@ -1775,8 +1785,10 @@
                     </div>
 
                     <p style="color: var(--warning-text-color); margin-bottom: 1.5rem;">
-                        Al continuar, el sistema se restablecerá completamente y se creará un usuario administrador demo
-                        con credenciales: <strong>Usuario: Admin</strong> / <strong>Contraseña: Admin123</strong>
+                        Al continuar, el sistema se restablecerá completamente y quedará <strong>vacío</strong>:
+                        sin productos, sin cuentas, sin proveedores, sin clientes y sin ningún usuario de
+                        ejemplo. No se crea ninguna cuenta de demostración: al terminar se vuelve al acceso
+                        y usted entra con su propia cuenta.
                     </p>
                 </div>
 
@@ -1835,24 +1847,14 @@
                 <div class="success-message">
                     <p>
                         El sistema ha sido restablecido a su configuración de fábrica. Todos los datos anteriores
-                        han sido eliminados y se ha creado un usuario administrador demo para su acceso inicial.
+                        han sido eliminados y <strong>no se ha creado ningún usuario de ejemplo</strong>: la
+                        aplicación queda limpia y vacía, lista para empezar de cero.
                     </p>
-                    
-                    <div>
-                        <h4 style="color: var(--success-message-title); margin-bottom: 0.75rem; font-weight: 600;">
-                            Credenciales de Acceso Demo:
-                        </h4>
-                        <p class="code-block">
-                            <strong>Usuario:</strong> Admin<br>
-                            <strong>Contraseña:</strong> Admin123<br>
-                            <strong>Rol:</strong> Administrador
-                        </p>
-                    </div>
-                    
+
                     <p style="color: #059669; font-weight: 600; margin-bottom: 1rem;">
-                        ¡Bienvenido de nuevo! Su sistema está listo para usar.
+                        Vuelva a iniciar sesión con su propia cuenta para configurar su negocio.
                     </p>
-                    
+
                     <p style="font-size: 0.875rem; color: var(--success-message-text);">
                         Ahora puede comenzar a configurar su sistema desde cero, agregar productos,
                         crear usuarios adicionales y personalizar su experiencia de minimarket.
@@ -1908,6 +1910,9 @@
 
         // Initialize system and icons
         document.addEventListener('DOMContentLoaded', function() {
+            // Aislamiento por cuenta (fase 2, datos_cuenta.js): activa el prefijo de la
+            // cuenta del equipo y migra UNA sola vez los datos que quedaron sin prefijo.
+            if (window.datosCuenta) datosCuenta.activarYMigrar(localStorage.getItem('datosDeCuenta') || sessionStorage.getItem('propietarioActual'));
             // Ensure Lucide icons are created after the DOM is fully loaded
             if (typeof lucide !== 'undefined') {
                 lucide.createIcons();
@@ -2350,7 +2355,10 @@
                     localStorage.removeItem('pos_customers'); // clave antigua: ya no la usa ninguna página
                     localStorage.removeItem('ciervo_clients'); // clave real de clientes (listado_clientes.html)
                 }},
-                { text: 'Creando usuario administrador demo...', progress: 95, action: createDemoAdminUser },
+                // El paso del 95 % creaba en localStorage un usuario "Admin"/"Admin123" de
+                // ejemplo. Se eliminó: el reinicio de fábrica deja la aplicación vacía, sin
+                // ningún usuario de ejemplo. Nada dependía de esa clave: el acceso real usa
+                // Firebase Authentication y los operadores viven en la nube.
                 { text: 'Finalizando restablecimiento y limpiando configuraciones...', progress: 100, action: clearOtherSystemData }
             ];
 
@@ -2379,24 +2387,11 @@
             executeNextStep();
         }
 
-        /**
-         * Creates a default demo administrator user in localStorage.
-         */
-        function createDemoAdminUser() {
-            const demoUser = {
-                id: 1,
-                firstName: "Admin",
-                lastName: "Demo",
-                username: "Admin",
-                password: "Admin123", // In a real app, this would be hashed
-                role: "Administrador",
-                status: "active",
-                email: "admin@demo.com",
-                document: "DEMO-001",
-                createdDate: new Date().toISOString()
-            };
-            localStorage.setItem('users', JSON.stringify([demoUser]));
-        }
+        // (Aquí vivía createDemoAdminUser(): creaba en localStorage un usuario de
+        //  ejemplo "Admin"/"Admin123" —admin@demo.com, documento DEMO-001— cada vez
+        //  que se reiniciaba de fábrica. Se eliminó para que el reinicio deje la
+        //  aplicación limpia. Nada la usaba: el acceso real es Firebase Authentication
+        //  y los operadores se guardan en la nube, no en localStorage.)
 
         /**
          * Clears other non-essential system data from localStorage.
@@ -2439,6 +2434,23 @@
             localStorage.removeItem('sys_session_timeout');
             localStorage.removeItem('sys_auto_save');
             localStorage.removeItem('receiptSettings');
+            // Aislamiento por cuenta (fase 2): borra SOLO las claves de la cuenta de este
+            // equipo (incluidas las marcas _pendSync_* y el sello de migración, que el bucle
+            // de arriba no ve porque Object.keys devuelve los nombres FÍSICOS con prefijo).
+            // No toca las claves de equipo ni las de otras cuentas.
+            try {
+                var rutaDeLosDatos = (window.datosCuenta && window.datosCuenta.estado().emailPath) ||
+                    localStorage.getItem('datosDeCuenta');
+                if (rutaDeLosDatos && window.datosCuenta) window.datosCuenta.limpiarCuenta(rutaDeLosDatos);
+            } catch (e) { /* la limpieza nunca debe romper el reinicio */ }
+
+            // Guardián de "una cuenta por equipo": el reinicio de fábrica deja el equipo
+            // neutral, sin dueño. Así la próxima cuenta que entre podrá reclamar los datos.
+            try {
+                if (window.cuentaLocal && typeof window.cuentaLocal.liberarEquipo === 'function') {
+                    window.cuentaLocal.liberarEquipo();
+                }
+            } catch (e) { /* la limpieza nunca debe romper el reinicio */ }
         }
 
         /**
@@ -2799,6 +2811,160 @@
             el.style.color = esError ? '#ef4444' : 'var(--section-description-text)';
         }
 
+        /* =============================================================
+           DIAGNÓSTICO DE DATOS DE EJEMPLO YA PLANTADOS (SOLO LECTURA)
+           -------------------------------------------------------------
+           Versiones anteriores sembraban datos de demostración (productos,
+           cuentas, proveedores, categorías, empresa y un usuario "Admin"). Si un
+           cliente abrió esas páginas, esos datos pueden seguir dentro de su
+           almacén. Esta comprobación NO BORRA NI ESCRIBE NADA: solo lista lo que
+           tiene pinta de ejemplo para que el dueño decida a mano.
+           ============================================================= */
+
+        /* Firmas exactas de los sembradores que se eliminaron del resto de páginas. */
+        var MUESTRA_PRODUCTOS = {
+            'LAP-HP-001': 'Laptop HP Pavilion',
+            'TEL-SAM-002': 'Smartphone Samsung Galaxy',
+            'AUD-SON-003': 'Audífonos Sony WH-1000XM4',
+            'CAM-NIK-004': 'Camiseta Nike Dri-FIT',
+            'CAF-NES-005': 'Cafetera Nespresso'
+        };
+        var MUESTRA_CODIGOS_PRODUCTO = Object.keys(MUESTRA_PRODUCTOS);
+        var MUESTRA_CUENTAS = [
+            'Venta de productos electrónicos', 'Compra de materia prima', 'Servicio de consultoría',
+            'Alquiler de oficina', 'Venta de software'
+        ];
+        var MUESTRA_CONTACTOS = ['Cliente A', 'Proveedor X', 'Empresa B', 'Arrendador', 'Cliente C'];
+        var MUESTRA_PROVEEDOR = ['Distribuidora Central SAC', '20123456789', 'ventas@distribuidoracentral.com'];
+        var MUESTRA_CATEGORIAS = ['Electrónicos', 'Ropa', 'Hogar', 'Deportes', 'Libros', 'Belleza',
+            'Automotriz', 'Frutas y Hortalizas', 'Charcutería', 'Otros'];
+
+        /** Lee y parsea una clave del almacén. Devuelve null si no sirve. */
+        function muestraLeer(clave) {
+            try {
+                var bruto = localStorage.getItem(clave);
+                if (!bruto) return null;
+                return JSON.parse(bruto);
+            } catch (e) { return null; }
+        }
+
+        /** Texto corto con los primeros nombres de una lista (para no llenar el panel). */
+        function muestraNombres(lista, limite) {
+            var tope = limite || 4;
+            var nombres = lista.slice(0, tope).map(function (n) { return String(n); });
+            if (lista.length > tope) nombres.push('…');
+            return nombres.join(', ');
+        }
+
+        /**
+         * Líneas del diagnóstico de datos de ejemplo. SOLO LEE.
+         * @returns {{ total:number, lineas:string[] }}
+         */
+        function diagnosticoDatosDeMuestra() {
+            var lineas = [];
+            var total = 0;
+
+            function anotar(cuantos, texto) {
+                total += cuantos;
+                lineas.push(texto);
+            }
+
+            /* Productos: por el código exacto del sembrador (y el nombre que le tocaba). */
+            var inventario = muestraLeer('ciervo_inventory');
+            if (Array.isArray(inventario)) {
+                var productosEjemplo = inventario.filter(function (p) {
+                    if (!p) return false;
+                    var codigo = String(p.code || '');
+                    if (MUESTRA_CODIGOS_PRODUCTO.indexOf(codigo) === -1) return false;
+                    return !p.name || MUESTRA_PRODUCTOS[codigo] === p.name;
+                }).map(function (p) { return p.name || p.code; });
+                anotar(productosEjemplo.length, 'Productos con pinta de ejemplo: ' + productosEjemplo.length +
+                    (productosEjemplo.length ? ' — nombres: ' + muestraNombres(productosEjemplo) : ''));
+            }
+
+            /* Cuentas por cobrar/pagar del sembrador de menu.html. */
+            var cuentas = muestraLeer('ciervo_accounts');
+            if (Array.isArray(cuentas)) {
+                var cuentasEjemplo = cuentas.filter(function (a) {
+                    if (!a) return false;
+                    return MUESTRA_CUENTAS.indexOf(String(a.description || '')) !== -1 &&
+                        MUESTRA_CONTACTOS.indexOf(String(a.contact || '')) !== -1;
+                }).map(function (a) { return String(a.description || "") + ' (' + String(a.contact || "") + ')'; });
+                anotar(cuentasEjemplo.length, 'Cuentas con pinta de ejemplo: ' + cuentasEjemplo.length +
+                    (cuentasEjemplo.length ? ' — ' + muestraNombres(cuentasEjemplo) : ''));
+            }
+
+            /* Proveedor de ejemplo de compras.html. */
+            var proveedores = muestraLeer('ciervo_suppliers');
+            if (Array.isArray(proveedores)) {
+                var proveedoresEjemplo = proveedores.filter(function (s) {
+                    if (!s) return false;
+                    return MUESTRA_PROVEEDOR.indexOf(String(s.name || '')) !== -1 ||
+                        MUESTRA_PROVEEDOR.indexOf(String(s.document || '')) !== -1 ||
+                        MUESTRA_PROVEEDOR.indexOf(String(s.email || '')) !== -1;
+                }).map(function (s) { return s.name || s.document; });
+                anotar(proveedoresEjemplo.length, 'Proveedores con pinta de ejemplo: ' + proveedoresEjemplo.length +
+                    (proveedoresEjemplo.length ? ' — nombres: ' + muestraNombres(proveedoresEjemplo) : ''));
+            }
+
+            /* Categorías: solo si está la lista completa de demostración (evita falsos positivos
+               con nombres genéricos como "Hogar", que un cliente puede haber creado de verdad). */
+            var categorias = muestraLeer('ciervo_categories');
+            if (Array.isArray(categorias)) {
+                var valores = categorias.filter(function (c) { return c && c.value !== ''; })
+                    .map(function (c) { return String(c.value); });
+                var listaCompleta = valores.length === MUESTRA_CATEGORIAS.length &&
+                    MUESTRA_CATEGORIAS.every(function (n) { return valores.indexOf(n) !== -1; });
+                anotar(listaCompleta ? valores.length : 0, 'Categorías con pinta de ejemplo: ' +
+                    (listaCompleta ? valores.length + ' (la lista completa de demostración)' : '0'));
+            }
+
+            /* Datos de empresa de ejemplo de config_recibo.html. */
+            var empresa = muestraLeer('companyData');
+            if (empresa && typeof empresa === 'object') {
+                var empresaEjemplo = String(empresa.companyName || '') === 'TIENDA DE EJEMPLO C.A.' ||
+                    String(empresa.rif || '') === 'J-12345678';
+                anotar(empresaEjemplo ? 1 : 0, 'Datos de empresa de ejemplo: ' +
+                    (empresaEjemplo ? 'sí ("TIENDA DE EJEMPLO C.A." / RIF J-12345678)' : '0'));
+            }
+
+            /* Usuario de ejemplo del antiguo reinicio de fábrica. */
+            var usuarios = muestraLeer('users');
+            if (Array.isArray(usuarios)) {
+                var usuariosEjemplo = usuarios.filter(function (u) {
+                    if (!u) return false;
+                    return (String(u.username || '') === 'Admin' && String(u.password || '') === 'Admin123') ||
+                        String(u.email || '') === 'admin@demo.com' ||
+                        String(u.document || '') === 'DEMO-001';
+                }).map(function (u) {
+                    return String(u.firstName || '') + ' ' + String(u.lastName || '') + ' (' + String(u.email || '') + ')';
+                });
+                anotar(usuariosEjemplo.length, 'Usuarios de ejemplo: ' + usuariosEjemplo.length +
+                    (usuariosEjemplo.length ? ' — ' + muestraNombres(usuariosEjemplo) : ''));
+            }
+
+            lineas.push('Clientes: sin firma conocida de ejemplo (ningún sembrador creó clientes; los que haya salen de ventas reales del POS).');
+            lineas.push(total === 0
+                ? 'Total: 0 elementos sospechosos. Diagnóstico de SOLO LECTURA: no se ha borrado nada.'
+                : 'Total: ' + total + ' elemento(s) sospechoso(s). Diagnóstico de SOLO LECTURA: no se ha borrado nada; si no son suyos, bórrelos a mano.');
+            return { total: total, lineas: lineas };
+        }
+
+        /** Pinta el diagnóstico de datos de ejemplo en el panel Avanzado. Nunca lanza. */
+        function muestrasPintarDiagnostico() {
+            try {
+                var cont = document.getElementById('almMuestras');
+                if (!cont) return;
+                var res = diagnosticoDatosDeMuestra();
+                cont.innerHTML = res.lineas.map(function (l) {
+                    return '<div>' + almEscapar(l) + '</div>';
+                }).join('');
+            } catch (e) {
+                var c = document.getElementById('almMuestras');
+                if (c) c.textContent = 'No se pudo comprobar si quedan datos de ejemplo: ' + (e && e.message ? e.message : e);
+            }
+        }
+
         /**
          * Refresca la barra de uso, la tabla de las 8 claves más grandes y el diagnóstico.
          */
@@ -2902,6 +3068,9 @@
                         cont.innerHTML = lineas.map(function (l) { return '<div>' + almEscapar(l) + '</div>'; }).join('');
                     }
                 }
+
+                // --- Datos de EJEMPLO ya plantados (solo lectura: no borra nada) ---
+                muestrasPintarDiagnostico();
 
                 almEstado('Medición actualizada: ' + new Date().toLocaleString());
             } catch (e) {

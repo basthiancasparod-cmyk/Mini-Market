@@ -6,10 +6,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>POS - Mini Market</title>
     <link rel="icon" type="image/x-icon" href="icono.ico">
+    <!-- Aislamiento de datos por cuenta (fase 2): intercepta localStorage y prefija las
+         claves con la cuenta que tiene la sesión. VA PRIMERO: cuando el resto de scripts
+         empiecen a leer, el almacén ya debe estar aislado. Sin cuenta activa, el módulo
+         queda transparente (comportamiento idéntico al de hoy). -->
+    <script src="datos_cuenta.js"></script>
     <script src="cloud-access.js"></script>
     <script src="sincronizacion.js"></script>
     <!-- Guardián de almacenamiento local: medición, cuota, respaldo y restauración -->
     <script src="almacenamiento.js"></script>
+    <!-- Guardián de "una cuenta por equipo": los datos locales no se comparten entre cuentas -->
+    <script src="cuenta_local.js"></script>
     <!-- Fase B (E1): motor de operaciones. Solo se usa si el negocio tiene
          BBDD/<email>/suscripcion/modoSync = true (o la cadena 'operaciones'); si no,
          no se ejecuta ni una línea suya y el POS se comporta exactamente como siempre. -->
@@ -2040,6 +2047,11 @@
 
         // ===== INICIALIZACIÓN =====
         document.addEventListener('DOMContentLoaded', function() {
+            // Aislamiento por cuenta (fase 2, datos_cuenta.js): activa el prefijo de la
+            // cuenta en sesión y —una sola vez por cuenta— migra los datos que quedaron
+            // sin prefijo. Va LO PRIMERO del arranque: loadSavedSettings() y todo lo demás
+            // ya leen el almacén aislado. Nunca lanza ni frena la página.
+            aislarDatosPorCuenta();
             loadSavedSettings();
             // Histórico diario oficial del BCV: permite ver la tendencia desde el primer uso
             seedRateHistoryFromApi().then(seeded => { if (seeded) renderRateOptions(); });
@@ -4900,6 +4912,31 @@ async function printReceipt(saleData) {
 
         function sanitizeEmailForDb(email) {
             return email.replace('@', '_at_').replace(/\./g, '_');
+        }
+
+        /* ===== Aislamiento de datos por cuenta (fase 2, datos_cuenta.js) =====
+           datos_cuenta.js (cargado en el <head>) intercepta localStorage para que cada
+           cuenta vea SOLO sus claves: lo que la app guarda como `ciervo_inventory` vive
+           de verdad en `cuenta:<emailPath>:ciervo_inventory`. Aquí, en cuanto se conoce
+           el correo del negocio, se activa el prefijo de esa cuenta y se migran UNA SOLA
+           VEZ los datos que quedaron sin prefijo (equipos que ya tenían datos antes de
+           esta fase). La constancia de la migración la guarda el propio módulo
+           (cuenta:<emailPath>:datosCuentaMigrado), así que no se repite en cada carga.
+           Nunca lanza: si algo falla, el POS arranca igual que siempre. */
+        function aislarDatosPorCuenta() {
+            try {
+                if (!window.datosCuenta || typeof window.datosCuenta.activarPara !== 'function') return;
+                const email = getCurrentUserEmail();
+                if (!email) return;                      // sin sesión no se decide nada
+                const emailPath = sanitizeEmailForDb(email);
+                window.datosCuenta.activarPara(emailPath);
+                const estado = window.datosCuenta.estado();
+                if (estado && estado.migrada === false) {
+                    window.datosCuenta.migrarAlaCuenta(emailPath);   // idempotente
+                }
+            } catch (e) {
+                console.warn('[datos-cuenta] No se pudo aislar los datos por cuenta:', e.message);
+            }
         }
 
         function getUserDataPath() {

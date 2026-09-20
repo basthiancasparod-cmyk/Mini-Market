@@ -5,8 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Configuración de Recibo - Ciervo</title>
     <link rel="icon" type="image/x-icon" href="icono.ico">
+    <!-- Aislamiento de datos por cuenta (fase 2): cada cuenta ve SOLO sus claves de
+         localStorage. Va primero, antes que el resto de scripts de la página. -->
+    <script src="datos_cuenta.js"></script>
     <script src="cloud-access.js"></script>
     <script src="sincronizacion.js"></script>
+    <!-- Guardián de "una cuenta por equipo": los datos locales no se comparten entre cuentas -->
+    <script src="cuenta_local.js"></script>
     <style>
         /* --- ESTILOS BASE --- */
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -532,7 +537,7 @@
                         <div class="bold" id="prevDocTitle" style="font-size:13px; margin-bottom:2px;">Factura</div>
                         <div id="prevInvoiceNum">Nº: FAC-001-V-0045</div>
                         <div id="prevDateTime">07/12/2025 10:30 AM <br> Caja Principal</div>
-                        <div id="prevSeller">Atendido por: Admin</div>
+                        <div id="prevSeller">Atendido por: —</div>
                     </div>
 
                     <div class="double-line"></div>
@@ -583,8 +588,8 @@
                     </div>
 
                     <div id="blockDualTotals" class="receipt-center" style="margin-top:5px; border:1px dashed #ccc; padding:2px;">
-                        <div id="prevExchangeRateWrap"><div id="prevExchangeRate">Tasa: 36.50 Bs/$</div></div>
-                        <div id="prevSecondaryTotal" class="bold">Total Ref: Bs. 000.00</div>
+                        <div id="prevExchangeRateWrap"><div id="prevExchangeRate">Tasa: —</div></div>
+                        <div id="prevSecondaryTotal" class="bold">Total Ref: —</div>
                     </div>
 
                     <div class="dashed-line"></div>
@@ -612,7 +617,16 @@
     <script>
         // --- ESTADO ---
         let companyData = {};
-        const MOCK_EXCHANGE_RATE = 36.50; // Para simulación
+        // La vista previa del ticket NO inventa una tasa: usa la que el POS tenga
+        // configurada en este equipo. 0 = todavía no hay tasa configurada.
+        function tasaVistaPrevia() {
+            try {
+                const guardada = localStorage.getItem('pos_exchange_rate') ||
+                    localStorage.getItem('pos_exchange_rate_bcv') || '';
+                const n = parseFloat(guardada);
+                return (isFinite(n) && n > 0) ? n : 0;
+            } catch (e) { return 0; }
+        }
 
         const defaultReceiptConfig = {
             enabled: true,
@@ -774,6 +788,12 @@
 
         // --- INIT ---
         document.addEventListener('DOMContentLoaded', () => {
+            // Aislamiento por cuenta (fase 2, datos_cuenta.js): activa el prefijo de la
+            // cuenta y migra UNA sola vez los datos que quedaron sin prefijo. Se pasa el
+            // correo tal cual (activarYMigrar lo normaliza) y solo si existe: esta llamada
+            // no puede lanzar ni frenar el arranque de la página.
+            var emailDeLaCuenta = getCurrentUserEmail();
+            if (window.datosCuenta && emailDeLaCuenta) datosCuenta.activarYMigrar(emailDeLaCuenta);
             initSystem();
         });
 
@@ -794,13 +814,12 @@
                     document.getElementById('missingDataAlert').style.display = 'none';
                 } catch (e) { showMissingAlert(); }
             } else {
+                // Sin datos de empresa: NO se inventan. Antes se rellenaba con
+                // "TIENDA DE EJEMPLO C.A." / "J-12345678" / "Av. Principal, Edif. Central"
+                // y esa identidad falsa se veía en la vista previa del ticket.
+                // Ahora queda vacío y se avisa de que faltan los datos.
                 showMissingAlert();
-                companyData = { 
-                    companyName: "TIENDA DE EJEMPLO C.A.", 
-                    rif: "J-12345678", 
-                    address: "Av. Principal, Edif. Central", 
-                    logo: null 
-                };
+                companyData = {};
             }
             loadCompanyFromFirebase().then(fbData => {
                 if (fbData) {
@@ -920,7 +939,7 @@
             // --- 3. ITEMS Y MONEDA (SIMULACIÓN INTELIGENTE) ---
             const mode = getVal('primaryCurrency'); // SALE (simulamos USD) o VES
             const symbol = mode === 'VES' ? 'Bs.' : '$';
-            const rate = MOCK_EXCHANGE_RATE;
+            const rate = tasaVistaPrevia();
             
             // Simulación de valores base en USD
             const item1Price = 2.50; // Harina
@@ -933,38 +952,45 @@
 
             // Convertir si el modo es VES
             const mult = mode === 'VES' ? rate : 1;
+            // Sin tasa configurada no se inventan bolívares: se muestra un guion.
+            const money = (usd, m) => (m > 0 ? symbol + (usd * m).toFixed(2) : '—');
             
             // Renderizar Items
             const tbody = document.getElementById('previewItemsBody');
             tbody.innerHTML = `
-                <tr><td>2</td><td>HARINA PAN</td><td class="col-price">${symbol}${(item1Price * mult).toFixed(2)}</td></tr>
-                <tr><td>0.5</td><td>QUESO SEMIDURO</td><td class="col-price">${symbol}${(item2Price * mult).toFixed(2)}</td></tr>
+                <tr><td>2</td><td>HARINA PAN</td><td class="col-price">${money(item1Price, mult)}</td></tr>
+                <tr><td>0.5</td><td>QUESO SEMIDURO</td><td class="col-price">${money(item2Price, mult)}</td></tr>
             `;
 
-            document.getElementById('prevMainTotal').textContent = `TOTAL: ${symbol}${(totalUsd * mult).toFixed(2)}`;
-            document.getElementById('prevDiscountVal').textContent = `${symbol}${(discountUsd * mult).toFixed(2)}`;
+            document.getElementById('prevMainTotal').textContent = `TOTAL: ${money(totalUsd, mult)}`;
+            document.getElementById('prevDiscountVal').textContent = money(discountUsd, mult);
 
             // --- 4. DETALLES FINALES ---
             toggleDisplay('blockDiscounts', getCheck('showDiscounts'));
             
             toggleDisplay('blockTaxes', getCheck('showTaxes'));
-            document.getElementById('prevTaxBase').textContent = `${symbol}${(taxBaseUsd * mult).toFixed(2)}`;
-            document.getElementById('prevTaxAmount').textContent = `${symbol}${(taxAmountUsd * mult).toFixed(2)}`;
+            document.getElementById('prevTaxBase').textContent = money(taxBaseUsd, mult);
+            document.getElementById('prevTaxAmount').textContent = money(taxAmountUsd, mult);
 
             toggleDisplay('blockPayment', getCheck('showPaymentDetails'));
             // Simulamos pago mixto en el preview
             document.getElementById('prevPayCash').textContent = `${(5.00).toFixed(2)}`;
-            document.getElementById('prevPayPM').textContent = `${(73.00).toFixed(2)}`; // ~2 USD
+            // ~2 USD en bolívares: con la tasa real del equipo, o guion si no hay tasa.
+            document.getElementById('prevPayPM').textContent = rate > 0 ? (2 * rate).toFixed(2) : '—';
             document.getElementById('prevChange').textContent = `0.00`;
 
             toggleDisplay('prevExchangeRateWrap', getCheck('showExchangeRate'));
-            document.getElementById('prevExchangeRate').textContent = `Tasa: ${rate.toFixed(2)} Bs/$`;
+            document.getElementById('prevExchangeRate').textContent = rate > 0
+                ? `Tasa: ${rate.toFixed(2)} Bs/$`
+                : 'Tasa: sin configurar';
             
             toggleDisplay('blockDualTotals', getCheck('showDualTotals'));
             if (getCheck('showDualTotals')) {
                 const altSymbol = mode === 'VES' ? '$' : 'Bs.';
-                const altTotal = mode === 'VES' ? totalUsd : (totalUsd * rate);
-                document.getElementById('prevSecondaryTotal').textContent = `Total Ref: ${altSymbol}${altTotal.toFixed(2)}`;
+                const altTotal = mode === 'VES' ? totalUsd : (rate > 0 ? totalUsd * rate : null);
+                document.getElementById('prevSecondaryTotal').textContent = altTotal === null
+                    ? 'Total Ref: —'
+                    : `Total Ref: ${altSymbol}${altTotal.toFixed(2)}`;
                 document.getElementById('blockDualTotals').style.display = 'block';
             } else {
                 document.getElementById('blockDualTotals').style.display = 'none';

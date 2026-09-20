@@ -6,6 +6,9 @@
     <title>Ciervo Administrativo - Sistema de Gestión Empresarial</title>
     <link rel="icon" type="image/x-icon" href="icono.ico">
     <link rel="preconnect" href="https://cdn.jsdelivr.net">
+    <!-- Aislamiento de datos por cuenta (fase 2): cada cuenta ve SOLO sus claves de
+         localStorage. Va primero, antes que el resto de scripts de la página. -->
+    <script src="datos_cuenta.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.1/dist/umd/lucide.js" defer></script>
     <style>
         /* ================================
@@ -2839,13 +2842,9 @@
                 // Shared accounts data
                 this.dataStore.set('accounts', []);
 
-                // Global metrics
-                this.dataStore.set('metrics', {
-                    totalSales: 12450,
-                    totalCustomers: 324,
-                    totalItems: 1850,
-                    totalRevenue: 145320
-                });
+                // (Aquí había métricas de EJEMPLO — ventas 12.450, 324 clientes,
+                //  1.850 artículos, 145.320 de ingreso. Nunca se leían ni se
+                //  guardaban: se quitaron para no dejar cifras de demostración.)
 
                 // User settings
                 this.dataStore.set('userSettings', {
@@ -2896,10 +2895,10 @@
                         this.dataStore.set('accounts', JSON.parse(savedAccounts));
                     } catch (e) {
                         console.warn('Error loading accounts data:', e);
-                        this.loadSampleAccountsData(); // Load sample if parsing fails
+                        this.loadSampleAccountsData(); // dato ilegible: se deja vacío
                     }
                 } else {
-                    this.loadSampleAccountsData(); // Load sample if no data found
+                    this.loadSampleAccountsData(); // sin datos guardados: se deja vacío
                 }
 
                 // Load user settings
@@ -2922,169 +2921,27 @@
             }
 
             loadSampleInventoryData() {
-                const sampleData = [
-                    {
-                        id: 1,
-                        name: 'Laptop HP Pavilion',
-                        code: 'LAP-HP-001',
-                        description: 'Laptop HP Pavilion 15.6" Intel Core i5, 8GB RAM, 256GB SSD',
-                        brand: 'HP',
-                        category: 'Electrónicos',
-                        stock: 15,
-                        minStock: 5,
-                        cost: 580.00,
-                        margin: 35,
-                        price: 783.00,
-                        profit: 203.00,
-                        isBulk: false,
-                        unit: null,
-                        pricePerUnit: null,
-                        costPerUnit: null,
-                        profitPerUnit: null
-                    },
-                    {
-                        id: 2,
-                        name: 'Smartphone Samsung Galaxy',
-                        code: 'TEL-SAM-002',
-                        description: 'Samsung Galaxy A54 5G, 128GB, Cámara 50MP',
-                        brand: 'Samsung',
-                        category: 'Electrónicos',
-                        stock: 8,
-                        minStock: 3,
-                        cost: 320.00,
-                        margin: 40,
-                        price: 448.00,
-                        profit: 128.00,
-                        isBulk: false,
-                        unit: null,
-                        pricePerUnit: null,
-                        costPerUnit: null,
-                        profitPerUnit: null
-                    },
-                    {
-                        id: 3,
-                        name: 'Audífonos Sony WH-1000XM4',
-                        code: 'AUD-SON-003',
-                        description: 'Audífonos inalámbricos con cancelación de ruido',
-                        brand: 'Sony',
-                        category: 'Electrónicos',
-                        stock: 0, // Changed to 0 for testing 'agotado'
-                        minStock: 8,
-                        cost: 180.00,
-                        margin: 50,
-                        price: 270.00,
-                        profit: 90.00,
-                        isBulk: false,
-                        unit: null,
-                        pricePerUnit: null,
-                        costPerUnit: null,
-                        profitPerUnit: null
-                    },
-                    {
-                        id: 4,
-                        name: 'Camiseta Nike Dri-FIT',
-                        code: 'CAM-NIK-004',
-                        description: 'Camiseta deportiva de manga corta, tecnología Dri-FIT',
-                        brand: 'Nike',
-                        category: 'Deportes',
-                        stock: 3,
-                        minStock: 10,
-                        cost: 25.00,
-                        margin: 60,
-                        price: 40.00,
-                        profit: 15.00,
-                        isBulk: false,
-                        unit: null,
-                        pricePerUnit: null,
-                        costPerUnit: null,
-                        profitPerUnit: null
-                    },
-                    {
-                        id: 5,
-                        name: 'Cafetera Nespresso',
-                        code: 'CAF-NES-005',
-                        description: 'Cafetera de cápsulas automática con espumador de leche',
-                        brand: 'Nespresso',
-                        category: 'Hogar',
-                        stock: 12,
-                        minStock: 4,
-                        cost: 150.00,
-                        margin: 45,
-                        price: 217.50,
-                        profit: 67.50,
-                        isBulk: false,
-                        unit: null,
-                        pricePerUnit: null,
-                        costPerUnit: null,
-                        profitPerUnit: null
-                    }
-                ];
-
-                this.dataStore.set('inventory', sampleData);
-                this.saveData('inventory');
+                // NEUTRALIZADA (datos de muestra): un inventario nuevo arranca VACÍO.
+                // Antes sembraba 5 productos de demostración (Laptop HP Pavilion,
+                // Smartphone Samsung Galaxy, Audífonos Sony, Camiseta Nike, Cafetera
+                // Nespresso) y, al quedar en memoria, se veían en la pantalla.
+                // Fase 2 (datos por cuenta): los datos de EJEMPLO se quedan SOLO en memoria.
+                // Antes se persistían: con el almacén ya aislado, este sembrador guardaría
+                // productos de demostración en el inventario real de la cuenta.
+                // this.saveData('inventory');
+                this.dataStore.set('inventory', []);
+                return [];
             }
 
             loadSampleAccountsData() {
-                const today = new Date();
-                const futureDate = new Date();
-                futureDate.setDate(today.getDate() + 10);
-                const pastDate = new Date();
-                pastDate.setDate(today.getDate() - 5);
-
-                const sampleAccounts = [
-                    {
-                        id: 1,
-                        type: 'cobrar',
-                        description: 'Venta de productos electrónicos',
-                        contact: 'Cliente A',
-                        amount: 1250.75,
-                        dueDate: futureDate.toISOString().split('T')[0],
-                        status: 'pending',
-                        notes: 'Factura #2023-001'
-                    },
-                    {
-                        id: 2,
-                        type: 'pagar',
-                        description: 'Compra de materia prima',
-                        contact: 'Proveedor X',
-                        amount: 800.00,
-                        dueDate: futureDate.toISOString().split('T')[0],
-                        status: 'pending',
-                        notes: 'Orden de compra #PO-005'
-                    },
-                    {
-                        id: 3,
-                        type: 'cobrar',
-                        description: 'Servicio de consultoría',
-                        contact: 'Empresa B',
-                        amount: 500.00,
-                        dueDate: pastDate.toISOString().split('T')[0],
-                        status: 'overdue',
-                        notes: 'Pendiente de pago, enviar recordatorio'
-                    },
-                    {
-                        id: 4,
-                        type: 'pagar',
-                        description: 'Alquiler de oficina',
-                        contact: 'Arrendador',
-                        amount: 1500.00,
-                        dueDate: pastDate.toISOString().split('T')[0],
-                        status: 'overdue',
-                        notes: 'Pago de alquiler de Diciembre'
-                    },
-                    {
-                        id: 5,
-                        type: 'cobrar',
-                        description: 'Venta de software',
-                        contact: 'Cliente C',
-                        amount: 300.00,
-                        dueDate: new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1).toISOString().split('T')[0],
-                        status: 'paid',
-                        notes: 'Pagado el 2023-12-01'
-                    }
-                ];
-                this.dataStore.set('accounts', sampleAccounts);
-                this.saveData('accounts');
+                // NEUTRALIZADA (datos de muestra): una cuenta nueva arranca VACÍA.
+                // Antes sembraba 5 cuentas por cobrar/pagar de demostración (Cliente A,
+                // Proveedor X, Empresa B, Arrendador, Cliente C) que se veían en pantalla.
+                // Fase 2 (datos por cuenta): las cuentas de EJEMPLO se quedan SOLO en memoria
+                // (antes se persistían en la clave compartida).
+                // this.saveData('accounts');
+                this.dataStore.set('accounts', []);
+                return [];
             }
 
             initializeUI() {
@@ -4004,6 +3861,9 @@
         let inventoryManager;
 
         document.addEventListener('DOMContentLoaded', function() {
+            // Aislamiento por cuenta (fase 2, datos_cuenta.js): activa el prefijo de la
+            // cuenta del equipo y migra UNA sola vez los datos que quedaron sin prefijo.
+            if (window.datosCuenta) datosCuenta.activarYMigrar(localStorage.getItem('datosDeCuenta') || sessionStorage.getItem('propietarioActual'));
             // Initialize system manager
             systemManager = new CiervoSystemManager();
 

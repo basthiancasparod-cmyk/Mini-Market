@@ -5,8 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Listado de Clientes - Ciervo Administrativo</title>
     <link rel="icon" type="image/x-icon" href="icono.ico">
+    <!-- Aislamiento de datos por cuenta (fase 2): cada cuenta ve SOLO sus claves de
+         localStorage. Va primero, antes que el resto de scripts de la página. -->
+    <script src="datos_cuenta.js"></script>
     <script src="cloud-access.js"></script>
     <script src="sincronizacion.js"></script>
+    <!-- Guardián de "una cuenta por equipo": los datos locales no se comparten entre cuentas -->
+    <script src="cuenta_local.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.1/dist/umd/lucide.js"></script>
     <style>
@@ -1082,6 +1087,12 @@
         }
 
         document.addEventListener('DOMContentLoaded', async function() {
+            // Aislamiento por cuenta (fase 2, datos_cuenta.js): activa el prefijo de la
+            // cuenta y migra UNA sola vez los datos que quedaron sin prefijo. Se pasa el
+            // correo tal cual (activarYMigrar lo normaliza) y solo si existe: esta llamada
+            // no puede lanzar ni frenar el arranque de la página.
+            var emailDeLaCuenta = getCurrentUserEmail();
+            if (window.datosCuenta && emailDeLaCuenta) datosCuenta.activarYMigrar(emailDeLaCuenta);
             if (window.location.protocol === 'file:') {
                 document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:#64748b;text-align:center;padding:2rem;"><div><h2 style="margin-bottom:1rem;">Firebase no disponible</h2><p>Esta p&aacute;gina necesita conexi&oacute;n a Firebase y no funciona desde el protocolo file://</p><p style="margin-top:1rem;">Usa un servidor local o abre desde un dominio https.</p></div></div>';
                 return;

@@ -5,8 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Resumen de Ventas - Mini Market POS</title>
     <link rel="icon" type="image/x-icon" href="icono.ico">
+    <!-- Aislamiento de datos por cuenta (fase 2): cada cuenta ve SOLO sus claves de
+         localStorage. Va primero, antes que el resto de scripts de la página. -->
+    <script src="datos_cuenta.js"></script>
     <script src="cloud-access.js"></script>
     <script src="sincronizacion.js"></script>
+    <!-- Guardián de "una cuenta por equipo": los datos locales no se comparten entre cuentas -->
+    <script src="cuenta_local.js"></script>
     <!-- Fase B (E2): el motor de operaciones y el lector unificado de ventas -->
     <script src="motor_operaciones.js"></script>
     <script src="lector_ventas.js"></script>
@@ -1489,6 +1494,12 @@
 
         // Initialize application
         document.addEventListener('DOMContentLoaded', function() {
+            // Aislamiento por cuenta (fase 2, datos_cuenta.js): activa el prefijo de la
+            // cuenta y migra UNA sola vez los datos que quedaron sin prefijo. Se pasa el
+            // correo tal cual (activarYMigrar lo normaliza) y solo si existe: esta llamada
+            // no puede lanzar ni frenar el arranque de la página.
+            var emailDeLaCuenta = getCurrentUserEmail();
+            if (window.datosCuenta && emailDeLaCuenta) datosCuenta.activarYMigrar(emailDeLaCuenta);
             loadSales().then(() => {
                 initializeDateInputs();
                 setupEventListeners();

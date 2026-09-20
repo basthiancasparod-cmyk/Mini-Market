@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Iniciar Sesión - Ciervo Administrativo</title>
+    <!-- Aislamiento de datos por cuenta (fase 2): cada cuenta ve SOLO sus claves de
+         localStorage. Va primero, antes que el resto de scripts de la página. -->
+    <script src="datos_cuenta.js"></script>
     <link rel="icon" type="image/x-icon" href="icono.ico">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1037,6 +1040,8 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <!-- Guardián de "una cuenta por equipo": los datos locales no se comparten entre cuentas -->
+    <script src="cuenta_local.js"></script>
     <script>
         // PEGA AQUÍ TU OBJETO firebaseConfig DE FIREBASE
         const firebaseConfig = {
@@ -1184,6 +1189,25 @@
         // perfil + aprobación + sesión de la app + destino (login de operador o gestión de usuarios).
         async function completeOwnerLogin(user, plainPassword, aviso = '') {
             const email = normalizeEmail(user.email);
+
+            // GUARDIÁN DE "UNA CUENTA POR EQUIPO": ya se conoce el correo del negocio que entra.
+            // Se comprueba ANTES de escribir la marca de sesión o cualquier dato en la nube,
+            // así una cuenta ajena no deja rastro alguno. Si los datos locales de este PC son
+            // de OTRA cuenta, se bloquea el uso: la página queda cubierta por el aviso.
+            if (window.cuentaLocal && typeof window.cuentaLocal.reclamarOComprobar === 'function') {
+                const veredicto = window.cuentaLocal.reclamarOComprobar(email);
+                if (veredicto.estado === 'ajena') {
+                    window.cuentaLocal.avisarYBloquearSesionAjena(veredicto);
+                    return false;
+                }
+            }
+
+            // AISLAMIENTO DE DATOS POR CUENTA (fase 2, datos_cuenta.js): el equipo ya se
+            // comprobó y el correo del negocio se conoce. Se activa el prefijo de esta
+            // cuenta y, una sola vez por cuenta, se migran los datos que quedaron sin
+            // prefijo. `activarYMigrar` nunca lanza: si algo falla, el login sigue igual.
+            if (window.datosCuenta) datosCuenta.activarYMigrar(email);
+
             const perfil = await ensureOwnerProfile(user, { plainPassword: plainPassword });
             const prefijo = aviso ? aviso + ' ' : '';
 
