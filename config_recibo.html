@@ -12,6 +12,16 @@
     <script src="sincronizacion.js"></script>
     <!-- Guardián de "una cuenta por equipo": los datos locales no se comparten entre cuentas -->
     <script src="cuenta_local.js"></script>
+    <!-- Guardián de almacenamiento local: medición, cuota, respaldo y restauración -->
+    <script src="almacenamiento.js"></script>
+    <script>
+        // Guardián de almacenamiento: comprueba la cuota una sola vez al cargar la página.
+        document.addEventListener('DOMContentLoaded', function () {
+            try {
+                if (typeof window.avisarSiLleno === 'function') window.avisarSiLleno();
+            } catch (e) { /* un aviso nunca debe romper la página */ }
+        });
+    </script>
     <style>
         /* --- ESTILOS BASE --- */
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -758,7 +768,12 @@
                 const snap = await db.ref(path).once('value');
                 const val = snap.val();
                 if (val) {
-                    localStorage.setItem('companyData', JSON.stringify(val));
+                    // Guardián de almacenamiento (almacenamiento.js): avisa si la cuota está llena.
+                    if (typeof window.guardarLocalSeguro === 'function') {
+                        window.guardarLocalSeguro('companyData', JSON.stringify(val));
+                    } else {
+                        localStorage.setItem('companyData', JSON.stringify(val));
+                    }
                     return val;
                 }
                 return null;
@@ -776,7 +791,12 @@
                 db.ref(path).on('value', snap => {
                     const val = snap.val();
                     if (val) {
-                        localStorage.setItem('companyData', JSON.stringify(val));
+                        // Guardián de almacenamiento (almacenamiento.js): avisa si la cuota está llena.
+                        if (typeof window.guardarLocalSeguro === 'function') {
+                            window.guardarLocalSeguro('companyData', JSON.stringify(val));
+                        } else {
+                            localStorage.setItem('companyData', JSON.stringify(val));
+                        }
                         companyData = val;
                         document.getElementById('missingDataAlert').style.display = 'none';
                         updatePreview();
@@ -1077,7 +1097,12 @@
                 policyText: getVal('policyText')
             };
 
-            localStorage.setItem('receiptSettings', JSON.stringify(config));
+            // Guardián de almacenamiento (almacenamiento.js): avisa si la cuota está llena.
+            if (typeof window.guardarLocalSeguro === 'function') {
+                window.guardarLocalSeguro('receiptSettings', JSON.stringify(config));
+            } else {
+                localStorage.setItem('receiptSettings', JSON.stringify(config));
+            }
             
             showToast('Configuración guardada correctamente');
             updatePreview();

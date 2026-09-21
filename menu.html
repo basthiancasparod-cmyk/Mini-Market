@@ -17,6 +17,16 @@
          muestra el aviso a pantalla completa y bloquea el arranque.
          Va DESPUÉS del aislamiento y ANTES de cualquier otro script propio. -->
     <script src="cuenta_local.js"></script>
+    <!-- Guardián de almacenamiento local: medición, cuota, respaldo y restauración -->
+    <script src="almacenamiento.js"></script>
+    <script>
+        // Guardián de almacenamiento: comprueba la cuota una sola vez al cargar la página.
+        document.addEventListener('DOMContentLoaded', function () {
+            try {
+                if (typeof window.avisarSiLleno === 'function') window.avisarSiLleno();
+            } catch (e) { /* un aviso nunca debe romper la página */ }
+        });
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.1/dist/umd/lucide.js" defer></script>
     <style>
         /* ================================
@@ -3030,7 +3040,14 @@
             saveData(store) {
                 const data = this.dataStore.get(store);
                 if (data) {
-                    localStorage.setItem(`ciervo_${store}`, JSON.stringify(data));
+                    const clave = `ciervo_${store}`;
+                    const serializado = JSON.stringify(data);
+                    // Guardián de almacenamiento (almacenamiento.js): avisa si la cuota está llena.
+                    if (typeof window.guardarLocalSeguro === 'function') {
+                        window.guardarLocalSeguro(clave, serializado);
+                    } else {
+                        localStorage.setItem(clave, serializado);
+                    }
                 }
             }
 

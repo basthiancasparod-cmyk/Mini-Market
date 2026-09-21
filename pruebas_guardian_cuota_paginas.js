@@ -1,14 +1,31 @@
 /**
  * pruebas_guardian_cuota_paginas.js
  *
- * Encargo 3: las 6 páginas que todavía no cargaban el guardián de almacenamiento
- * (`compras.html`, `catalogo.html`, `cuentas.html`, `gestion_empresa.html`,
- * `gestion_proveedores.html`, `listado_clientes.html`) ahora:
+ * Encargo 3, primera tanda: las 6 páginas que todavía no cargaban el guardián de
+ * almacenamiento (`compras.html`, `catalogo.html`, `cuentas.html`,
+ * `gestion_empresa.html`, `gestion_proveedores.html`, `listado_clientes.html`) ahora:
  *   1. cargan `almacenamiento.js` en el <head>, DESPUÉS de `datos_cuenta.js` y antes
  *      de cualquier bloque de script propio de la página;
  *   2. guardan sus claves de negocio con `guardarLocalSeguro(...)` y conservan el
  *      respaldo con `localStorage.setItem(...)` si el módulo no está cargado;
  *   3. llaman una vez a `avisarSiLleno()` dentro de `DOMContentLoaded`.
+ *
+ * Segunda tanda: `config_recibo.html`, `calcular_precio_ven.html` y `menu.html` aplican
+ * el mismo patrón. `gestion_usuario.html` NO entra, y es a propósito: su único
+ * `localStorage.setItem` es `darkMode`, una clave de equipo que el guardián no debe
+ * envolver (comprobación 1.d). No tiene ninguna clave de negocio que proteger, así que
+ * añadirle `almacenamiento.js` no protegería nada. Se deja fuera y se dice aquí.
+ *
+ * Casos especiales que esta suite cubre:
+ *   - `menu.html` escribe una clave DINÁMICA (`ciervo_${store}`): el literal no existe
+ *     en el archivo, así que se declara en `clavesDinamicas` y se comprueba por el
+ *     nombre de la variable que la contiene.
+ *   - `saveData(store)` de `menu.html` es un MÉTODO (usa `this`): se re-declara como
+ *     función y se ejecuta con un `thisObj` falso declarado en la página.
+ *   - `companyData` de `config_recibo.html` se escribe dentro de callbacks de la nube
+ *     (`loadCompanyFromFirebase`, `setupRealtimeCompanyListener`): se cubre en ESTÁTICO
+ *     (guardián + `else` en cada uno de los dos sitios). Ejecutarlos exigiría simular el
+ *     SDK de Firebase, cosa que esta suite no hace; no se finge cobertura que no hay.
  *
  * Comprueba cada página de dos formas:
  *   - ESTÁTICA: orden de los <script>, bloques en línea que compilan (new vm.Script),
@@ -115,6 +132,24 @@ function crearDocumentoFalso() {
     };
     Object.defineProperty(documento, '_elementos', { get: function () { return elementos; } });
     return documento;
+}
+
+/**
+ * Documento falso con VALORES: getElementById devuelve nodos con `.value` y
+ * `.textContent`, que es lo que leen las funciones de guardado que tocan el formulario.
+ */
+function crearDocumentoConValores(mapa) {
+    return {
+        getElementById: function (id) {
+            if (!Object.prototype.hasOwnProperty.call(mapa, id)) return null;
+            const espec = mapa[id] || {};
+            return {
+                value: espec.value !== undefined ? espec.value : '',
+                textContent: espec.textContent !== undefined ? espec.textContent : '',
+                style: {}
+            };
+        }
+    };
 }
 
 function scriptsEnLinea(html) {
@@ -256,6 +291,90 @@ const PAGINAS = [
                 args: [{ id: 'C-1', name: 'Cliente Demo' }]
             }
         ]
+    },
+    {
+        // Segunda tanda. `companyData` se escribe en dos callbacks de la nube (no se
+        // ejecutan aquí: ver la cabecera), así que la función que sí se ejecuta es
+        // `saveConfiguration`, que guarda `receiptSettings` desde el formulario.
+        archivo: 'config_recibo.html',
+        claves: ['companyData', 'receiptSettings'],
+        globals: {
+            getCheck: function () { return false; },
+            getVal: function () { return ''; },
+            showToast: function () {},
+            updatePreview: function () {}
+        },
+        funciones: [
+            {
+                nombre: 'saveConfiguration',
+                generar: extraerCon(/function saveConfiguration\(\) \{[\s\S]*?\r?\n {8}\}/),
+                args: []
+            }
+        ]
+    },
+    {
+        // Segunda tanda. Las dos funciones leen el formulario o el resultado del
+        // cálculo, así que se les da un DOM falso con valores válidos.
+        archivo: 'calcular_precio_ven.html',
+        claves: ['ciervo_exchange_rates', 'ciervo_calculation_history'],
+        globals: {
+            document: crearDocumentoConValores({
+                'official-rate-input': { value: '10' },
+                'parallel-rate-input': { value: '12' },
+                'euro-rate-input': { value: '11' },
+                'base-inflation-input': { value: '5' },
+                'productName': { value: 'Producto Demo' },
+                'costAmount': { value: '10' },
+                'suggested-price': { textContent: '100,00' },
+                'real-margin': { textContent: '50' },
+                'total-cost-bs': { textContent: '10,00' },
+                'productCategory': { value: 'General' }
+            }),
+            exchangeRates: { official: 10, parallel: 12, euro: 11, baseInflation: 5 },
+            calculationHistory: [],
+            showNotification: function () {},
+            calculatePrice: function () {},
+            updateHistoryDisplay: function () {}
+        },
+        funciones: [
+            {
+                nombre: 'saveRates',
+                generar: extraerCon(/function saveRates\(\) \{[\s\S]*?\r?\n {8}\}/),
+                args: []
+            },
+            {
+                nombre: 'saveCalculation',
+                generar: extraerCon(/function saveCalculation\(\) \{[\s\S]*?\r?\n {8}\}/),
+                args: []
+            }
+        ]
+    },
+    {
+        // Segunda tanda. La clave se construye al vuelo (`ciervo_${store}`): se declara
+        // como dinámica y se comprueba por la variable, no como literal.
+        archivo: 'menu.html',
+        claves: ['ciervo_inventory'],
+        clavesDinamicas: [
+            { variable: 'clave', plantilla: 'ciervo_${store}', clave: 'ciervo_inventory' }
+        ],
+        globals: {},
+        funciones: [
+            {
+                nombre: 'saveData',
+                // Es un método del almacén (`saveData(store) { ... }`): hay que
+                // re-declararlo como función y darle un `this` falso.
+                generar: function (html) {
+                    const m = html.match(/saveData\(store\) \{[\s\S]*?\r?\n {12}\}/);
+                    return m ? 'function ' + m[0] : null;
+                },
+                args: ['inventory'],
+                thisObj: {
+                    dataStore: {
+                        get: function () { return [{ id: 'P-1', name: 'Producto Demo' }]; }
+                    }
+                }
+            }
+        ]
     }
 ];
 
@@ -295,7 +414,11 @@ function probarEstatico() {
             (compilan ? '' : ' — ' + motivo), compilan && bloques.length > 0);
 
         // 1.c Cada clave de negocio: guardián + respaldo, sin escritura ciega.
+        //     Las claves dinámicas (construidas al vuelo) no se pueden buscar como
+        //     literal: se saltan aquí y se comprueban justo debajo, por su variable.
+        const clavesDinamicas = (pagina.clavesDinamicas || []).map(function (cd) { return cd.clave; });
         pagina.claves.forEach(function (clave) {
+            if (clavesDinamicas.indexOf(clave) !== -1) return;
             const reSet = new RegExp('localStorage\\.setItem\\(\'' + clave + '\'', 'g');
             const reGuardar = new RegExp('guardarLocalSeguro\\(\'' + clave + '\'', 'g');
             const posiciones = [];
@@ -309,6 +432,24 @@ function probarEstatico() {
                 return /typeof window\.guardarLocalSeguro === 'function'/.test(antes) && /\}\s*else\s*\{/.test(antes);
             });
             check(pagina.archivo + ' [' + clave + ']: cada localStorage.setItem es el respaldo del guardián (else)',
+                todasProtegidas);
+        });
+
+        // 1.c-bis Claves dinámicas: misma exigencia, buscando por la variable.
+        (pagina.clavesDinamicas || []).forEach(function (cd) {
+            const reGuardar = new RegExp('guardarLocalSeguro\\(\\s*' + cd.variable + '\\s*,', 'g');
+            const reSet = new RegExp('localStorage\\.setItem\\(\\s*' + cd.variable + '\\s*,', 'g');
+            const posiciones = [];
+            let m;
+            while ((m = reSet.exec(html)) !== null) posiciones.push(m.index);
+            const guardadas = (html.match(reGuardar) || []).length;
+            check(pagina.archivo + ' [' + cd.plantilla + ']: usa guardarLocalSeguro y conserva el respaldo a localStorage.setItem',
+                guardadas >= 1 && posiciones.length >= 1 && guardadas === posiciones.length);
+            const todasProtegidas = posiciones.every(function (pos) {
+                const antes = html.slice(Math.max(0, pos - 300), pos);
+                return /typeof window\.guardarLocalSeguro === 'function'/.test(antes) && /\}\s*else\s*\{/.test(antes);
+            });
+            check(pagina.archivo + ' [' + cd.plantilla + ']: cada localStorage.setItem es el respaldo del guardián (else)',
                 todasProtegidas);
         });
 
@@ -392,7 +533,7 @@ async function ejecutarFuncionReal(archivo, definicion, globals, almacen, conMod
 
     vm.runInContext(codigo, sandbox, { filename: archivo + '#' + definicion.nombre });
     try {
-        const r = sandbox[definicion.nombre].apply(null, definicion.args || []);
+        const r = sandbox[definicion.nombre].apply(definicion.thisObj || null, definicion.args || []);
         if (r && typeof r.then === 'function') await r;
         resultado.llamada = true;
     } catch (e) {
@@ -461,7 +602,7 @@ async function probarSinModulo() {
 /* ------------------------------------------------------------------ */
 
 function probarSinEscriturasCiegas() {
-    titulo('4. Ninguna clave de negocio de las 6 páginas queda con escritura ciega');
+    titulo('4. Ninguna clave de negocio de las páginas queda con escritura ciega');
     PAGINAS.forEach(function (pagina) {
         const html = leer(pagina.archivo);
         const ciegas = [];
@@ -473,6 +614,16 @@ function probarSinEscriturasCiegas() {
                 if (!/typeof window\.guardarLocalSeguro === 'function'/.test(antes)) ciegas.push(clave);
             }
         });
+        // Las claves dinámicas se buscan por su variable: si no, este apartado pasaría
+        // en falso (el literal no existe en el archivo y no encontraría nada).
+        (pagina.clavesDinamicas || []).forEach(function (cd) {
+            const reSet = new RegExp('localStorage\\.setItem\\(\\s*' + cd.variable + '\\s*,', 'g');
+            let m;
+            while ((m = reSet.exec(html)) !== null) {
+                const antes = html.slice(Math.max(0, m.index - 300), m.index);
+                if (!/typeof window\.guardarLocalSeguro === 'function'/.test(antes)) ciegas.push(cd.plantilla);
+            }
+        });
         check(pagina.archivo + ': todas sus escrituras de negocio están bajo el guardián',
             ciegas.length === 0);
     });
@@ -482,7 +633,7 @@ function probarSinEscriturasCiegas() {
 /* Ejecución                                                          */
 /* ------------------------------------------------------------------ */
 (async function () {
-    console.log('Pruebas del guardián de cuota en las 6 páginas que faltaban');
+    console.log('Pruebas del guardián de cuota en las páginas que faltaban');
     console.log('Node ' + process.version + ' · ' + new Date().toISOString());
 
     probarEstatico();

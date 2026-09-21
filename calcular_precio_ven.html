@@ -7,6 +7,16 @@
     <!-- Aislamiento de datos por cuenta (fase 2): cada cuenta ve SOLO sus claves de
          localStorage. Va primero, antes que el resto de scripts de la página. -->
     <script src="datos_cuenta.js"></script>
+    <!-- Guardián de almacenamiento local: medición, cuota, respaldo y restauración -->
+    <script src="almacenamiento.js"></script>
+    <script>
+        // Guardián de almacenamiento: comprueba la cuota una sola vez al cargar la página.
+        document.addEventListener('DOMContentLoaded', function () {
+            try {
+                if (typeof window.avisarSiLleno === 'function') window.avisarSiLleno();
+            } catch (e) { /* un aviso nunca debe romper la página */ }
+        });
+    </script>
     <link rel="icon" type="image/x-icon" href="icono.ico">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -1585,7 +1595,12 @@
                 return;
             }
             
-            localStorage.setItem('ciervo_exchange_rates', JSON.stringify(exchangeRates));
+            // Guardián de almacenamiento (almacenamiento.js): avisa si la cuota está llena.
+            if (typeof window.guardarLocalSeguro === 'function') {
+                window.guardarLocalSeguro('ciervo_exchange_rates', JSON.stringify(exchangeRates));
+            } else {
+                localStorage.setItem('ciervo_exchange_rates', JSON.stringify(exchangeRates));
+            }
             showNotification('Tasas de cambio guardadas correctamente');
             calculatePrice(); // Recalcular con las nuevas tasas
         }
@@ -1746,7 +1761,12 @@
                 calculationHistory = calculationHistory.slice(0, 20);
             }
             
-            localStorage.setItem('ciervo_calculation_history', JSON.stringify(calculationHistory));
+            // Guardián de almacenamiento (almacenamiento.js): avisa si la cuota está llena.
+            if (typeof window.guardarLocalSeguro === 'function') {
+                window.guardarLocalSeguro('ciervo_calculation_history', JSON.stringify(calculationHistory));
+            } else {
+                localStorage.setItem('ciervo_calculation_history', JSON.stringify(calculationHistory));
+            }
             updateHistoryDisplay();
             
             showNotification('Cálculo guardado en historial');
