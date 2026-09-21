@@ -2074,9 +2074,30 @@
             // Inicializar modo oscuro
             initDarkMode();
 
-            // Verificar sesión
+            // Verificar sesión.
+            //
+            // CORREGIDO (fallo real medido en navegador). Antes esta puerta exigía
+            // `sessionStorage.getItem('currentUser')` y, si faltaba, hacía alert() y
+            // mandaba al login. Dos problemas:
+            //   1. `currentUser` es la marca del OPERADOR, y SOLO la escribe index.html
+            //      (línea ~1758) en el login de operador. Un PROPIETARIO con sesión
+            //      perfectamente válida nunca la tiene.
+            //   2. sessionStorage es POR PESTAÑA: al abrir el POS en una pestaña nueva
+            //      (o al recargarlo tras abrir el navegador) `currentUser` no está,
+            //      aunque la sesión siga viva. Resultado: el POS echaba al login a un
+            //      usuario legítimo, con un alert alarmante, y sin poder cobrar.
+            //
+            // La sesión de verdad es la marca COMPARTIDA 'sesionActiva' en localStorage
+            // (la que ven todas las pestañas), que sesion.js ya exige junto con una
+            // sesión real de Firebase Authentication. Así que solo se sale al login
+            // cuando NO hay ninguna de las dos: sin sesión de operador Y sin sesión
+            // compartida. El operador se sigue usando después para el nombre del
+            // vendedor y para el motor de operaciones, y ambos ya toleran su ausencia
+            // (líneas ~4697 y ~5079).
             const currentUser = sessionStorage.getItem('currentUser');
-            if (!currentUser) {
+            let haySesionCompartida = false;
+            try { haySesionCompartida = !!localStorage.getItem('sesionActiva'); } catch (e) { haySesionCompartida = false; }
+            if (!currentUser && !haySesionCompartida) {
                 alert("No se ha iniciado sesión. Redirigiendo al login.");
                 window.location.href = 'index.html';
             }

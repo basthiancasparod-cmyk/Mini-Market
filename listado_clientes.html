@@ -10,8 +10,18 @@
     <script src="datos_cuenta.js"></script>
     <script src="cloud-access.js"></script>
     <script src="sincronizacion.js"></script>
+    <!-- Guardián de almacenamiento local: medición, cuota, respaldo y restauración -->
+    <script src="almacenamiento.js"></script>
     <!-- Guardián de "una cuenta por equipo": los datos locales no se comparten entre cuentas -->
     <script src="cuenta_local.js"></script>
+    <script>
+        // Guardián de almacenamiento: comprueba la cuota una sola vez al cargar la página.
+        document.addEventListener('DOMContentLoaded', function () {
+            try {
+                if (typeof window.avisarSiLleno === 'function') window.avisarSiLleno();
+            } catch (e) { /* un aviso nunca debe romper la página */ }
+        });
+    </script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.1/dist/umd/lucide.js"></script>
     <style>
@@ -1249,7 +1259,12 @@
             try {
                 if (!await checkCloudAccess()) {
                                         marcarPendienteSync('clientes'); // Fase A: hay un cambio local sin confirmar
-                    localStorage.setItem('ciervo_clients', JSON.stringify(allClientsData));
+                    // Guardián de almacenamiento (almacenamiento.js): avisa si la cuota está llena.
+                    if (typeof window.guardarLocalSeguro === 'function') {
+                        window.guardarLocalSeguro('ciervo_clients', JSON.stringify(allClientsData));
+                    } else {
+                        localStorage.setItem('ciervo_clients', JSON.stringify(allClientsData));
+                    }
                     return;
                 }
                 const db = await initFirebase();

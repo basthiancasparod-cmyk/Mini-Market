@@ -24,7 +24,9 @@
  *   diagnosticoAlmacenamiento()      -> informe completo
  *   guardarLocalSeguro(clave, valor) -> setItem protegido
  *   descargarRespaldo()              -> exporta JSON
- *   restaurarRespaldo(archivo)       -> importa JSON (promesa)
+ *   restaurarRespaldo(archivo)       -> importa JSON (promesa); nunca retrocede el
+ *                                       contador de tickets ni pisa los identificadores
+ *                                       de este equipo (pos_install_id / pos_device_id)
  *   mostrarAvisoAlmacenamiento(msg, tipo) -> aviso flotante
  *   avisarSiLleno()                  -> aviso automático SOLO al 95 % o más del límite local
  *   estadoAlmacenamientoSimple()     -> estado en lenguaje llano ('ok' | 'casi' | 'lleno')
@@ -635,20 +637,113 @@
     /* ------------------------------------------------------------------ */
 
     /**
+     * Claves que NO se restauran a ciegas (nunca escritura directa del respaldo):
+     *   - 'pos_last_sale_number' (contador): un respaldo antiguo retrocedería el
+     *     contador de tickets y el POS volvería a emitir números ya usados (y, con el
+     *     motor de operaciones, claves de nodo repetidas). Se conserva el MAYOR.
+     *   - 'pos_install_id' / 'pos_device_id' (identidad): identifican a ESTE equipo.
+     *     Si se tomaran del respaldo, dos equipos restaurados del mismo archivo
+     *     tendrían el mismo identificador y sus claves chocarían. Se conserva el del
+     *     equipo; solo si el equipo no tiene ninguno se acepta el del respaldo.
+     */
+    var PROTECCION_RESTAURACION = {
+        pos_last_sale_number: 'contador',
+        pos_install_id: 'identidad',
+        pos_device_id: 'identidad'
+    };
+
+    /** Convierte el valor de un contador en entero >= 0 ('12' -> 12; basura -> 0). */
+    function contadorDe(valor) {
+        try {
+            var n = parseInt(String(valor == null ? '' : valor).trim(), 10);
+            return (isFinite(n) && n > 0) ? n : 0;
+        } catch (e) {
+            return 0;
+        }
+    }
+
+    /**
+     * Decide, clave por clave, qué valor se escribirá al restaurar y qué protecciones
+     * se aplicaron. Lee el estado del equipo con la API normal de localStorage (con el
+     * aislamiento por cuenta de datos_cuenta.js ya devuelve los nombres lógicos).
+     * @param {Object<string,string>} datos valores del respaldo
+     * @returns {{plan: (Object<string,string>|null), protegidas: Array<{clave: string, motivo: string, valorFinal: string}>}}
+     *          `plan` es null si no se pudo evaluar: entonces se restaura tal cual.
+     */
+    function planDeRestauracion(datos) {
+        var plan = {};
+        var protegidas = [];
+        try {
+            if (!datos || typeof datos !== 'object') return { plan: null, protegidas: [] };
+            var claves = Object.keys(datos);
+            for (var i = 0; i < claves.length; i++) {
+                var clave = claves[i];
+                var valorRespaldo = String(datos[clave]);
+                var valorEquipo = null;
+                try { valorEquipo = localStorage.getItem(clave); } catch (eLectura) { valorEquipo = null; }
+                var regla = PROTECCION_RESTAURACION[clave];
+                var motivo = null;
+
+                if (regla === 'contador') {
+                    var nRespaldo = contadorDe(valorRespaldo);
+                    var hayEquipo = (valorEquipo !== null && String(valorEquipo).trim() !== '');
+                    var nEquipo = hayEquipo ? contadorDe(valorEquipo) : null;
+                    if (nEquipo !== null && nEquipo > nRespaldo) {
+                        motivo = 'El contador del equipo (' + nEquipo + ') es mayor que el del respaldo (' +
+                                 nRespaldo + '): se conserva el más alto para no repetir tickets.';
+                        plan[clave] = String(valorEquipo);
+                    }
+                } else if (regla === 'identidad') {
+                    if (valorEquipo !== null && String(valorEquipo).trim() !== '') {
+                        motivo = 'Identifica a ESTE equipo: no se toma del respaldo (dos equipos restaurados ' +
+                                 'del mismo archivo tendrían el mismo identificador y chocarían sus claves).';
+                        plan[clave] = String(valorEquipo);
+                    }
+                }
+
+                if (typeof plan[clave] === 'undefined') plan[clave] = valorRespaldo;
+                if (motivo) protegidas.push({ clave: clave, motivo: motivo, valorFinal: plan[clave] });
+            }
+            return { plan: plan, protegidas: protegidas };
+        } catch (e) {
+            /* Ante cualquier duda se restaura tal cual: comportamiento de siempre. */
+            return { plan: null, protegidas: [] };
+        }
+    }
+
+    /** Texto legible (una línea por clave) de las protecciones aplicadas al restaurar. */
+    function textoProtecciones(protegidas) {
+        try {
+            if (!protegidas || !protegidas.length) return '';
+            var lineas = [];
+            for (var i = 0; i < protegidas.length; i++) {
+                lineas.push(' · ' + protegidas[i].clave + ': ' + protegidas[i].motivo +
+                            ' Valor final: ' + protegidas[i].valorFinal + '.');
+            }
+            return lineas.join('\n');
+        } catch (e) {
+            return '';
+        }
+    }
+
+    /**
      * Restaura un respaldo JSON. Valida el archivo, pide confirmación con el
      * resumen y solo entonces escribe. Si algo falla, no deja cambios a medias.
+     * El contador de tickets y los identificadores del equipo están protegidos
+     * (ver PROTECCION_RESTAURACION): `protegidas` informa de cada clave que no se
+     * restauró a ciegas, con su motivo y el valor final aplicado.
      * @param {File} archivo
-     * @returns {Promise<{ok: boolean, restauradas: number, error: (string|null)}>}
+     * @returns {Promise<{ok: boolean, restauradas: number, protegidas: Array<Object>, error: (string|null)}>}
      */
     function restaurarRespaldo(archivo) {
         return new Promise(function (resolve) {
             try {
                 if (!archivo) {
-                    resolve({ ok: false, restauradas: 0, error: 'No se seleccionó ningún archivo.' });
+                    resolve({ ok: false, restauradas: 0, protegidas: [], error: 'No se seleccionó ningún archivo.' });
                     return;
                 }
                 if (typeof FileReader === 'undefined') {
-                    resolve({ ok: false, restauradas: 0, error: 'Este navegador no permite leer archivos locales.' });
+                    resolve({ ok: false, restauradas: 0, protegidas: [], error: 'Este navegador no permite leer archivos locales.' });
                     return;
                 }
 
@@ -660,42 +755,53 @@
                         try {
                             paquete = JSON.parse(texto);
                         } catch (e) {
-                            resolve({ ok: false, restauradas: 0, error: 'El archivo no es un JSON válido.' });
+                            resolve({ ok: false, restauradas: 0, protegidas: [], error: 'El archivo no es un JSON válido.' });
                             return;
                         }
                         if (!paquete || typeof paquete !== 'object' ||
                             typeof paquete.version === 'undefined' ||
                             !paquete.datos || typeof paquete.datos !== 'object') {
-                            resolve({ ok: false, restauradas: 0, error: 'El archivo no parece un respaldo de Ciervo Mini Market (faltan "version" o "datos").' });
+                            resolve({ ok: false, restauradas: 0, protegidas: [], error: 'El archivo no parece un respaldo de Ciervo Mini Market (faltan "version" o "datos").' });
                             return;
                         }
 
                         var claves = Object.keys(paquete.datos);
                         if (!claves.length) {
-                            resolve({ ok: false, restauradas: 0, error: 'El respaldo no contiene datos.' });
+                            resolve({ ok: false, restauradas: 0, protegidas: [], error: 'El respaldo no contiene datos.' });
                             return;
                         }
 
                         // Validación previa: si algún valor no es texto, NO se escribe nada.
                         for (var i = 0; i < claves.length; i++) {
                             if (typeof paquete.datos[claves[i]] !== 'string') {
-                                resolve({ ok: false, restauradas: 0, error: 'El respaldo contiene un valor no válido en la clave "' + claves[i] + '".' });
+                                resolve({ ok: false, restauradas: 0, protegidas: [], error: 'El respaldo contiene un valor no válido en la clave "' + claves[i] + '".' });
                                 return;
                             }
                             if (esClaveProhibida(claves[i])) {
-                                resolve({ ok: false, restauradas: 0, error: 'El respaldo contiene la clave protegida "' + claves[i] + '"; no se restauró nada.' });
+                                resolve({ ok: false, restauradas: 0, protegidas: [], error: 'El respaldo contiene la clave protegida "' + claves[i] + '"; no se restauró nada.' });
                                 return;
                             }
                         }
 
                         var fecha = String(paquete.generado || 'sin fecha');
                         var origen = String(paquete.origen || 'desconocido');
+
+                        // Reglas de protección ANTES de confirmar: el resumen ya dice lo que
+                        // NO se va a restaurar a ciegas (contador de tickets e identidad).
+                        var evaluacion = planDeRestauracion(paquete.datos);
+                        var protegidas = evaluacion.protegidas;
+                        var avisoProteccion = protegidas.length
+                            ? '\nProtección de este equipo (no se restaura a ciegas):\n' +
+                              textoProtecciones(protegidas) + '\n'
+                            : '';
+
                         var resumen =
                             'Restaurar respaldo de Ciervo Mini Market\n\n' +
                             'Claves a restaurar: ' + claves.length + '\n' +
                             'Generado: ' + fecha + '\n' +
-                            'Origen: ' + origen + '\n\n' +
-                            'ADVERTENCIA: se reemplazarán los datos actuales de este navegador ' +
+                            'Origen: ' + origen + '\n' +
+                            avisoProteccion +
+                            '\nADVERTENCIA: se reemplazarán los datos actuales de este navegador ' +
                             '(inventario, ventas, clientes, configuración…).\n' +
                             'Se recomienda descargar un respaldo antes de continuar.\n\n' +
                             '¿Desea continuar?';
@@ -707,18 +813,29 @@
                             continuar = true;
                         }
                         if (!continuar) {
-                            resolve({ ok: false, restauradas: 0, error: 'Restauración cancelada por el usuario.' });
+                            resolve({ ok: false, restauradas: 0, protegidas: [], error: 'Restauración cancelada por el usuario.' });
                             return;
                         }
 
                         // Escritura con reversa: si una clave falla, se devuelven los valores previos.
+                        // Nunca escritura ciega: se escribe el valor del plan (protegido o del
+                        // respaldo) y las claves protegidas que conservan el valor del equipo se
+                        // dejan intactas (no se tocan).
                         var previos = {};
                         var escritas = [];
+                        var conservadas = {};
+                        for (var p = 0; p < protegidas.length; p++) conservadas[protegidas[p].clave] = true;
                         try {
                             for (var j = 0; j < claves.length; j++) {
-                                previos[claves[j]] = localStorage.getItem(claves[j]);
-                                localStorage.setItem(claves[j], paquete.datos[claves[j]]);
-                                escritas.push(claves[j]);
+                                var claveActual = claves[j];
+                                var valorFinal = (evaluacion.plan && typeof evaluacion.plan[claveActual] === 'string')
+                                    ? evaluacion.plan[claveActual]
+                                    : paquete.datos[claveActual];
+                                previos[claveActual] = localStorage.getItem(claveActual);
+                                // Protegida y ya con el valor del equipo: se queda como está.
+                                if (conservadas[claveActual] && previos[claveActual] === valorFinal) continue;
+                                localStorage.setItem(claveActual, valorFinal);
+                                escritas.push(claveActual);
                             }
                         } catch (e) {
                             for (var k = 0; k < escritas.length; k++) {
@@ -729,25 +846,38 @@
                                     /* si tampoco se puede revertir, seguimos */
                                 }
                             }
-                            resolve({ ok: false, restauradas: 0, error: 'No se pudo escribir el respaldo: ' + mensajeDe(e) + '. Se devolvieron los datos anteriores.' });
+                            resolve({ ok: false, restauradas: 0, protegidas: [], error: 'No se pudo escribir el respaldo: ' + mensajeDe(e) + '. Se devolvieron los datos anteriores.' });
                             return;
                         }
 
+                        // Aviso en lenguaje llano, con la protección del contador si la hubo.
+                        var notaProteccion = '';
+                        var hayContador = false;
+                        for (var q = 0; q < protegidas.length; q++) {
+                            if (protegidas[q].clave === 'pos_last_sale_number') {
+                                hayContador = true;
+                                notaProteccion += ' Se conservó el contador más alto: ' + protegidas[q].valorFinal + '.';
+                            }
+                        }
+                        if (protegidas.length && !hayContador) {
+                            notaProteccion += ' Se conservaron ' + protegidas.length + ' dato(s) propios de este equipo.';
+                        }
+
                         try {
-                            mostrarAvisoAlmacenamiento('Respaldo restaurado: ' + escritas.length + ' claves. Recarga la página para ver los datos.', 'aviso');
+                            mostrarAvisoAlmacenamiento('Respaldo restaurado: ' + escritas.length + ' claves.' + notaProteccion + ' Recarga la página para ver los datos.', 'aviso');
                         } catch (e) { /* informativo */ }
 
-                        resolve({ ok: true, restauradas: escritas.length, error: null });
+                        resolve({ ok: true, restauradas: escritas.length, protegidas: protegidas, error: null });
                     } catch (e) {
-                        resolve({ ok: false, restauradas: 0, error: 'Error al procesar el respaldo: ' + mensajeDe(e) });
+                        resolve({ ok: false, restauradas: 0, protegidas: [], error: 'Error al procesar el respaldo: ' + mensajeDe(e) });
                     }
                 };
                 lector.onerror = function () {
-                    resolve({ ok: false, restauradas: 0, error: 'No se pudo leer el archivo seleccionado.' });
+                    resolve({ ok: false, restauradas: 0, protegidas: [], error: 'No se pudo leer el archivo seleccionado.' });
                 };
                 lector.readAsText(archivo);
             } catch (e) {
-                resolve({ ok: false, restauradas: 0, error: 'Error inesperado: ' + mensajeDe(e) });
+                resolve({ ok: false, restauradas: 0, protegidas: [], error: 'Error inesperado: ' + mensajeDe(e) });
             }
         });
     }

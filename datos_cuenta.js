@@ -21,9 +21,21 @@
  *     datosDeCuenta, sesionActiva, rememberedEmail, darkMode y theme. Por eso la sesión
  *     compartida entre pestañas, el último correo del login y el tema siguen funcionando
  *     con cualquier cuenta.
- *   - Todo lo demás se prefija, incluidas las claves de Firebase Auth: como se leen y se
- *     escriben con el mismo prefijo, la persistencia de sesión de Firebase sigue
- *     funcionando, pero queda separada por cuenta.
+ *   - TAMPOCO se prefijan las claves del SDK de Firebase (`firebase:authUser:...`,
+ *     `firebase:host:...`, y cualquier `firebaseLocalStorage*`): LA SESIÓN DE AUTH ES DEL
+ *     EQUIPO, NO DEL NEGOCIO. El SDK la escribe al iniciar sesión, ANTES de que el
+ *     aislamiento entre en acción; si se prefijara, al activarse el aislamiento el SDK
+ *     leería una clave vacía, creería que no hay sesión y `sesion.js` devolvería la página
+ *     al login. (Fallo real detectado en las pruebas de navegador del 21/09/2026.)
+ *     Compartirla no abre la puerta a nadie: el guardián de fase 1 (`cuenta_local.js`) ya
+ *     impide que otra cuenta use un equipo con datos de otro negocio.
+ *   - Todo lo demás se prefija.
+ *
+ * CUARENTENA
+ *   Si al migrar el destino `cuenta:<emailPath>:<clave>` YA existe, la original no se deja
+ *   sin prefijo (la reclamaría la migración de la cuenta siguiente: fuga entre cuentas) ni
+ *   se borra (se perdería): se MUEVE a `_legacy_:<clave>`. Ese prefijo está RESERVADO:
+ *   ninguna cuenta lo ve, la migración lo ignora y `limpiarCuenta()` no lo borra.
  *
  * ACTIVACIÓN PEREZOSA
  *   Al cargar, si el equipo ya tiene `datosDeCuenta` (marca de la fase 1), el prefijo se
@@ -33,9 +45,11 @@
  * MIGRACIÓN (una vez por cuenta)
  *   Los equipos que ya tenían datos antes de esta fase los tienen SIN prefijo. En cuanto
  *   la página conoce el correo, llama a `migrarAlaCuenta(emailPath)`: recorre las claves
- *   sin prefijo (nunca las de equipo ni las ya prefijadas), COPIA cada una a su sitio,
- *   VERIFICA que la copia quedó idéntica y solo entonces borra la original. Es
- *   idempotente y deja constancia con `cuenta:<emailPath>:datosCuentaMigrado`.
+ *   sin prefijo (nunca las de equipo, ni las de cuarentena, ni las ya prefijadas), COPIA
+ *   cada una a su sitio, VERIFICA que la copia quedó idéntica y solo entonces borra la
+ *   original. Si el destino ya existía, la original pasa a cuarentena (`_legacy_:<clave>`)
+ *   en vez de quedarse expuesta. Es idempotente y deja constancia con
+ *   `cuenta:<emailPath>:datosCuentaMigrado`.
  *
  * NUNCA LANZA
  *   Todo va en try/catch. Si la intercepción no se puede instalar (por ejemplo, un
@@ -47,10 +61,13 @@
  *   desactivar()                -> vuelve al modo transparente
  *   activarYMigrar(emailOPath)  -> activa + migra una sola vez; es lo que llama cada
  *                                  página en su arranque. Devuelve el estado o null.
- *   migrarAlaCuenta(emailPath)  -> { ok, migradas, omitidas, error }
+ *   migrarAlaCuenta(emailPath)  -> { ok, migradas, omitidas, encuarteladas, sinRefugio,
+ *                                    error }
  *   estado()                    -> { activa, emailPath, prefijo, clavesDeCuenta,
- *                                    clavesDeEquipo, migrada, interceptado, error }
- *   limpiarCuenta(emailPath)    -> { ok, borradas, error } (solo las claves de esa cuenta)
+ *                                    clavesDeEquipo, prefijosDeEquipo,
+ *                                    clavesEnCuarentena, migrada, interceptado, error }
+ *   limpiarCuenta(emailPath)    -> { ok, borradas, error } (solo las claves de esa cuenta;
+ *                                  no toca las de equipo ni las de cuarentena)
  *
  * Sin dependencias: no usa Firebase, ni DOM, ni ninguna otra librería.
  */
@@ -77,9 +94,33 @@
        'darkMode' y 'theme' son la apariencia del PC, no del negocio. */
     var CLAVES_DE_EQUIPO = ['datosDeCuenta', 'sesionActiva', 'rememberedEmail', 'darkMode', 'theme'];
 
+    /* PREFIJOS de claves de EQUIPO. Son claves DINÁMICAS (no se pueden enumerar: su nombre
+       lleva la apiKey del proyecto), así que van por prefijo:
+         - 'firebase:' -> lo que escribe el SDK de Firebase en localStorage
+           ('firebase:authUser:<apiKey>:[DEFAULT]', 'firebase:host:...',
+           'firebase:previous_websocket_failure').
+           LA SESIÓN DE AUTH ES DEL EQUIPO, NO DEL NEGOCIO. El SDK la persiste al iniciar
+           sesión, ANTES de que el aislamiento se active; si esa clave se prefijara, en
+           cuanto el aislamiento entrara el SDK leería una clave vacía, creería que no hay
+           sesión y sesion.js mandaría la página al login. Es exactamente el fallo 1 que
+           cazaron las pruebas de navegador del 21/09/2026.
+           Compartirla no abre la puerta a nadie: el guardián de fase 1 (cuenta_local.js)
+           ya impide que otra cuenta use un equipo con datos de otro negocio.
+         - 'firebaseLocalStorage' -> por si alguna versión del SDK persiste ahí. */
+    var PREFIJOS_DE_EQUIPO = ['firebase:', 'firebaseLocalStorage'];
+
     /* Prefijo físico de las claves de cada cuenta: cuenta:<emailPath>:<clave>. */
     var PREFIJO_CUENTA = 'cuenta:';
     var SEPARADOR = ':';
+
+    /* Prefijo RESERVADO de cuarentena: '_legacy_:<clave>'.
+       Cuando la migración encuentra una clave sin prefijo cuyo destino en la cuenta YA
+       existe, no puede dejarla expuesta (la migración de la CUENTA SIGUIENTE la
+       reclamaría: fuga entre cuentas; es el fallo 2 cazado el 21/09/2026) ni borrarla
+       (se perdería el dato). Se MUEVE aquí: ninguna cuenta la ve, la migración la
+       ignora y limpiarCuenta() no la toca. Se conserva el valor para que nada se pierda
+       y para que el diagnóstico pueda listarla. */
+    var PREFIJO_CUARENTENA = '_legacy_:';
 
     /* Marca (dentro de la cuenta) de que la migración ya se hizo: así la página no la
        repite en cada carga. Va prefijada, es decir, es propia de cada cuenta. */
@@ -115,14 +156,28 @@
         }
     }
 
-    /* ¿Es una clave de equipo (nunca se prefija)? */
+    /* ¿Es una clave de equipo (nunca se prefija)? Cubre la lista exacta y los prefijos
+       dinámicos (entre ellos la sesión de Firebase Auth). */
     function esClaveDeEquipo(clave) {
         try {
             var nombre = String(clave == null ? '' : clave);
             for (var i = 0; i < CLAVES_DE_EQUIPO.length; i++) {
                 if (CLAVES_DE_EQUIPO[i] === nombre) return true;
             }
+            for (var j = 0; j < PREFIJOS_DE_EQUIPO.length; j++) {
+                if (nombre.indexOf(PREFIJOS_DE_EQUIPO[j]) === 0) return true;
+            }
             return false;
+        } catch (e) {
+            return false;
+        }
+    }
+
+    /* ¿Es una clave en cuarentena? Es un resto que NO pertenece a ninguna cuenta:
+       la migración la ignora y limpiarCuenta() no la borra. */
+    function esClaveEnCuarentena(clave) {
+        try {
+            return String(clave == null ? '' : clave).indexOf(PREFIJO_CUARENTENA) === 0;
         } catch (e) {
             return false;
         }
@@ -174,7 +229,25 @@
         if (esClaveDeEquipo(nombre)) return nombre;
         /* Ya viene prefijada (por ejemplo al recorrer las claves físicas): no se duplica. */
         if (nombre.indexOf(PREFIJO_CUENTA) === 0) return nombre;
+        /* La cuarentena es un nombre RESERVADO: tampoco se prefija. */
+        if (esClaveEnCuarentena(nombre)) return nombre;
         return prefijoActivo + nombre;
+    }
+
+    /* Primer nombre de cuarentena libre para una clave: '_legacy_:<clave>', y si ya
+       estuviera ocupado, '_legacy_:<clave>_2', _3... Devuelve null si no hay sitio. */
+    function nombreDeCuarentenaLibre(almacen, clave) {
+        try {
+            var base = PREFIJO_CUARENTENA + clave;
+            if (originales.getItem.call(almacen, base) === null) return base;
+            for (var n = 2; n <= 20; n++) {
+                var candidato = base + '_' + n;
+                if (originales.getItem.call(almacen, candidato) === null) return candidato;
+            }
+            return null;
+        } catch (e) {
+            return null;
+        }
     }
 
     /* Claves que la cuenta activa debe VER: las suyas (sin el prefijo) más las de equipo.
@@ -314,20 +387,23 @@
      *
      * Usa SIEMPRE las funciones originales (trabaja sobre el almacén físico):
      *   1. recorre las claves físicas;
-     *   2. descarta las de equipo y las que ya están prefijadas (de cualquier cuenta);
+     *   2. descarta las de equipo, las de cuarentena y las que ya están prefijadas
+     *      (de cualquier cuenta);
      *   3. copia cada una a cuenta:<emailPath>:<clave>, verificando que la copia quedó
      *      idéntica;
      *   4. solo entonces borra la original.
      *
-     * Nunca pisa lo que ya existe en la cuenta: si el destino ya tiene valor, la clave se
-     * cuenta como OMITIDA y la original se deja donde está. Así una migración tardía no
-     * puede machacar datos más nuevos que la cuenta ya tenía guardados.
+     * Nunca pisa lo que ya existe en la cuenta: si el destino ya tiene valor, la clave
+     * se cuenta como OMITIDA y la original NO se deja expuesta: se MUEVE a cuarentena
+     * ('_legacy_:<clave>'), porque si se quedara sin prefijo la reclamaría la migración
+     * de la cuenta siguiente (fuga entre cuentas). Así una migración tardía no puede
+     * machacar datos más nuevos que la cuenta ya tenía guardados, y tampoco filtra.
      *
      * Es idempotente: ejecutarla dos veces no cambia nada.
-     * Devuelve { ok, migradas, omitidas, error }.
+     * Devuelve { ok, migradas, omitidas, encuarteladas, sinRefugio, error }.
      */
     function migrarAlaCuenta(emailPath) {
-        var resultado = { ok: false, migradas: 0, omitidas: 0, error: null };
+        var resultado = { ok: false, migradas: 0, omitidas: 0, encuarteladas: 0, sinRefugio: 0, error: null };
         try {
             if (!interceptado) {
                 resultado.error = 'La intercepción de localStorage no está disponible: no se migró nada.';
@@ -360,13 +436,29 @@
                 if (clave.indexOf(PREFIJO_CUENTA) === 0) { resultado.omitidas++; continue; }
                 /* Clave de equipo: nunca se prefija ni se migra. */
                 if (esClaveDeEquipo(clave)) { resultado.omitidas++; continue; }
+                /* Resto en cuarentena: no es de nadie, no se reclama. */
+                if (esClaveEnCuarentena(clave)) { resultado.omitidas++; continue; }
 
                 var valor = originales.getItem.call(almacen, clave);
                 if (valor === null) { resultado.omitidas++; continue; }
 
                 var destino = prefijo + clave;
                 if (originales.getItem.call(almacen, destino) !== null) {
-                    /* El destino ya tiene valor: manda lo que ya estaba en la cuenta. */
+                    /* El destino ya tiene valor: manda lo que ya estaba en la cuenta.
+                       La original NO puede quedarse sin prefijo (la reclamaría la cuenta
+                       siguiente), así que se mueve a cuarentena conservando el valor. */
+                    var refugio = nombreDeCuarentenaLibre(almacen, clave);
+                    if (refugio && originales.getItem.call(almacen, refugio) === null) {
+                        originales.setItem.call(almacen, refugio, valor);
+                        if (originales.getItem.call(almacen, refugio) === valor) {
+                            originales.removeItem.call(almacen, clave);
+                            resultado.encuarteladas++;
+                        } else {
+                            resultado.sinRefugio++;
+                        }
+                    } else {
+                        resultado.sinRefugio++;
+                    }
                     resultado.omitidas++;
                     continue;
                 }
@@ -398,7 +490,8 @@
     }
 
     /* Borra SOLO las claves de la cuenta indicada (reinicio de fábrica). No toca las claves
-       de equipo ni las de otras cuentas. Devuelve { ok, borradas, error }. */
+       de equipo, ni las de otras cuentas, ni las de cuarentena (`_legacy_:`, que no son de
+       nadie y se conservan para que el dato no se pierda). Devuelve { ok, borradas, error }. */
     function limpiarCuenta(emailPath) {
         var resultado = { ok: false, borradas: 0, error: null };
         try {
@@ -440,7 +533,10 @@
     }
 
     /* Estado del módulo. `clavesDeCuenta` es cuántas claves tiene guardadas la cuenta
-       activa; `clavesDeEquipo` es la lista de claves que NUNCA se prefijan. */
+       activa; `clavesDeEquipo` es la lista EXACTA de claves que nunca se prefijan y
+       `prefijosDeEquipo` los prefijos dinámicos que tampoco se prefijan (la sesión de
+       Firebase Auth, entre otros); `clavesEnCuarentena` son los restos guardados como
+       '_legacy_:<clave>' que no pertenecen a ninguna cuenta. */
     function estado() {
         var visible = {
             activa: activa,
@@ -448,6 +544,8 @@
             prefijo: prefijoActivo,
             clavesDeCuenta: 0,
             clavesDeEquipo: CLAVES_DE_EQUIPO.slice(),
+            prefijosDeEquipo: PREFIJOS_DE_EQUIPO.slice(),
+            clavesEnCuarentena: 0,
             migrada: false,
             interceptado: interceptado,
             error: (ultimoError || null)
@@ -461,12 +559,15 @@
             var equipoPresentes = 0;
             var conPrefijo = 0;
             var sombreadas = 0;
+            var enCuarentena = 0;
 
             for (var i = 0; i < total; i++) {
                 var fisica = originales.key.call(almacen, i);
                 if (fisica === null || typeof fisica === 'undefined') continue;
                 var nombre = String(fisica);
                 if (esClaveDeEquipo(nombre)) { equipoPresentes++; continue; }
+                /* La cuarentena no es de nadie: no cuenta como clave de la cuenta. */
+                if (esClaveEnCuarentena(nombre)) { enCuarentena++; continue; }
                 if (activa && nombre.indexOf(prefijoActivo) === 0) {
                     conPrefijo++;
                     if (esClaveDeEquipo(nombre.slice(prefijoActivo.length))) sombreadas++;
@@ -474,6 +575,7 @@
             }
 
             visible.clavesDeCuenta = conPrefijo - sombreadas;
+            visible.clavesEnCuarentena = enCuarentena;
             visible.migrada = activa
                 ? (originales.getItem.call(almacen, prefijoActivo + CLAVE_MIGRACION) !== null)
                 : false;

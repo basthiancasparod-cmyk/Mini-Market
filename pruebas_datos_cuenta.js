@@ -228,6 +228,35 @@ console.log('\n================ C. CLAVES DE EQUIPO ================\n');
     check('C6 · estado().clavesDeEquipo es exactamente la lista de las 5 claves',
         JSON.stringify(g.api.estado().clavesDeEquipo) === JSON.stringify(EQUIPO),
         JSON.stringify(g.api.estado().clavesDeEquipo));
+
+    /* LA SESIÓN DE FIREBASE AUTH ES DEL EQUIPO (fallo real del 21/09/2026): el SDK la
+       persiste en localStorage al iniciar sesión, ANTES de que el aislamiento se active.
+       Si esa clave se prefijara, en cuanto el aislamiento entrara el SDK leería una clave
+       vacía, creería que no hay sesión y sesion.js devolvería la página al login. */
+    const FIREBASE = [
+        'firebase:authUser:AIzaSyEjemploDeApiKey:[DEFAULT]',
+        'firebase:host:mini-market-ciervo-index-default-rtdb.firebaseio.com',
+        'firebase:previous_websocket_failure',
+        'firebaseLocalStorageDb'
+    ];
+    FIREBASE.forEach((k) => { L(g).setItem(k, 'sesion-del-sdk'); });
+    check('C7 · las claves del SDK de Firebase NO se prefijan con la cuenta activa',
+        FIREBASE.every((k) => g.almacen.datos.get(k) === 'sesion-del-sdk') &&
+        !clavesFisicas(g.almacen).some((k) => k.indexOf('cuenta:juan_at_x_com:firebase') === 0),
+        JSON.stringify(clavesFisicas(g.almacen).filter((k) => k.indexOf('firebase') !== -1)));
+    check('C8 · se leen igual con otra cuenta activa y sin ninguna cuenta',
+        (() => {
+            g.api.activarPara('pedro_at_y_com');
+            const conB = FIREBASE.every((k) => L(g).getItem(k) === 'sesion-del-sdk');
+            g.api.desactivar();
+            const sinCuenta = FIREBASE.every((k) => L(g).getItem(k) === 'sesion-del-sdk');
+            g.api.activarPara('juan_at_x_com');
+            return conB && sinCuenta;
+        })());
+    check('C9 · estado() publica los prefijos de equipo y cuenta la cuarentena',
+        JSON.stringify(g.api.estado().prefijosDeEquipo) === JSON.stringify(['firebase:', 'firebaseLocalStorage']) &&
+        g.api.estado().clavesEnCuarentena === 0,
+        JSON.stringify(g.api.estado()));
 }
 
 /* =====================================================================
@@ -308,16 +337,25 @@ console.log('\n================ D. MIGRACIÓN ================\n');
         L(g2).getItem('pos_sales') === '["B"]',
         JSON.stringify(r3));
 
-    /* No pisa lo que la cuenta ya tenía: manda lo que ya estaba bajo la cuenta. */
+    /* No pisa lo que la cuenta ya tenía Y NO DEJA LA ORIGINAL EXPUESTA. */
     const g3 = cargarModulo({ local: { ciervo_inventory: '["VIEJO-SIN-PREFIJO"]' } });
     g3.api.activarPara('a_at_x_com');
     L(g3).setItem('ciervo_inventory', '["NUEVO-BAJO-LA-CUENTA"]');
     const r4 = g3.api.migrarAlaCuenta('a_at_x_com');
     check('D13 · una migración tardía no machaca lo que la cuenta ya tenía',
         L(g3).getItem('ciervo_inventory') === '["NUEVO-BAJO-LA-CUENTA"]' &&
-        g3.almacen.datos.get('ciervo_inventory') === '["VIEJO-SIN-PREFIJO"]' &&
         r4.migradas === 0 && r4.omitidas >= 1,
         JSON.stringify(r4));
+    check('D13b · y la original NO queda expuesta: se mueve a cuarentena',
+        !g3.almacen.datos.has('ciervo_inventory') &&
+        g3.almacen.datos.get('_legacy_:ciervo_inventory') === '["VIEJO-SIN-PREFIJO"]' &&
+        r4.encuarteladas === 1 && r4.sinRefugio === 0,
+        JSON.stringify({ r4: r4, volcado: volcado(g3.almacen) }));
+    check('D13c · la cuenta sigue viendo SU clave, y la cuarentena se cuenta aparte',
+        L(g3).getItem('ciervo_inventory') === '["NUEVO-BAJO-LA-CUENTA"]' &&
+        g3.api.estado().clavesEnCuarentena === 1 &&
+        clavesFisicas(g3.almacen).indexOf('_legacy_:ciervo_inventory') !== -1,
+        JSON.stringify(g3.api.estado()));
 
     /* Nunca lanza: cuentas inválidas y módulo sin intercepción. */
     const g4 = cargarModulo({ local: {} });
@@ -326,6 +364,65 @@ console.log('\n================ D. MIGRACIÓN ================\n');
         r5.ok === false && typeof r5.error === 'string' && r5.error.length > 0, JSON.stringify(r5));
     const r6 = g4.api.migrarAlaCuenta(null);
     check('D15 · migrar con null tampoco lanza', r6.ok === false && !!r6.error, JSON.stringify(r6));
+}
+
+/* =====================================================================
+   D-bis. REGRESIÓN DE LA FUGA ENTRE CUENTAS (fallo 2 del 21/09/2026)
+   Si el destino ya existía y la migración dejaba la clave original sin
+   prefijo, la migración de la CUENTA SIGUIENTE la reclamaba: B acababa
+   viendo datos que no eran suyos. Se reproduce el escenario exacto.
+   ===================================================================== */
+console.log('\n========= D-bis. FUGA ENTRE CUENTAS (regresión) =========\n');
+
+{
+    const EQUIPO = ['datosDeCuenta', 'sesionActiva', 'rememberedEmail', 'darkMode', 'theme'];
+
+    /* El equipo ya tiene datos de A bajo SU cuenta (de una sesión anterior)... */
+    const g = cargarModulo({
+        local: { 'cuenta:a_at_x_com:ciervo_inventory': '["DATOS-DE-A"]' }
+    });
+    g.api.activarPara('a_at_x_com');
+
+    /* ...y aparece una clave SIN prefijo (sembrada, restaurada de un respaldo, etc.). */
+    g.almacen.datos.set('ciervo_inventory', '["SEMBRADO-SIN-PREFIJO"]');
+
+    const r = g.api.migrarAlaCuenta('a_at_x_com');
+    const sinPrefijo = clavesFisicas(g.almacen).filter((k) =>
+        k.indexOf('cuenta:') !== 0 &&
+        k.indexOf('_legacy_:') !== 0 &&
+        EQUIPO.indexOf(k) === -1 &&
+        k.indexOf('firebase') !== 0);
+
+    check('R1 · tras migrar NO queda NINGUNA clave de negocio sin prefijo',
+        sinPrefijo.length === 0, JSON.stringify(sinPrefijo));
+    check('R2 · la original quedó en cuarentena, con su valor intacto',
+        g.almacen.datos.get('_legacy_:ciervo_inventory') === '["SEMBRADO-SIN-PREFIJO"]' &&
+        r.encuarteladas === 1 && r.sinRefugio === 0, JSON.stringify(r));
+    check('R3 · la cuenta A conserva lo suyo (no se machacó)',
+        L(g).getItem('ciervo_inventory') === '["DATOS-DE-A"]',
+        L(g).getItem('ciervo_inventory'));
+
+    /* Ahora entra B: su migración no puede reclamar nada de lo que quedó. */
+    g.api.activarPara('b_at_y_com');
+    const rB = g.api.migrarAlaCuenta('b_at_y_com');
+    check('R4 · la migración de B NO reclama el resto: B ve su inventario VACÍO',
+        L(g).getItem('ciervo_inventory') === null &&
+        !g.almacen.datos.has('cuenta:b_at_y_com:ciervo_inventory') &&
+        rB.migradas === 0,
+        JSON.stringify({ rB: rB, volcado: volcado(g.almacen) }));
+    check('R5 · lo de A sigue intacto y la cuarentena no se toca',
+        g.almacen.datos.get('cuenta:a_at_x_com:ciervo_inventory') === '["DATOS-DE-A"]' &&
+        g.almacen.datos.get('_legacy_:ciervo_inventory') === '["SEMBRADO-SIN-PREFIJO"]');
+    check('R6 · estado() cuenta la cuarentena aparte (no es de ninguna cuenta)',
+        g.api.estado().clavesEnCuarentena === 1, JSON.stringify(g.api.estado()));
+
+    /* Y una segunda migración de A tampoco la reclama ni la duplica. */
+    g.api.activarPara('a_at_x_com');
+    const r2 = g.api.migrarAlaCuenta('a_at_x_com');
+    check('R7 · es idempotente: A no reclama la cuarentena ni la duplica',
+        g.almacen.datos.get('_legacy_:ciervo_inventory') === '["SEMBRADO-SIN-PREFIJO"]' &&
+        !g.almacen.datos.has('_legacy_:ciervo_inventory_2') &&
+        r2.encuarteladas === 0, JSON.stringify(r2));
 }
 
 /* =====================================================================
@@ -340,6 +437,7 @@ console.log('\n================ E. limpiarCuenta ================\n');
             'cuenta:a_at_x_com:pos_sales': '["A2"]',
             'cuenta:a_at_x_com:datosCuentaMigrado': '1',
             'cuenta:b_at_y_com:ciervo_inventory': '["B"]',
+            '_legacy_:ciervo_inventory': '["CUARENTENA"]',
             sesionActiva: '{"email":"a@x.com"}',
             darkMode: 'true',
             datosDeCuenta: 'a_at_x_com'
@@ -361,6 +459,9 @@ console.log('\n================ E. limpiarCuenta ================\n');
         g.almacen.datos.get('sesionActiva') === '{"email":"a@x.com"}' &&
         g.almacen.datos.get('darkMode') === 'true' &&
         g.almacen.datos.get('datosDeCuenta') === 'a_at_x_com');
+    check('E5b · limpiarCuenta NO borra la cuarentena (_legacy_:), que no es de nadie',
+        g.almacen.datos.get('_legacy_:ciervo_inventory') === '["CUARENTENA"]',
+        JSON.stringify(clavesFisicas(g.almacen)));
 
     const antes = JSON.stringify(volcado(g.almacen));
     const r2 = g.api.limpiarCuenta('');
@@ -643,6 +744,12 @@ try {
     check('datos_cuenta.js · nombra las 5 claves de equipo',
         ['datosDeCuenta', 'sesionActiva', 'rememberedEmail', 'darkMode', 'theme']
             .every((k) => CRUDO.indexOf("'" + k + "'") !== -1));
+    check('datos_cuenta.js · trata las claves del SDK de Firebase como claves de equipo',
+        /PREFIJOS_DE_EQUIPO/.test(CRUDO) && /'firebase:'/.test(CRUDO) &&
+        /nombre\.indexOf\(PREFIJOS_DE_EQUIPO\[j\]\) === 0/.test(CRUDO));
+    check('datos_cuenta.js · reserva el prefijo de cuarentena _legacy_:',
+        /PREFIJO_CUARENTENA/.test(CRUDO) && /'_legacy_:'/.test(CRUDO) &&
+        /nombreDeCuarentenaLibre/.test(CRUDO));
 } catch (e) {
     check('datos_cuenta.js legible', false, e.message);
 }

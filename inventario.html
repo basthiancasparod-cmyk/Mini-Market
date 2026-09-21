@@ -2994,6 +2994,45 @@ function handleStockKeydown(event) {
             return products;
         }
 
+        // Margen de un producto SIEMPRE como número finito.
+        //
+        // POR QUÉ EXISTE ESTA FUNCIÓN (fallo real medido en navegador):
+        //   El guardián anterior era `product.margin !== null ? product.margin : (cálculo)`.
+        //   Un producto SIN la clave `margin` (importado del catálogo, restaurado de un
+        //   respaldo viejo, o creado por una versión anterior de la app) tiene
+        //   `margin === undefined`, y `undefined !== null` es TRUE: el ternario devolvía
+        //   `undefined` en vez de calcular el margen. Al llegar a
+        //   `marginValue.toLocaleString(...)` reventaba con
+        //   "Cannot read properties of undefined (reading 'toLocaleString')".
+        //   Como eso ocurría dentro del `.map()` de las filas de `renderProducts()`,
+        //   UNA sola fila sin margen abortaba la tabla ENTERA: 0 filas pintadas y el
+        //   contador "Página X de Y (N productos)" sin actualizar.
+        //   `loadProducts()` llama a `renderProducts()`, así que el error tumbaba el
+        //   arranque de la página y el inventario salía vacío aunque el almacén sí
+        //   tuviera los productos.
+        //
+        //   Devuelve un número finito (0 si no hay forma de determinarlo). Para saber si
+        //   el margen venía declarado, usar `margenDeclarado(product)`.
+        function margenNumerico(product) {
+            const p = product || {};
+            const declarado = Number(p.margin);
+            if (Number.isFinite(declarado)) return declarado;
+
+            const costo = Number(p.cost || p.costPerUnit || 0);
+            if (!(costo > 0)) return 0;
+            const ganancia = Number(p.profit);
+            if (!Number.isFinite(ganancia)) return 0;
+            const calculado = (ganancia / costo) * 100;
+            return Number.isFinite(calculado) ? calculado : 0;
+        }
+
+        // ¿El producto trae el margen declarado como número? (si no, se calcula o se
+        // muestra "N/A" en los informes, que es lo honesto).
+        function margenDeclarado(product) {
+            const p = product || {};
+            return Number.isFinite(Number(p.margin));
+        }
+
         function renderProducts() {
             const tbody = document.getElementById('inventoryTableBody');
             const emptyState = document.getElementById('emptyState');
@@ -3026,8 +3065,8 @@ function handleStockKeydown(event) {
                         valB = b.isBulk ? b.costPerUnit : b.cost;
                         break;
                     case 'margin':
-                        valA = a.margin !== null ? a.margin : (a.profit / (a.cost || a.costPerUnit || 1)) * 100;
-                        valB = b.margin !== null ? b.margin : (b.profit / (b.cost || b.costPerUnit || 1)) * 100;
+                        valA = margenNumerico(a);
+                        valB = margenNumerico(b);
                         break;
                     case 'price':
                         valA = a.isBulk ? a.pricePerUnit : a.price;
@@ -3101,7 +3140,7 @@ function handleStockKeydown(event) {
                 const unitEscaped = escapeHtml(product.unit);
                 const stockDisplay = product.isBulk ? `${product.stock.toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 3 })} ${unitEscaped}` : `${product.stock} unidades`;
                 const costDisplay = product.isBulk ? `$${(product.costPerUnit || 0).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/${unitEscaped}` : `$${(product.cost || 0).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-                const marginValue = product.margin !== null ? product.margin : (product.profit / (product.cost || product.costPerUnit || 1)) * 100;
+                const marginValue = margenNumerico(product);
                 const marginDisplay = `${marginValue.toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}%`;
                 const priceDisplay = product.isBulk ? `$${(product.pricePerUnit || 0).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/${unitEscaped}` : `$${(product.price || 0).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
                 const profitDisplay = product.isBulk ? `$${(product.profitPerUnit || 0).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/${unitEscaped}` : `$${(product.profit || 0).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -3691,9 +3730,9 @@ function handleStockKeydown(event) {
                 document.getElementById('productUnit').value = product.unit || 'kg';
             }
 
-            if (product.margin !== null) {
+            if (margenDeclarado(product)) {
                 document.getElementById('radioMargin').checked = true;
-                document.getElementById('productMargin').value = product.margin;
+                document.getElementById('productMargin').value = margenNumerico(product);
             } else {
                 document.getElementById('radioProfit').checked = true;
                 document.getElementById('productProfitInput').value = product.profitPerUnit || product.profit;
@@ -4114,7 +4153,7 @@ function handleStockKeydown(event) {
             y += 6;
             doc.text(`Precio de Venta: $${(product.isBulk ? product.pricePerUnit : product.price).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 14, y);
             y += 6;
-            doc.text(`Margen de Ganancia: ${product.margin !== null ? product.margin.toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + '%' : 'N/A'}`, 14, y);
+            doc.text(`Margen de Ganancia: ${margenDeclarado(product) ? margenNumerico(product).toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + '%' : 'N/A'}`, 14, y);
             y += 6;
             doc.text(`Ganancia por Unidad: $${(product.isBulk ? product.profitPerUnit : product.profit).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 14, y);
             y += 6;
@@ -4510,7 +4549,7 @@ function handleStockKeydown(event) {
         'Es a Granel': p.isBulk ? 'Sí' : 'No',
         'Exento de IVA (E)': p.isIvaExempt ? 'Sí' : 'No',
         'Precio Costo': p.isBulk ? p.costPerUnit : p.cost,
-        'Margen (%)': p.margin !== null ? p.margin : 'N/A',
+        'Margen (%)': margenDeclarado(p) ? margenNumerico(p) : 'N/A',
         'Precio Venta': p.isBulk ? p.pricePerUnit : p.price,
         'Ganancia por Venta': p.isBulk ? p.profitPerUnit : p.profit
     }));

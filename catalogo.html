@@ -14,8 +14,18 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
     <script src="cloud-access.js"></script>
     <script src="sincronizacion.js"></script>
+    <!-- Guardián de almacenamiento local: medición, cuota, respaldo y restauración -->
+    <script src="almacenamiento.js"></script>
     <!-- Guardián de "una cuenta por equipo": los datos locales no se comparten entre cuentas -->
     <script src="cuenta_local.js"></script>
+    <script>
+        // Guardián de almacenamiento: comprueba la cuota una sola vez al cargar la página.
+        document.addEventListener('DOMContentLoaded', function () {
+            try {
+                if (typeof window.avisarSiLleno === 'function') window.avisarSiLleno();
+            } catch (e) { /* un aviso nunca debe romper la página */ }
+        });
+    </script>
     <style>
         /* ================================
            ESTILOS BASE (Heredados)
@@ -1020,7 +1030,12 @@
 
         function saveProducts() {
                         marcarPendienteSync('catalogo'); // Fase A: hay un cambio local sin confirmar
-            localStorage.setItem('ciervo_inventory', JSON.stringify(products));
+            // Guardián de almacenamiento (almacenamiento.js): avisa si la cuota está llena.
+            if (typeof window.guardarLocalSeguro === 'function') {
+                window.guardarLocalSeguro('ciervo_inventory', JSON.stringify(products));
+            } else {
+                localStorage.setItem('ciervo_inventory', JSON.stringify(products));
+            }
             renderAll();
             firebaseSaveProducts(products);
             window.dispatchEvent(new CustomEvent('ciervoSync', { detail: { store: 'inventory', data: products } }));

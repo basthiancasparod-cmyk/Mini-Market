@@ -10,8 +10,18 @@
     <script src="datos_cuenta.js"></script>
     <script src="cloud-access.js"></script>
     <script src="sincronizacion.js"></script>
+    <!-- Guardián de almacenamiento local: medición, cuota, respaldo y restauración -->
+    <script src="almacenamiento.js"></script>
     <!-- Guardián de "una cuenta por equipo": los datos locales no se comparten entre cuentas -->
     <script src="cuenta_local.js"></script>
+    <script>
+        // Guardián de almacenamiento: comprueba la cuota una sola vez al cargar la página.
+        document.addEventListener('DOMContentLoaded', function () {
+            try {
+                if (typeof window.avisarSiLleno === 'function') window.avisarSiLleno();
+            } catch (e) { /* un aviso nunca debe romper la página */ }
+        });
+    </script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.1/dist/umd/lucide.js"></script>
     <style>
@@ -2185,9 +2195,22 @@
         }
 
         async function saveData() {
-            localStorage.setItem('ciervo_suppliers', JSON.stringify(suppliers));
-            localStorage.setItem('ciervo_purchases', JSON.stringify(purchases));
-            localStorage.setItem('ciervo_inventory_history', JSON.stringify(inventoryHistory));
+            // Guardián de almacenamiento (almacenamiento.js): avisa si la cuota está llena.
+            if (typeof window.guardarLocalSeguro === 'function') {
+                window.guardarLocalSeguro('ciervo_suppliers', JSON.stringify(suppliers));
+            } else {
+                localStorage.setItem('ciervo_suppliers', JSON.stringify(suppliers));
+            }
+            if (typeof window.guardarLocalSeguro === 'function') {
+                window.guardarLocalSeguro('ciervo_purchases', JSON.stringify(purchases));
+            } else {
+                localStorage.setItem('ciervo_purchases', JSON.stringify(purchases));
+            }
+            if (typeof window.guardarLocalSeguro === 'function') {
+                window.guardarLocalSeguro('ciervo_inventory_history', JSON.stringify(inventoryHistory));
+            } else {
+                localStorage.setItem('ciervo_inventory_history', JSON.stringify(inventoryHistory));
+            }
             try {
                                 marcarPendienteSync('compras');
                 if (await firebaseSaveSuppliers(suppliers)) limpiarPendienteSync('compras');
@@ -2445,19 +2468,32 @@
                 let changed = false;
                 if (data.proveedores) {
                     suppliers = data.proveedores;
-                    localStorage.setItem('ciervo_suppliers', JSON.stringify(suppliers));
+                    // Guardián de almacenamiento (almacenamiento.js): avisa si la cuota está llena.
+                    if (typeof window.guardarLocalSeguro === 'function') {
+                        window.guardarLocalSeguro('ciervo_suppliers', JSON.stringify(suppliers));
+                    } else {
+                        localStorage.setItem('ciervo_suppliers', JSON.stringify(suppliers));
+                    }
                     nextSupplierId = suppliers.length > 0 ? Math.max(...suppliers.map(s => s.id)) + 1 : 1;
                     changed = true;
                 }
                 if (data.compras) {
                     purchases = data.compras;
-                    localStorage.setItem('ciervo_purchases', JSON.stringify(purchases));
+                    if (typeof window.guardarLocalSeguro === 'function') {
+                        window.guardarLocalSeguro('ciervo_purchases', JSON.stringify(purchases));
+                    } else {
+                        localStorage.setItem('ciervo_purchases', JSON.stringify(purchases));
+                    }
                     nextPurchaseId = purchases.length > 0 ? Math.max(...purchases.map(p => p.id)) + 1 : 1;
                     changed = true;
                 }
                 if (data.historial) {
                     inventoryHistory = data.historial;
-                    localStorage.setItem('ciervo_inventory_history', JSON.stringify(inventoryHistory));
+                    if (typeof window.guardarLocalSeguro === 'function') {
+                        window.guardarLocalSeguro('ciervo_inventory_history', JSON.stringify(inventoryHistory));
+                    } else {
+                        localStorage.setItem('ciervo_inventory_history', JSON.stringify(inventoryHistory));
+                    }
                     changed = true;
                 }
                 if (changed) {
@@ -2967,7 +3003,12 @@
         }
 
         async function saveInventoryToStorage(inventory) {
-            localStorage.setItem('ciervo_inventory', JSON.stringify(inventory));
+            // Guardián de almacenamiento (almacenamiento.js): avisa si la cuota está llena.
+            if (typeof window.guardarLocalSeguro === 'function') {
+                window.guardarLocalSeguro('ciervo_inventory', JSON.stringify(inventory));
+            } else {
+                localStorage.setItem('ciervo_inventory', JSON.stringify(inventory));
+            }
             try {
                                 marcarPendienteSync('compras');
                 if (await firebaseSaveProducts(inventory)) limpiarPendienteSync('compras');

@@ -10,8 +10,18 @@
     <script src="datos_cuenta.js"></script>
     <script src="cloud-access.js"></script>
     <script src="sincronizacion.js"></script>
+    <!-- Guardián de almacenamiento local: medición, cuota, respaldo y restauración -->
+    <script src="almacenamiento.js"></script>
     <!-- Guardián de "una cuenta por equipo": los datos locales no se comparten entre cuentas -->
     <script src="cuenta_local.js"></script>
+    <script>
+        // Guardián de almacenamiento: comprueba la cuota una sola vez al cargar la página.
+        document.addEventListener('DOMContentLoaded', function () {
+            try {
+                if (typeof window.avisarSiLleno === 'function') window.avisarSiLleno();
+            } catch (e) { /* un aviso nunca debe romper la página */ }
+        });
+    </script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.1/dist/umd/lucide.js"></script>
     <style>
@@ -1645,7 +1655,12 @@
                 // El llamador incorpora el proveedor al caché, igual que en modo cloud.
                 // Aquí solo persistimos la versión que quedará tras esa incorporación.
                                 marcarPendienteSync('proveedores'); // Fase A: hay un cambio local sin confirmar
-                localStorage.setItem('ciervo_suppliers', JSON.stringify([..._suppliersCache, localSupplier]));
+                // Guardián de almacenamiento (almacenamiento.js): avisa si la cuota está llena.
+                if (typeof window.guardarLocalSeguro === 'function') {
+                    window.guardarLocalSeguro('ciervo_suppliers', JSON.stringify([..._suppliersCache, localSupplier]));
+                } else {
+                    localStorage.setItem('ciervo_suppliers', JSON.stringify([..._suppliersCache, localSupplier]));
+                }
                 return localSupplier;
             }
             const db = await initFirebase();
@@ -1663,7 +1678,12 @@
                 const index = _suppliersCache.findIndex(s => s.id === id);
                 if (index !== -1) _suppliersCache[index] = { ..._suppliersCache[index], ...data };
                                 marcarPendienteSync('proveedores'); // Fase A: hay un cambio local sin confirmar
-                localStorage.setItem('ciervo_suppliers', JSON.stringify(_suppliersCache));
+                // Guardián de almacenamiento (almacenamiento.js): avisa si la cuota está llena.
+                if (typeof window.guardarLocalSeguro === 'function') {
+                    window.guardarLocalSeguro('ciervo_suppliers', JSON.stringify(_suppliersCache));
+                } else {
+                    localStorage.setItem('ciervo_suppliers', JSON.stringify(_suppliersCache));
+                }
                 return;
             }
             const db = await initFirebase();
@@ -1677,7 +1697,12 @@
             if (!await checkCloudAccess()) {
                 _suppliersCache = _suppliersCache.filter(s => s.id !== id);
                                 marcarPendienteSync('proveedores'); // Fase A: hay un cambio local sin confirmar
-                localStorage.setItem('ciervo_suppliers', JSON.stringify(_suppliersCache));
+                // Guardián de almacenamiento (almacenamiento.js): avisa si la cuota está llena.
+                if (typeof window.guardarLocalSeguro === 'function') {
+                    window.guardarLocalSeguro('ciervo_suppliers', JSON.stringify(_suppliersCache));
+                } else {
+                    localStorage.setItem('ciervo_suppliers', JSON.stringify(_suppliersCache));
+                }
                 return;
             }
             const db = await initFirebase();
