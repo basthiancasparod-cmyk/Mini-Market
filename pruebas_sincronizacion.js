@@ -327,7 +327,7 @@ const PAGINAS = [
     { archivo: 'inventario.html', modulo: 'inventario', sube: true },
     { archivo: 'mini_market_pos.html', modulo: 'pos', sube: true },
     { archivo: 'compras.html', modulo: 'compras', sube: true },
-    { archivo: 'catalogo.html', modulo: 'catalogo', sube: true, descarga: false },  // solo sube: no tiene función de descarga
+    { archivo: 'catalogo.html', modulo: 'catalogo', sube: true },  // antes solo subia: ya descarga y fusiona por id
     { archivo: 'cuentas.html', modulo: 'cuentas', sube: true },
     { archivo: 'config_recibo.html', modulo: 'config_recibo', sube: false },  // página de solo lectura
     { archivo: 'gestion_empresa.html', modulo: 'empresa', sube: true },

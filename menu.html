@@ -9,6 +9,7 @@
     <!-- Aislamiento de datos por cuenta (fase 2): cada cuenta ve SOLO sus claves de
          localStorage. Va primero, antes que el resto de scripts de la página. -->
     <script src="datos_cuenta.js"></script>
+    <script src="tema.js"></script>
     <!-- Guardián de "UNA CUENTA POR EQUIPO" (fase 1). Faltaba aquí: menu.html era la
          única página interna de datos que NO lo cargaba, así que abría con los datos
          de otra cuenta ya migrados en el equipo. El aislamiento de la fase 2 separa
@@ -2974,12 +2975,12 @@
                 // Update UI with initial data
                 this.updateGlobalUI();
 
-                // Apply dark mode if saved preference is dark
-                if (localStorage.getItem('darkMode') === 'enabled') {
-                    document.body.classList.add('dark-mode');
-                    document.querySelector('.sun-icon').style.display = 'none';
-                    document.querySelector('.moon-icon').style.display = 'inline-block';
-                }
+                // Sincroniza los iconos con el tema que tema.js ya dejó aplicado.
+                const isDark = tema.aplicar();
+                const sunIcon = document.querySelector('.sun-icon');
+                const moonIcon = document.querySelector('.moon-icon');
+                if (sunIcon) sunIcon.style.display = isDark ? 'none' : 'inline-block';
+                if (moonIcon) moonIcon.style.display = isDark ? 'inline-block' : 'none';
             }
 
             handleDataUpdate(updateInfo) {
@@ -4114,32 +4115,24 @@
             }
         });
 
-        // Dark Mode Toggle
+        // Tema claro/oscuro: leer, guardar y pintar viven en tema.js, compartido
+        // por todas las páginas (antes aquí se guardaba 'darkMode' y las demás
+        // páginas no lo entendían).
         function toggleDarkMode() {
-            document.body.classList.toggle('dark-mode');
+            const isDark = tema.alternar();
             const sunIcon = document.querySelector('.sun-icon');
             const moonIcon = document.querySelector('.moon-icon');
-
-            if (document.body.classList.contains('dark-mode')) {
-                localStorage.setItem('darkMode', 'enabled');
-                sunIcon.style.display = 'none';
-                moonIcon.style.display = 'inline-block';
-            } else {
-                localStorage.setItem('darkMode', 'disabled');
-                sunIcon.style.display = 'inline-block';
-                moonIcon.style.display = 'none';
-            }
+            if (sunIcon) sunIcon.style.display = isDark ? 'none' : 'inline-block';
+            if (moonIcon) moonIcon.style.display = isDark ? 'inline-block' : 'none';
         }
 
-        // Apply dark mode on load based on localStorage
+        // Los iconos se sincronizan con el tema que tema.js ya dejó aplicado.
         document.addEventListener('DOMContentLoaded', () => {
-            if (localStorage.getItem('darkMode') === 'enabled') {
-                document.body.classList.add('dark-mode');
-                const sunIcon = document.querySelector('.sun-icon');
-                const moonIcon = document.querySelector('.moon-icon');
-                if (sunIcon) sunIcon.style.display = 'none';
-                if (moonIcon) moonIcon.style.display = 'inline-block';
-            }
+            const isDark = tema.esOscuro();
+            const sunIcon = document.querySelector('.sun-icon');
+            const moonIcon = document.querySelector('.moon-icon');
+            if (sunIcon) sunIcon.style.display = isDark ? 'none' : 'inline-block';
+            if (moonIcon) moonIcon.style.display = isDark ? 'inline-block' : 'none';
         });
     </script>
     <!-- Control de sesión de las páginas internas: exige la marca COMPARTIDA

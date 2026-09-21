@@ -7,6 +7,7 @@
     <!-- Aislamiento de datos por cuenta (fase 2): cada cuenta ve SOLO sus claves de
          localStorage. Va primero, antes que el resto de scripts de la página. -->
     <script src="datos_cuenta.js"></script>
+    <script src="tema.js"></script>
     <link rel="icon" type="image/x-icon" href="icono.ico">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1318,9 +1319,9 @@
          * Alterna el modo oscuro de la interfaz.
          */
         function toggleDarkMode() {
-            document.body.classList.toggle('dark-mode');
-            const isDarkMode = document.body.classList.contains('dark-mode');
-            localStorage.setItem('darkMode', isDarkMode);
+            // Leer, guardar y pintar el tema viven en tema.js: una sola convención
+            // compartida por todas las páginas. Devuelve si quedó oscuro.
+            const isDarkMode = tema.alternar();
             const sunIcon = document.querySelector('.sun-icon');
             const moonIcon = document.querySelector('.moon-icon');
             if (sunIcon && moonIcon) {
@@ -1333,10 +1334,7 @@
          * Carga la preferencia de modo oscuro del usuario al cargar la página.
          */
         function loadDarkModePreference() {
-            const isDarkMode = localStorage.getItem('darkMode') === 'true';
-            if (isDarkMode) {
-                document.body.classList.add('dark-mode');
-            }
+            const isDarkMode = tema.aplicar();
             const sunIcon = document.querySelector('.sun-icon');
             const moonIcon = document.querySelector('.moon-icon');
             if (sunIcon && moonIcon) {

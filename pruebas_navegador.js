@@ -1862,6 +1862,201 @@ async function escenarioE(contexto, cuentas) {
     await page.close();
 }
 
+/* =====================================================================
+   G. CATÁLOGO Y CALCULADORA (bloques del 21/09/2026)
+   ---------------------------------------------------------------------
+   Por qué existe este escenario: ni catalogo.html ni calcular_precio_ven.html
+   se abrían en NINGUNA parte de la suite. Los dos cambios de esa fecha se
+   desplegaban, por tanto, sin una sola comprobación en navegador real.
+
+   El catálogo SOLO subía: hacía un .set() de todo el nodo `productos` con su
+   copia local dentro, así que una copia vieja (con el stock de hace días)
+   pisaba el stock real de la nube. Ahora descarga, fusiona por id y escribe
+   SOLO los campos del catálogo con update().
+
+   OJO al leer esto: `products` se declara con `let` en catalogo.html, así que
+   NO está en window. Por eso lo que se comprueba contra el almacén es lo
+   PINTADO (las filas), no una variable global que no existe. Y por eso la
+   fusión se prueba llamando a la función con datos de juguete, que es
+   determinista y no depende de si la cuenta tiene nube o no.
+   ===================================================================== */
+async function escenarioG(contexto, cuentas) {
+    titulo('G. CATÁLOGO Y CALCULADORA');
+
+    const page = await contexto.newPage();
+    page.setDefaultTimeout(OPCIONES.timeout);
+    page.setDefaultNavigationTimeout(OPCIONES.timeout);
+    const reg = vigilar(page, 'G');
+
+    const login = await iniciarSesion(page, cuentas.A.email, cuentas.A.password);
+    if (!login.ok) {
+        check('G.12 · Inicio de sesión para probar el catálogo', false, login.motivo + ' (URL: ' + login.url + ')');
+        await page.close();
+        return;
+    }
+    await page.waitForFunction(
+        function () { return !!(window.datosCuenta && window.datosCuenta.estado().activa === true); },
+        null, { timeout: 20000 }
+    ).catch(function () { /* el escenario lo reportará */ });
+
+    /* --- G.12 · catalogo.html abre, pinta y no rompe ------------------- */
+    let erroresAntes = reg.pageerrors.length;
+    await irA(page, ORIGEN + '/catalogo.html', 'catalogo');
+    await asentar(page, 3000, '#catalogTableBody');
+    await diagnosticarSiRedirigio(page, 'catalogo.html', 'G.12 catalogo');
+
+    const cat = await page.evaluate(function () {
+        let enAlmacen = null;
+        try {
+            const bruto = localStorage.getItem('ciervo_inventory');
+            enAlmacen = bruto ? JSON.parse(bruto) : null;
+        } catch (e) { enAlmacen = 'error'; }
+        return {
+            url: location.href,
+            titulo: document.title,
+            almacen: Array.isArray(enAlmacen) ? enAlmacen.length : enAlmacen,
+            filas: document.querySelectorAll('#catalogTableBody tr').length,
+            tarjetas: document.querySelectorAll('#gridView .product-card').length,
+            fusion: typeof window.fusionarCatalogoConNube === 'function',
+            descarga: typeof window.sincronizarCatalogoConNube === 'function',
+            guardado: typeof window.firebaseSaveProducts === 'function',
+            guardian: typeof window.guardarLocalSeguro === 'function',
+            aviso: typeof window.avisarSiLleno === 'function'
+        };
+    });
+    info('G.12 · catalogo.html', JSON.stringify(cat));
+    const nuevosCat = reg.pageerrors.slice(erroresAntes);
+
+    check('G.12a catalogo.html abre con sesión (no rebota al login)',
+        cat.url.indexOf('catalogo.html') !== -1, cat.url);
+    check('G.12b Es el catálogo de verdad (título propio)', /cat[aá]logo/i.test(cat.titulo), cat.titulo);
+    check('G.12c El catálogo pinta lo mismo que hay en el almacén (app y almacén de acuerdo)',
+        typeof cat.almacen === 'number' && cat.filas === cat.almacen && cat.tarjetas === cat.almacen,
+        'almacen=' + cat.almacen + ' filas=' + cat.filas + ' tarjetas=' + cat.tarjetas);
+    check('G.12d Existen las funciones de la fusión (descarga + fusión + guardado)',
+        cat.fusion && cat.descarga && cat.guardado,
+        'fusion=' + cat.fusion + ' descarga=' + cat.descarga + ' guardado=' + cat.guardado);
+    check('G.12e El catálogo carga el guardián de almacenamiento (almacenamiento.js)',
+        cat.guardian && cat.aviso, 'guardarLocalSeguro=' + cat.guardian + ' avisarSiLleno=' + cat.aviso);
+    check('G.12f Sin errores de JavaScript al cargar el catálogo',
+        nuevosCat.length === 0, nuevosCat.join(' | '));
+
+    /* --- G.13 · La fusión, en el navegador y con la función REAL ------- */
+    const fusion = await page.evaluate(function () {
+        const nube = [{
+            id: 'JUGUETE-1', name: 'De la nube', code: 'N1',
+            stock: 3, price: 111, cost: 50,
+            images: ['nube.png'], mainImageIndex: 0, imageUrl: 'nube.png',
+            description: 'descripcion nube', visible: true, specs: { color: 'azul', peso: '1kg' }
+        }];
+        const local = [{
+            id: 'JUGUETE-1', name: 'Del local', code: 'L1',
+            stock: 999, price: 222, cost: 60,
+            images: ['local0.png', 'local1.png'], mainImageIndex: 1, imageUrl: 'local0.png',
+            description: 'descripcion local', visible: false, specs: { color: 'rojo' }
+        }];
+        try {
+            const r = window.fusionarCatalogoConNube(nube, local);
+            const p = (r && r[0]) || {};
+            return {
+                ok: true, n: r ? r.length : 0,
+                stock: p.stock, price: p.price, cost: p.cost,
+                images: p.images, description: p.description, visible: p.visible,
+                mainImageIndex: p.mainImageIndex, specs: p.specs
+            };
+        } catch (e) { return { ok: false, error: String(e.message) }; }
+    });
+    info('G.13 · fusión dentro del navegador', JSON.stringify(fusion));
+    check('G.13a La fusión no lanza en el navegador real', fusion.ok === true, JSON.stringify(fusion));
+    check('G.13b El stock, el precio y el costo los manda la NUBE (no la copia local vieja)',
+        fusion.stock === 3 && fusion.price === 111 && fusion.cost === 50,
+        'stock=' + fusion.stock + ' price=' + fusion.price + ' cost=' + fusion.cost);
+    check('G.13c Las imágenes, la descripción, la visibilidad y el índice los manda el LOCAL',
+        JSON.stringify(fusion.images) === JSON.stringify(['local0.png', 'local1.png']) &&
+        fusion.description === 'descripcion local' && fusion.visible === false &&
+        fusion.mainImageIndex === 1,
+        JSON.stringify({ images: fusion.images, d: fusion.description, v: fusion.visible, i: fusion.mainImageIndex }));
+    check('G.13d Los specs se fusionan: local gana y lo que solo está en la nube se conserva',
+        !!fusion.specs && fusion.specs.color === 'rojo' && fusion.specs.peso === '1kg',
+        JSON.stringify(fusion.specs));
+
+    /* --- G.13e · La descarga al abrir no lanza y no vacía la lista -----
+       Se guarda y se devuelve el almacén de A: la cuenta es REAL y la suite
+       no debe dejarle el inventario cambiado. */
+    const antesInv = await page.evaluate(function () {
+        try { return localStorage.getItem('ciervo_inventory'); } catch (e) { return null; }
+    });
+    const sincro = await page.evaluate(function () {
+        return Promise.resolve()
+            .then(function () { return window.sincronizarCatalogoConNube(); })
+            .then(function (r) {
+                return {
+                    ok: true,
+                    devuelto: r,
+                    filasTrasDescarga: document.querySelectorAll('#catalogTableBody tr').length
+                };
+            })
+            .catch(function (e) { return { ok: false, error: String(e.message) }; });
+    });
+    info('G.13e · sincronizarCatalogoConNube()', JSON.stringify(sincro));
+    check('G.13e La descarga al abrir no lanza y devuelve un booleano',
+        sincro.ok === true && typeof sincro.devuelto === 'boolean', JSON.stringify(sincro));
+    await page.evaluate(function (previo) {
+        try {
+            if (previo === null) localStorage.removeItem('ciervo_inventory');
+            else localStorage.setItem('ciervo_inventory', previo);
+        } catch (e) { /* nada */ }
+    }, antesInv);
+
+    /* --- G.14 · calcular_precio_ven.html (no se abría en ninguna parte) */
+    erroresAntes = reg.pageerrors.length;
+    await irA(page, ORIGEN + '/calcular_precio_ven.html', 'calculadora');
+    await asentar(page, 3000);
+    await diagnosticarSiRedirigio(page, 'calcular_precio_ven.html', 'G.14 calculadora');
+
+    const calc = await page.evaluate(function () {
+        return {
+            url: location.href,
+            titulo: document.title,
+            tasas: typeof window.saveRates === 'function',
+            tema: typeof window.toggleDarkMode === 'function',
+            guardian: typeof window.guardarLocalSeguro === 'function',
+            aviso: typeof window.avisarSiLleno === 'function'
+        };
+    });
+    info('G.14 · calcular_precio_ven.html', JSON.stringify(calc));
+    const nuevosCalc = reg.pageerrors.slice(erroresAntes);
+    check('G.14a calcular_precio_ven.html abre con sesión (no rebota al login)',
+        calc.url.indexOf('calcular_precio_ven.html') !== -1, calc.url);
+    check('G.14b Es la calculadora de verdad (título propio y sus funciones)',
+        /calculadora/i.test(calc.titulo) && calc.tasas && calc.tema, JSON.stringify(calc));
+    check('G.14c La calculadora carga el guardián de almacenamiento (almacenamiento.js)',
+        calc.guardian && calc.aviso, 'guardarLocalSeguro=' + calc.guardian + ' avisarSiLleno=' + calc.aviso);
+    check('G.14d Sin errores de JavaScript al cargar la calculadora',
+        nuevosCalc.length === 0, nuevosCalc.join(' | '));
+
+    /* --- G.15 · config_recibo.html: el guardián también tiene que estar  */
+    erroresAntes = reg.pageerrors.length;
+    await irA(page, ORIGEN + '/config_recibo.html', 'config_recibo guardian');
+    await asentar(page, 3000);
+    const rec = await page.evaluate(function () {
+        return {
+            url: location.href,
+            guardian: typeof window.guardarLocalSeguro === 'function',
+            aviso: typeof window.avisarSiLleno === 'function'
+        };
+    });
+    info('G.15 · config_recibo.html', JSON.stringify(rec));
+    const nuevosRec = reg.pageerrors.slice(erroresAntes);
+    check('G.15a config_recibo.html carga el guardián de almacenamiento (almacenamiento.js)',
+        rec.url.indexOf('config_recibo.html') !== -1 && rec.guardian && rec.aviso, JSON.stringify(rec));
+    check('G.15b Sin errores de JavaScript al cargar config_recibo.html',
+        nuevosRec.length === 0, nuevosRec.join(' | '));
+
+    await captura(page, 'G_catalogo_calculadora_guardian');
+    await page.close();
+}
+
 /**
  * Escenario F (opcional, no bloquea).
  * El motor solo se enciende si BBDD/<ruta>/suscripcion/modoSync = true. Activar eso
@@ -2075,7 +2270,7 @@ async function preflight() {
     //    no se escribe 'sesionActiva' y todas las páginas internas rebotan al login.
     if (OPCIONES.emailA && OPCIONES.passA) {
         try {
-            const sesion = await iniciarSesionRest(OPCIONES.emailA, OPICIONES.passA);
+            const sesion = await iniciarSesionRest(OPCIONES.emailA, OPCIONES.passA);
             const perfil = await leerNodo('usuarios/' + sesion.localId, sesion.idToken);
             let ingreso = null;
             try { ingreso = JSON.parse(perfil.cuerpo).ingreso; } catch (e) { ingreso = null; }
@@ -2231,12 +2426,14 @@ async function limpieza() {
                 await page.close().catch(() => { /* nada */ });
                 await correr('D. Guardián de cuota', () => escenarioD(contexto, cuentas));
                 await correr('E. Respaldo y contador', () => escenarioE(contexto, cuentas));
+                await correr('G. Catálogo y calculadora', () => escenarioG(contexto, cuentas));
                 await correr('F. Motor de operaciones', () => escenarioF(contexto, cuentas));
             } else {
                 saltar('B. Datos de muestra fuera', 'sin sesión de A no se pueden abrir las páginas internas');
                 saltar('C. Aislamiento entre dos cuentas', 'sin sesión de A no se puede probar el aislamiento');
                 saltar('D. Guardián de cuota', 'sin sesión no se puede abrir el POS (sesion.js redirige)');
                 saltar('E. Respaldo y contador', 'sin sesión no se puede abrir config.html');
+                saltar('G. Catálogo y calculadora', 'sin sesión no se pueden abrir el catálogo ni la calculadora');
                 saltar('F. Motor de operaciones', 'sin sesión no se puede cobrar una venta');
             }
             codigoSalida = CONTADOR_FALLA ? 1 : 0;

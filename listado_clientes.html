@@ -8,6 +8,7 @@
     <!-- Aislamiento de datos por cuenta (fase 2): cada cuenta ve SOLO sus claves de
          localStorage. Va primero, antes que el resto de scripts de la página. -->
     <script src="datos_cuenta.js"></script>
+    <script src="tema.js"></script>
     <script src="cloud-access.js"></script>
     <script src="sincronizacion.js"></script>
     <!-- Guardián de almacenamiento local: medición, cuota, respaldo y restauración -->
@@ -1224,30 +1225,18 @@
             const darkModeToggle = document.getElementById('darkModeToggle');
             const sunIcon = darkModeToggle.querySelector('.sun-icon');
             const moonIcon = darkModeToggle.querySelector('.moon-icon');
-            const isDarkMode = localStorage.getItem('darkMode') === 'enabled';
 
-            if (isDarkMode) {
-                document.body.classList.add('dark-mode');
-                sunIcon.classList.add('hidden');
-                moonIcon.classList.remove('hidden');
-            } else {
-                document.body.classList.remove('dark-mode');
-                sunIcon.classList.remove('hidden');
-                moonIcon.classList.add('hidden');
-            }
+            // El tema (leer, guardar y pintar) vive en tema.js, compartido por todas las
+            // páginas. Aquí solo queda reflejarlo en los iconos del botón.
+            const sincronizarIconos = (isDarkMode) => {
+                sunIcon.classList.toggle('hidden', isDarkMode);
+                moonIcon.classList.toggle('hidden', !isDarkMode);
+            };
+
+            sincronizarIconos(tema.aplicar());
 
             darkModeToggle.addEventListener('click', () => {
-                document.body.classList.toggle('dark-mode');
-                const currentMode = document.body.classList.contains('dark-mode');
-                localStorage.setItem('darkMode', currentMode ? 'enabled' : 'disabled');
-
-                if (currentMode) {
-                    sunIcon.classList.add('hidden');
-                    moonIcon.classList.remove('hidden');
-                } else {
-                    sunIcon.classList.remove('hidden');
-                    moonIcon.classList.add('hidden');
-                }
+                sincronizarIconos(tema.alternar());
             });
         }
 

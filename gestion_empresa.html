@@ -8,6 +8,7 @@
     <!-- Aislamiento de datos por cuenta (fase 2): cada cuenta ve SOLO sus claves de
          localStorage. Va primero, antes que el resto de scripts de la página. -->
     <script src="datos_cuenta.js"></script>
+    <script src="tema.js"></script>
     <script src="cloud-access.js"></script>
     <script src="sincronizacion.js"></script>
     <!-- Guardián de almacenamiento local: medición, cuota, respaldo y restauración -->
@@ -2077,21 +2078,14 @@
             }
         }
 
-        // Dark Mode Toggle
+        // Tema claro/oscuro: leer, guardar y pintar viven en tema.js, compartido por
+        // todas las páginas. Aquí solo queda sincronizar los iconos.
         function toggleDarkMode() {
-            document.body.classList.toggle('dark-mode');
+            const isDark = tema.alternar();
             const sunIcon = document.querySelector('.sun-icon');
             const moonIcon = document.querySelector('.moon-icon');
-
-            if (document.body.classList.contains('dark-mode')) {
-                localStorage.setItem('darkMode', 'enabled');
-                if (sunIcon) sunIcon.style.display = 'none';
-                if (moonIcon) moonIcon.style.display = 'inline-block';
-            } else {
-                localStorage.setItem('darkMode', 'disabled');
-                if (sunIcon) sunIcon.style.display = 'inline-block';
-                if (moonIcon) moonIcon.style.display = 'none';
-            }
+            if (sunIcon) sunIcon.style.display = isDark ? 'none' : 'inline-block';
+            if (moonIcon) moonIcon.style.display = isDark ? 'inline-block' : 'none';
         }
 
         // --- Initialization ---
@@ -2107,17 +2101,12 @@
                 lucide.createIcons();
             }
 
-            // Apply dark mode on load based on localStorage
+            // Los iconos se sincronizan con el tema que tema.js ya dejó aplicado.
+            const isDark = tema.aplicar();
             const sunIcon = document.querySelector('.sun-icon');
             const moonIcon = document.querySelector('.moon-icon');
-            if (localStorage.getItem('darkMode') === 'enabled') {
-                document.body.classList.add('dark-mode');
-                if (sunIcon) sunIcon.style.display = 'none';
-                if (moonIcon) moonIcon.style.display = 'inline-block';
-            } else {
-                if (sunIcon) sunIcon.style.display = 'inline-block';
-                if (moonIcon) moonIcon.style.display = 'none';
-            }
+            if (sunIcon) sunIcon.style.display = isDark ? 'none' : 'inline-block';
+            if (moonIcon) moonIcon.style.display = isDark ? 'inline-block' : 'none';
 
             // Event Listeners for Tabs
             document.querySelectorAll('.tab-button').forEach(button => {

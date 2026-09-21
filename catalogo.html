@@ -8,6 +8,7 @@
     <!-- Aislamiento de datos por cuenta (fase 2): cada cuenta ve SOLO sus claves de
          localStorage. Va primero, antes que el resto de scripts de la página. -->
     <script src="datos_cuenta.js"></script>
+    <script src="tema.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.1/dist/umd/lucide.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
@@ -793,23 +794,181 @@
             return _firebaseInitPromise;
         }
 
-        async function firebaseSaveProducts(data) {
+        /**
+         * Descarga los productos de la nube TAL COMO ESTÁN ahora mismo.
+         *
+         * Devuelve `{ lista, claves }`, o null si no hay permiso de nube, no hay
+         * conexión, las reglas niegan la lectura o el nodo está vacío. Nunca
+         * lanza: quien llama decide qué hacer con el null.
+         *
+         * `claves` mapea String(p.id) -> clave REAL del nodo en la nube. Hace
+         * falta porque `productos` está indexado por POSICIÓN del arreglo (así lo
+         * escriben inventario.html y mini_market_pos.html con .set()), no por
+         * `id`: escribir en `productos/<id>` crearía productos fantasma.
+         *
+         * Se acepta arreglo o índice con huecos: Realtime Database devuelve un
+         * objeto con claves cuando los índices no son consecutivos.
+         */
+        async function firebaseLoadProducts() {
+            try {
+                if (!await checkCloudAccess()) return null;
+                const db = await initFirebase();
+                if (!db) return null;
+                const path = getUserDataPath();
+                const snap = await db.ref(path + '/productos').once('value');
+                const val = snap.val();
+                if (!val) return null;
+                const lista = [];
+                const claves = {};
+                Object.keys(val).forEach(k => {
+                    const p = val[k];
+                    if (p && typeof p === 'object' && p.id !== undefined) {
+                        lista.push(p);
+                        claves[String(p.id)] = k;
+                    }
+                });
+                if (!lista.length) return null;
+                return { lista: lista, claves: claves };
+            } catch (e) {
+                return null;   // sin conexión o reglas: se sigue con lo local
+            }
+        }
+
+        /**
+         * Fusiona la lista de la NUBE con el catálogo LOCAL, por id.
+         *
+         * Regla de oro: la nube manda en TODO lo que esta página no edita (stock,
+         * precios, nombre, código...). Eso es lo que impide que una copia local
+         * vieja pise el stock real. El local manda en los SEIS campos que solo se
+         * editan aquí (saveCatalogChanges): images, mainImageIndex, imageUrl,
+         * description, visible y specs.
+         *
+         * La lista resultante es la de la NUBE: el catálogo no crea ni borra
+         * productos, así que no debe resucitar los que ya no existen ni hacer
+         * desaparecer los que creó otra página.
+         *
+         * OJO: es una VARIANTE de `mergeInventoryWithLocal` (inventario.html), NO
+         * la misma función. La diferencia es `images`: aquella prefiere las
+         * imágenes de la NUBE cuando las tiene, y usarla aquí tal cual revertiría
+         * justo las imágenes que el catálogo acaba de editar.
+         *
+         * LÍMITE CONOCIDO (dos equipos): si el equipo A edita las imágenes y el
+         * equipo B guarda después sin haber descargado, B pisa las de A. Eso pide
+         * fusión por campo con marca de tiempo, que es otra fase. Esta función
+         * protege el STOCK, no resuelve ese empate.
+         */
+        function fusionarCatalogoConNube(nube, locales) {
+            const local = Array.isArray(locales) ? locales : products;
+            return nube.map(fbProd => {
+                const localProd = local.find(p => String(p.id) === String(fbProd.id));
+                if (!localProd) return fbProd;   // el local no lo tiene: manda la nube
+                return {
+                    ...fbProd,
+                    images: (localProd.images && localProd.images.length) ? localProd.images : (fbProd.images || []),
+                    mainImageIndex: localProd.mainImageIndex ?? fbProd.mainImageIndex ?? 0,
+                    imageUrl: localProd.imageUrl || fbProd.imageUrl || '',
+                    description: localProd.description ?? fbProd.description ?? '',
+                    visible: localProd.visible ?? fbProd.visible ?? true,
+                    specs: { ...(fbProd.specs || {}), ...(localProd.specs || {}) }
+                };
+            });
+        }
+
+        /**
+         * Descarga y fusiona al abrir la página, para que el catálogo arranque con
+         * el stock de verdad y no con la copia que quedó en el equipo.
+         *
+         * Fase A: si hay cambios locales sin subir, la nube NO pisa lo local.
+         */
+        async function sincronizarCatalogoConNube() {
+            try {
+                if (typeof puedeSobrescribirLocalSync === 'function' && !puedeSobrescribirLocalSync()) {
+                    return false;
+                }
+                const nube = await firebaseLoadProducts();
+                if (!nube) return false;
+                products = fusionarCatalogoConNube(nube.lista, products);
+                // Guardián de almacenamiento (almacenamiento.js): avisa si la cuota está llena.
+                if (typeof window.guardarLocalSeguro === 'function') {
+                    window.guardarLocalSeguro('ciervo_inventory', JSON.stringify(products));
+                } else {
+                    localStorage.setItem('ciervo_inventory', JSON.stringify(products));
+                }
+                renderAll();
+                return true;
+            } catch (e) {
+                return false;
+            }
+        }
+
+        /**
+         * Sube los cambios del catálogo.
+         *
+         * Ya NO hace un .set() de todo el nodo `productos`: aquello mandaba el
+         * arreglo local entero, con su stock viejo dentro, y pisaba el stock real
+         * que había en la nube. Ahora:
+         *
+         *   1. se DESCARGA el estado real de la nube. Si no se puede leer, NO se
+         *      sube nada: subir a ciegas es exactamente lo que hacía el daño;
+         *   2. se FUSIONA por id (la nube manda en stock y precios, el local en
+         *      los campos del catálogo) y se refresca la copia local;
+         *   3. se escribe SOLO los campos del catálogo, y solo en las claves que
+         *      YA existen en la nube, con update(). El stock no viaja en ese
+         *      payload, así que no puede pisarse ni por error.
+         *
+         * Nota: si la nube está vacía (cuenta nueva), no se sube nada y la marca
+         * queda pendiente. Es a propósito: el catálogo no crea productos, y
+         * empujar la lista local entera a una nube vacía sería volver al .set().
+         */
+        async function firebaseSaveProducts() {
             try {
                 if (!await checkCloudAccess()) return false;
                 const db = await initFirebase();
-                if (!db) return;
+                if (!db) return false;
                 const path = getUserDataPath();
-                                marcarPendienteSync('catalogo');
 
-                                await db.ref(path + '/productos').set(data);
+                marcarPendienteSync('catalogo');
+
+                const nube = await firebaseLoadProducts();
+                if (!nube) {
+                    _pendingFirebaseChanges = true;
+                    marcarPendienteSync('catalogo');
+                    return false;
+                }
+
+                products = fusionarCatalogoConNube(nube.lista, products);
+                // Guardián de almacenamiento (almacenamiento.js): avisa si la cuota está llena.
+                if (typeof window.guardarLocalSeguro === 'function') {
+                    window.guardarLocalSeguro('ciervo_inventory', JSON.stringify(products));
+                } else {
+                    localStorage.setItem('ciervo_inventory', JSON.stringify(products));
+                }
+                renderAll();
+
+                const cambios = {};
+                products.forEach(p => {
+                    const claveNube = nube.claves[String(p.id)];
+                    if (claveNube === undefined) return;   // no se crean productos fantasma
+                    cambios[claveNube + '/images'] = p.images || [];
+                    cambios[claveNube + '/mainImageIndex'] = p.mainImageIndex || 0;
+                    cambios[claveNube + '/imageUrl'] = p.imageUrl || '';
+                    cambios[claveNube + '/description'] = p.description || '';
+                    cambios[claveNube + '/visible'] = p.visible !== false;
+                    cambios[claveNube + '/specs'] = p.specs || {};
+                });
+                if (Object.keys(cambios).length) {
+                    await db.ref(path + '/productos').update(cambios);
+                }
+
                 limpiarPendienteSync('catalogo'); // el servidor confirmó
                 _pendingFirebaseChanges = false;
-                limpiarPendienteSync('catalogo');
+                return true;
             } catch (e) {
                 if (!e.message || !e.message.includes('file:')) {
                     _pendingFirebaseChanges = true;
                     marcarPendienteSync('catalogo');
                 }
+                return false;
             }
         }
 
@@ -846,7 +1005,7 @@
             // Retry pending Firebase changes on load
             if ((typeof hayPendientesSync === 'function' ? hayPendientesSync('catalogo') : localStorage.getItem('_pendingFirebaseChanges') === 'true')) {
                 setTimeout(() => {
-                    firebaseSaveProducts(products);
+                    firebaseSaveProducts();
                 }, 2000);
             }
         });
@@ -1025,6 +1184,10 @@
                     if (!p.specs) p.specs = { color: '', material: '', dimensions: '', weight: '', model: '' };
                 });
                 renderAll();
+                // Descarga en segundo plano y fusiona: el catálogo arranca con el
+                // stock real. Si no hay nube, o hay cambios pendientes de subir,
+                // se queda con lo local (no se bloquea el arranque).
+                sincronizarCatalogoConNube();
             }
         }
 
@@ -1037,7 +1200,7 @@
                 localStorage.setItem('ciervo_inventory', JSON.stringify(products));
             }
             renderAll();
-            firebaseSaveProducts(products);
+            firebaseSaveProducts();
             window.dispatchEvent(new CustomEvent('ciervoSync', { detail: { store: 'inventory', data: products } }));
         }
 
@@ -1208,24 +1371,21 @@
             currentEditingId = null;
         }
 
+        // Tema claro/oscuro: leer, guardar y pintar viven en tema.js, compartido por
+        // todas las páginas. Aquí solo queda sincronizar los iconos.
         function toggleDarkMode() {
-            document.body.classList.toggle('dark-mode');
-            const isDark = document.body.classList.contains('dark-mode');
-            localStorage.setItem('darkMode', isDark ? 'enabled' : 'disabled');
-            updateThemeIcons(isDark);
+            updateThemeIcons(tema.alternar());
         }
 
         function applySavedTheme() {
-            const saved = localStorage.getItem('darkMode');
-            if (saved === 'enabled') {
-                document.body.classList.add('dark-mode');
-                updateThemeIcons(true);
-            }
+            updateThemeIcons(tema.aplicar());
         }
 
         function updateThemeIcons(isDark) {
-            document.querySelector('.sun-icon').style.display = isDark ? 'none' : 'block';
-            document.querySelector('.moon-icon').style.display = isDark ? 'block' : 'none';
+            const sunIcon = document.querySelector('.sun-icon');
+            const moonIcon = document.querySelector('.moon-icon');
+            if (sunIcon) sunIcon.style.display = isDark ? 'none' : 'block';
+            if (moonIcon) moonIcon.style.display = isDark ? 'block' : 'none';
         }
 
         function showToast(message, type) {

@@ -9,6 +9,7 @@
     <!-- Aislamiento de datos por cuenta (fase 2): cada cuenta ve SOLO sus claves de
          localStorage. Va primero, antes que el resto de scripts de la página. -->
     <script src="datos_cuenta.js"></script>
+    <script src="tema.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.1/dist/umd/lucide.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
@@ -1945,16 +1946,17 @@
          * Applies the saved theme preference from localStorage.
          */
         function applyThemePreference() {
-            const savedTheme = localStorage.getItem('theme');
-            if (savedTheme === 'dark') {
-                document.documentElement.classList.add('dark');
+            // El tema (leer, guardar y pintar) vive en tema.js, compartido por todas las
+            // páginas. Esta página pinta la clase 'dark' en <html>; tema.js la pone junto
+            // con 'dark-mode' en <body>, así que aquí solo queda el icono del botón.
+            const isDark = tema.aplicar();
+            if (isDark) {
                 themeToggleButton.innerHTML = `
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-moon" aria-hidden="true">
                         <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
                     </svg>
                 `;
             } else {
-                document.documentElement.classList.remove('dark');
                 themeToggleButton.innerHTML = `
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sun" aria-hidden="true">
                         <circle cx="12" cy="12" r="4"/>
@@ -1975,13 +1977,7 @@
          * Toggles between light and dark themes.
          */
         function toggleTheme() {
-            if (document.documentElement.classList.contains('dark')) {
-                document.documentElement.classList.remove('dark');
-                localStorage.setItem('theme', 'light');
-            } else {
-                document.documentElement.classList.add('dark');
-                localStorage.setItem('theme', 'dark');
-            }
+            tema.alternar();
             applyThemePreference(); // Update button icon
         }
 

@@ -8,6 +8,7 @@
     <!-- Aislamiento de datos por cuenta (fase 2): cada cuenta ve SOLO sus claves de
          localStorage. Va primero, antes que el resto de scripts de la página. -->
     <script src="datos_cuenta.js"></script>
+    <script src="tema.js"></script>
     <script src="cloud-access.js"></script>
     <script src="sincronizacion.js"></script>
     <!-- Guardián de "una cuenta por equipo": los datos locales no se comparten entre cuentas -->
@@ -1529,23 +1530,15 @@
             document.getElementById('tagFilter').addEventListener('change', applyFilters);
         }
 
+        // Leer, guardar y pintar viven en tema.js, compartido por todas las páginas.
+        // Antes esta página era la única (con config_recibo) que seguía el modo oscuro
+        // del sistema; ahora lo hacen todas, y solo mientras no haya elección guardada.
         function toggleDarkMode() {
-            document.body.classList.toggle('dark-mode');
-            const isDarkMode = document.body.classList.contains('dark-mode');
-            localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
-            updateThemeToggleIcons(isDarkMode);
+            updateThemeToggleIcons(tema.alternar());
         }
 
         function applySavedTheme() {
-            const savedTheme = localStorage.getItem('theme');
-            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-            const isDarkMode = savedTheme === 'dark' || (!savedTheme && prefersDark);
-            if (isDarkMode) {
-                document.body.classList.add('dark-mode');
-            } else {
-                document.body.classList.remove('dark-mode');
-            }
-            updateThemeToggleIcons(isDarkMode);
+            updateThemeToggleIcons(tema.aplicar());
         }
 
         function updateThemeToggleIcons(isDarkMode) {

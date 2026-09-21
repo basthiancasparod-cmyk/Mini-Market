@@ -37,6 +37,8 @@
         <div class="fila"><span class="etiqueta">El cierre de sesión espera a restaurar la sesión (versión con el arreglo)</span><span class="valor" id="cierre"></span></div>
         <div class="fila"><span class="etiqueta">El control exige la marca de sesión compartida entre pestañas</span><span class="valor" id="doble"></span></div>
         <div class="fila"><span class="etiqueta">El login guarda esa marca de sesión</span><span class="valor" id="marca"></span></div>
+        <div class="fila"><span class="etiqueta">El servidor sirve <code>tema.js</code> (modo oscuro compartido)</span><span class="valor" id="temaModulo"></span></div>
+        <div class="fila"><span class="etiqueta">Todas las páginas cargan ese módulo de tema</span><span class="valor" id="temaPaginas"></span></div>
         <div class="fila"><span class="etiqueta">🔄 Fase A: el servidor sirve <code>sincronizacion.js</code></span><span class="valor" id="syncAyudante"></span></div>
         <div class="fila"><span class="etiqueta">🔄 Fase A: el POS marca los cambios ANTES de subirlos</span><span class="valor" id="syncPos"></span></div>
         <div class="fila"><span class="etiqueta">🔄 Fase A: inventario no sobrescribe datos locales sin confirmar</span><span class="valor" id="syncInventario"></span></div>
@@ -78,6 +80,8 @@
     comprobar('/cerrar_sesion.js', 'onAuthStateChanged', 'cierre');
     comprobar('/sesion.js', 'sesionActiva', 'doble');
     comprobar('/index.html', "localStorage.setItem('sesionActiva'", 'marca');
+    comprobar('/tema.js', 'window.tema', 'temaModulo');
+    comprobar('/menu.html', 'src="tema.js"', 'temaPaginas');
     comprobar('/sincronizacion.js', 'FASE_A_SYNC_V1', 'syncAyudante');
     comprobar('/mini_market_pos.html', "marcarPendienteSync('pos')", 'syncPos');
     comprobar('/inventario.html', 'puedeSobrescribirLocalSync', 'syncInventario');
