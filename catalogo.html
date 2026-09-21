@@ -524,6 +524,7 @@
                 </div>
                 
                 <div style="display: flex; align-items: center; gap: 1rem;">
+                    <span id="firebaseDot" style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #6b7280;" title="Estado de la nube: sin comprobar"></span>
                     <button class="theme-toggle" onclick="toggleDarkMode()">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sun-icon">
                             <circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>
@@ -1411,6 +1412,8 @@
             if (event.target == modal) closeModal();
         }
     </script>
+    <!-- Indicador de conexión único: el mismo estado en todas las páginas (conexion.js) -->
+    <script src="conexion.js"></script>
     <script src="sesion.js"></script>
 </body>
 </html>

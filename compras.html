@@ -3340,6 +3340,8 @@
         function clearHistory() { if(confirm('¿Borrar todo el historial?')) { inventoryHistory = []; saveData(); renderHistory(); showNotification('Historial borrado', 'success'); } }
 
     </script>
+    <!-- Indicador de conexión único: el mismo estado en todas las páginas (conexion.js) -->
+    <script src="conexion.js"></script>
     <script src="sesion.js"></script>
 </body>
 </html>

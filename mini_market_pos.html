@@ -5477,6 +5477,26 @@ async function printReceipt(saleData) {
             } catch (e) { /* el punto de estado nunca debe romper una venta */ }
         }
 
+        /* El detalle del motor se AÑADE al estado canónico de conexion.js: el COLOR
+           y el mensaje de fondo los decide un único sitio (conexion.js), pero el error
+           del motor tiene que seguir siendo visible. Antes esta página pintaba su
+           propio punto con "Modo operaciones · ..."; ahora solo aporta el detalle. */
+        /* OJO AL ORDEN DE CARGA: este <script> corre ANTES que conexion.js (que va
+           al final del body, junto a sesion.js), así que aquí NO se puede llamar a
+           window.conexion.detalle(): window.conexion todavía no existe y el registro
+           no se hacía nunca (comprobado en el navegador: "detalle registrado: false").
+           Por eso se asigna directamente la variable que el módulo lee en cada
+           pintado. Y solo se aporta lo que el mensaje canónico NO dice ya: el error
+           del motor y su cola. Lo demás sería repetir lo mismo dos veces. */
+        window.conexionDetalle = function () {
+            try {
+                if (!window.motorOperaciones || typeof window.motorOperaciones.estado !== 'function') return null;
+                const est = window.motorOperaciones.estado();
+                if (est.ultimoError) return 'motor: error (' + est.ultimoError + ')';
+                if (est.pendientes > 0) return 'motor: ' + est.pendientes + ' en cola';
+                return null;   // "sin nube" / "todo subido" ya lo dice el mensaje canónico
+            } catch (e) { return null; }
+        };
         /** Vacía la cola y deja el punto de estado al día. */
         async function sincronizarOps() {
             if (!modoOperacionesActivo()) return null;
@@ -5904,6 +5924,8 @@ async function ensureUserCloudStructure() {
         // bloquear nada: si falla o tarda, la venta usa el camino clásico.
         try { esperarModoSync(); } catch (e) { /* la carga de la página nunca se rompe por esto */ }
     </script>
+    <!-- Indicador de conexión único: el mismo estado en todas las páginas (conexion.js) -->
+    <script src="conexion.js"></script>
     <script src="sesion.js"></script>
 </body>
 </html>

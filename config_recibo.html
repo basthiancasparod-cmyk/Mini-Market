@@ -266,6 +266,7 @@
                 </div>
                 <div style="display: flex; align-items: center; gap: 1rem;">
                     <span id="userEmailDisplay" style="font-size: 0.85rem; color: #64748b; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"></span>
+                    <span id="firebaseDot" style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #6b7280;" title="Estado de la nube: sin comprobar"></span>
                     <button class="theme-toggle" onclick="toggleDarkMode()" aria-label="Cambiar modo oscuro">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sun-icon">
                             <circle cx="12" cy="12" r="4"/>
@@ -1105,6 +1106,8 @@
             updatePreview();
         }
     </script>
+    <!-- Indicador de conexión único: el mismo estado en todas las páginas (conexion.js) -->
+    <script src="conexion.js"></script>
     <script src="sesion.js"></script>
 </body>
 </html>

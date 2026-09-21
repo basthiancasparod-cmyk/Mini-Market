@@ -2053,6 +2053,111 @@ async function escenarioG(contexto, cuentas) {
     check('G.15b Sin errores de JavaScript al cargar config_recibo.html',
         nuevosRec.length === 0, nuevosRec.join(' | '));
 
+    /* --- G.16 · gestion_usuario.html: la sesión de Firebase TIENE que llegar --
+       Este fallo estuvo en producción sin que nadie lo viera porque esta página no
+       la abría NINGUNA prueba: su loadFirebaseSDK inyectaba app + database pero NO
+       firebase-auth.js, así que la segunda carga del SDK dejaba el espacio de
+       nombres 'firebase' sin autenticación. sesion.js no podía comprobar la sesión
+       ('sin-comprobacion'), la consulta salía SIN token y la regla
+       ("auth != null") la denegaba: permission_denied en /operadores, aviso
+       "Error al cargar los usuarios" y lista vacía. */
+    erroresAntes = reg.pageerrors.length;
+    const dialogosG16 = [];
+    const oyenteDialogo = (d) => { dialogosG16.push(d.message()); d.accept().catch(() => { /* nada */ }); };
+    page.on('dialog', oyenteDialogo);
+    await irA(page, ORIGEN + '/gestion_usuario.html', 'gestion_usuario');
+    await asentar(page, 6000);
+    const gu = await page.evaluate(async function () {
+        const out = { url: location.href };
+        try {
+            const u = window.firebase && window.firebase.auth && firebase.auth().currentUser;
+            out.uid = u ? String(u.uid) : null;
+            out.email = u ? u.email : null;
+        } catch (e) { out.errAuth = String(e.message).slice(0, 120); }
+        try {
+            if (window.firebase && firebase.apps && firebase.apps.length) {
+                const db = firebase.database();
+                let marca = null;
+                try { marca = (JSON.parse(localStorage.getItem('sesionActiva') || 'null') || {}).email || null; } catch (e) { /* nada */ }
+                const snap = await db.ref('operadores').orderByChild('propietario').equalTo(marca).once('value');
+                let n = 0; snap.forEach(function () { n++; });
+                out.operadores = n;
+            }
+        } catch (e) { out.errConsulta = String(e.message).slice(0, 120); }
+        return out;
+    });
+    page.off('dialog', oyenteDialogo);
+    info('G.16 · gestion_usuario.html', JSON.stringify(gu));
+    const nuevosGU = reg.pageerrors.slice(erroresAntes);
+
+    check('G.16a gestion_usuario.html abre con sesión (no rebota al login)',
+        gu.url.indexOf('gestion_usuario.html') !== -1, gu.url);
+    check('G.16b Conserva la sesión de Firebase Auth (auth.currentUser != null)',
+        !!gu.uid, 'uid=' + gu.uid + ' email=' + gu.email + ' errAuth=' + gu.errAuth);
+    check('G.16c La consulta de operadores NO da permission_denied',
+        gu.operadores !== undefined && !gu.errConsulta,
+        'operadores=' + gu.operadores + ' errConsulta=' + gu.errConsulta);
+    check('G.16d No salta el aviso "Error al cargar los usuarios"',
+        dialogosG16.length === 0, dialogosG16.join(' | '));
+    check('G.16e Sin errores de JavaScript al cargar gestion_usuario.html',
+        nuevosGU.length === 0, nuevosGU.join(' | '));
+
+    // Guardia estática general: ninguna página puede inyectar el SDK sin auth.
+    // OJO: se busca la URL ENTRECOMILLADA, no la palabra suelta. Si se busca
+    // /firebase-auth\.js/ a secas, un comentario que la mencione hace pasar la
+    // comprobación aunque el script NO se inyecte (comprobado con una mutación:
+    // la primera versión de esta guardia pasaba con el fallo reintroducido).
+    const sinAuth = [];
+    fs.readdirSync(RAIZ).filter(function (f) { return /\.html$/.test(f); }).forEach(function (f) {
+        let t = '';
+        try { t = fs.readFileSync(path.join(RAIZ, f), 'utf8'); } catch (e) { return; }
+        const m = t.match(/function loadFirebaseSDK\(\)[\s\S]*?\n {8}\}/);
+        const inyectaApp = m && /['"]https:\/\/[^'"]*firebase-app\.js['"]/.test(m[0]);
+        const inyectaAuth = m && /['"]https:\/\/[^'"]*firebase-auth\.js['"]/.test(m[0]);
+        if (inyectaApp && !inyectaAuth) sinAuth.push(f);
+    });
+    check('G.16f Ninguna página inyecta firebase-app.js sin firebase-auth.js',
+        sinAuth.length === 0, sinAuth.join(', '));
+
+    /* --- G.17 · El indicador de conexión dice LO MISMO en todas partes -----
+       Medido antes del arreglo, con la misma cuenta y en el mismo instante, había
+       CUATRO colores a la vez: verde "Firebase conectado" en compras y usuarios
+       (miraban el socket, y con cloudSync=false el verde era mentira), ámbar en
+       inventario, gris del motor en el POS y gris con el texto del HTML en
+       clientes/cuentas/proveedores/empresa/resumen. Ahora hay una sola autoridad
+       (conexion.js) y aquí se comprueba en el navegador real que las 11 páginas
+       que tienen el punto dicen exactamente lo mismo. */
+    const PAGINAS_PUNTO = ['inventario.html', 'mini_market_pos.html', 'mini_market_pos_resumen.html',
+        'compras.html', 'cuentas.html', 'gestion_empresa.html', 'gestion_proveedores.html',
+        'gestion_usuario.html', 'listado_clientes.html', 'catalogo.html', 'config_recibo.html'];
+    const indicadores = [];
+    for (const p of PAGINAS_PUNTO) {
+        await irA(page, ORIGEN + '/' + p, 'indicador de ' + p);
+        await asentar(page, 6000);
+        const d = await page.evaluate(function () {
+            const el = document.getElementById('firebaseDot');
+            if (!el) return { existe: false };
+            return { existe: true, color: getComputedStyle(el).backgroundColor, title: String(el.title || '') };
+        });
+        indicadores.push({ pagina: p, existe: d.existe, color: d.color, title: d.title });
+    }
+    const sinPuntoG17 = indicadores.filter(function (i) { return !i.existe; }).map(function (i) { return i.pagina; });
+    check('G.17a Las 11 páginas tienen el indicador de conexión', sinPuntoG17.length === 0, sinPuntoG17.join(', '));
+
+    const coloresG17 = Array.from(new Set(indicadores.filter(function (i) { return i.existe; })
+        .map(function (i) { return i.color; })));
+    check('G.17b El color es EL MISMO en las 11 (antes había 4 colores a la vez)',
+        coloresG17.length === 1,
+        JSON.stringify(indicadores.map(function (i) { return i.pagina + '=' + i.color; })));
+
+    // El mensaje de fondo, sin el detalle que una página añade después de ' · '.
+    const canonicosG17 = Array.from(new Set(indicadores.filter(function (i) { return i.existe; })
+        .map(function (i) { return i.title.split(' · ')[0]; })));
+    check('G.17c El mensaje de fondo es el mismo en las 11',
+        canonicosG17.length === 1, JSON.stringify(canonicosG17));
+    info('G.17 · indicador por página',
+        JSON.stringify(indicadores.map(function (i) { return i.pagina + '=' + i.title; })));
+
     await captura(page, 'G_catalogo_calculadora_guardian');
     await page.close();
 }

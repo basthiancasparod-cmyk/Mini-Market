@@ -1993,7 +1993,15 @@
                 if (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length > 0) return resolve();
                 const scripts = [
                     'https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js',
-                    'https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js'
+                    'https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js',
+                    // FALTABA firebase-auth.js. Esta segunda carga del SDK rehace el espacio de
+                    // nombres 'firebase'; sin el componente de autenticacion, sesion.js no puede
+                    // comprobar la sesion ('sin-comprobacion') y las consultas salen SIN token.
+                    // Las reglas exigen 'auth != null', de ahi el permission_denied en /operadores
+                    // y el aviso "Error al cargar los usuarios". Las demas paginas con
+                    // loadFirebaseSDK (inventario, listado_clientes, gestion_proveedores,
+                    // config_recibo...) SI lo incluian.
+                    'https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js'
                 ];
                 let loaded = 0;
                 scripts.forEach(src => {
@@ -2765,6 +2773,8 @@
             deleteUserById(userId, false);
         }
     </script>
+    <!-- Indicador de conexión único: el mismo estado en todas las páginas (conexion.js) -->
+    <script src="conexion.js"></script>
     <script src="sesion.js"></script>
 </body>
 </html>
