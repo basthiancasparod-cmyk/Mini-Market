@@ -12,7 +12,7 @@
      5. liberarEquipo() borra el marcador y la siguiente cuenta lo reclama.
      6. El aviso: texto exigido, botón de descarga, botón de volver, freno del
         arranque y NINGÚN dato de negocio borrado ni modificado.
-     7. Invariantes de archivos: CRLF, sintaxis, las 12 páginas lo cargan y los
+     7. Invariantes de archivos: CRLF, sintaxis, las 13 páginas lo cargan y los
         bloques en línea de index.html y config.html compilan.
    ===================================================================== */
 const fs = require('fs');
@@ -342,7 +342,10 @@ const PAGINAS = [
     'listado_clientes.html',
     'mini_market_pos.html',
     'mini_market_pos_resumen.html',
-    'config.html'
+    'config.html',
+    /* menu.html se añadió después: era la única página interna de datos que se
+       quedaba sin el guardián de la fase 1 (solo cargaba el aislamiento). */
+    'menu.html'
 ];
 
 try {
@@ -366,7 +369,7 @@ try {
     check('cuenta_local.js legible', false, e.message);
 }
 
-check('son las 12 páginas esperadas (index + 10 de datos + config)', PAGINAS.length === 12);
+check('son las 13 páginas esperadas (index + 11 de datos + config)', PAGINAS.length === 13);
 
 for (const archivo of PAGINAS) {
     let t;
@@ -376,6 +379,17 @@ for (const archivo of PAGINAS) {
     check(archivo + ' · carga cuenta_local.js',
         /<script[^>]+src=["']cuenta_local\.js["']/.test(t));
     check(archivo + ' · usa CRLF en todas sus líneas', !/(?<!\r)\n/.test(t));
+
+    /* Todas las páginas internas exigen la sesión compartida + Firebase (sesion.js).
+       index.html es el login: es la única que NO lo lleva.
+       menu.html fue la ÚLTIMA en incorporarlo: era la única sin él y su única protección
+       era el candado legado de sessionStorage['currentUser'], que es POR PESTAÑA y solo
+       lo escribe el login de OPERADOR. Sin sesion.js, abrir menu.html sin ninguna sesión
+       no expulsaba al login (era el único fallo que quedaba en la suite de navegador). */
+    if (archivo !== 'index.html') {
+        check(archivo + ' · carga sesion.js (exige sesión compartida + Firebase)',
+            /<script[^>]+src=["']sesion\.js["']/.test(t));
+    }
 }
 
 /* Los bloques en línea de las páginas tocadas deben seguir compilando */

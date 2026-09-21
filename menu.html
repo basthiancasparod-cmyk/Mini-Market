@@ -9,6 +9,14 @@
     <!-- Aislamiento de datos por cuenta (fase 2): cada cuenta ve SOLO sus claves de
          localStorage. Va primero, antes que el resto de scripts de la página. -->
     <script src="datos_cuenta.js"></script>
+    <!-- Guardián de "UNA CUENTA POR EQUIPO" (fase 1). Faltaba aquí: menu.html era la
+         única página interna de datos que NO lo cargaba, así que abría con los datos
+         de otra cuenta ya migrados en el equipo. El aislamiento de la fase 2 separa
+         las CLAVES (cuenta:<ruta>:...), pero no impide que una segunda cuenta entre
+         en el PC de la primera y trabaje en él: eso lo frena este guardián, que
+         muestra el aviso a pantalla completa y bloquea el arranque.
+         Va DESPUÉS del aislamiento y ANTES de cualquier otro script propio. -->
+    <script src="cuenta_local.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.1/dist/umd/lucide.js" defer></script>
     <style>
         /* ================================
@@ -3885,7 +3893,18 @@
             });
 
             // --- Consolidated currentUser check and UI update ---
+            // CORREGIDO (fallo real medido en navegador, misma familia que el del POS).
+            // Antes: si no había sessionStorage['currentUser'] se echaba al login. Pero
+            // `currentUser` es la marca del OPERADOR y SOLO la escribe index.html en el
+            // login de operador; además sessionStorage es POR PESTAÑA. Un PROPIETARIO con
+            // sesión perfectamente válida que abría el menú en una pestaña nueva (o tras
+            // reiniciar el navegador) acababa en el login sin motivo.
+            // La sesión de verdad es la marca COMPARTIDA 'sesionActiva' de localStorage
+            // (la que ya exige sesion.js), así que solo se sale al login cuando NO hay
+            // ninguna de las dos.
             const userDataString = sessionStorage.getItem('currentUser');
+            let haySesionCompartida = false;
+            try { haySesionCompartida = !!localStorage.getItem('sesionActiva'); } catch (e) { haySesionCompartida = false; }
             
             if (userDataString) {
                 try {
@@ -3911,11 +3930,11 @@
 
                 } catch (error) {
                     console.error("Error al procesar los datos del usuario:", error);
-                    // Si hay un error, lo mandamos de vuelta al login
-                    window.location.href = 'index.html';
+                    // Un dato de operador ilegible NO puede expulsar a quien tiene sesión.
+                    if (!haySesionCompartida) window.location.href = 'index.html';
                 }
-            } else {
-                // Si no hay datos de sesión, no debería estar aquí. Lo redirigimos al login.
+            } else if (!haySesionCompartida) {
+                // Sin operador Y sin la marca compartida: aquí sí no hay sesión ninguna.
                 showToast("No se ha iniciado sesión. Redirigiendo al login.", 'error');
                 window.location.href = 'index.html';
             }
@@ -4106,6 +4125,18 @@
             }
         });
     </script>
+    <!-- Control de sesión de las páginas internas: exige la marca COMPARTIDA
+         'sesionActiva' (localStorage) y, cuando la página tiene el SDK de Firebase, una
+         sesión real de Authentication. Va al FINAL del <body>, después de los scripts
+         propios y antes de cerrar_sesion.js, igual que en el resto de páginas internas.
+         Faltaba aquí: menu.html era la única página interna que NO lo cargaba, y su
+         única protección al abrir sin sesión era el candado legado de
+         sessionStorage['currentUser'] (ahora tolerante). Sin esto, abrir menu.html sin
+         ninguna sesión NO expulsaba al login.
+         Como menu.html no carga el SDK de Firebase (trabaja contra localStorage), la
+         comprobación que aplica es la de la marca compartida; si no hay SDK, sesion.js
+         deja abrir la página igual que antes. -->
+    <script src="sesion.js"></script>
     <script src="cerrar_sesion.js"></script>
 </body>
 </html>

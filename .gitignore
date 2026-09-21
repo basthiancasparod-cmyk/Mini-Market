@@ -1,0 +1,27 @@
+# =====================================================================
+# Artefactos que NO deben versionarse
+# =====================================================================
+# IMPORTANTE: GitHub Pages sirve TODO el contenido de la rama `main` en
+# ciervoadministrativo.shop. Cualquier archivo que se suba aquí queda
+# PUBLICO y descargable por cualquiera. Por eso las salidas de las suites,
+# las sondas de diagnóstico y sus volcados NO pueden entrar en el repo:
+# llevan correos y uid reales de las cuentas con las que se prueba.
+#
+# Estos archivos siguen existiendo en el disco; simplemente git los ignora.
+
+# --- Salidas de las suites de prueba -------------------------------------
+_salida_*
+
+# --- Sondas de diagnóstico y sus volcados --------------------------------
+_sonda_*
+
+# --- Herramientas de diagnóstico puntuales -------------------------------
+_diag_*
+
+# --- Capturas de las corridas de navegador (Playwright) ------------------
+capturas_navegador/
+
+# --- Imágenes sueltas ----------------------------------------------------
+# Capturas de pantalla del equipo y pegotes de imágenes. La app no usa
+# ningún .png propio (el icono es icono.ico), así que se ignoran todos.
+*.png

@@ -1572,6 +1572,14 @@
                 const owner = JSON.parse(sessionStorage.getItem('currentOwner'));
                 if (owner && owner.email) return owner.email;
             } catch {}
+            // La marca COMPARTIDA de sesión (localStorage, la que exige sesion.js)
+            // sobrevive a una pestaña nueva y al reinicio del navegador; sessionStorage
+            // NO. Sin este respaldo, un propietario con sesión válida que abría esta
+            // página en otra pestaña se iba al login con una alerta alarmante.
+            try {
+                const marca = JSON.parse(localStorage.getItem('sesionActiva') || 'null');
+                if (marca && marca.email) return marca.email;
+            } catch (e) {}
             return null;
         }
 

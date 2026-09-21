@@ -527,3 +527,180 @@ ausencia** (líneas ~4697 y ~5079, verificado antes de tocar nada).
   `10_D9_aviso_poco_espacio_estimate.png`, `11_D9c_...`, `12_diagnostico_...`,
   `13_diagnostico_...`). **No se borró nada**; las capturas de la corrida limpia son las que
   coinciden con los nombres numerados que genera la suite.
+
+---
+
+# Anexo · Quinta iteración · BARRIDO DE LA FAMILIA "PUERTA LEGADA DE SESIÓN"
+
+## D.0 · Contexto: la causa raíz de los "mismos 8 fallos"
+
+La corrida seguía dando 8 fallos porque **el login de A se daba por bueno antes de tiempo**.
+`iniciarSesion()` aceptaba como éxito que `datosCuenta.estado().activa === true`, pero en
+`index.html` la activación y la migración ocurren **antes** de que la app compruebe la aprobación
+del propietario:
+
+```
+datosCuenta.activarYMigrar(email)          // activa = true, migra
+const perfil = await ensureOwnerProfile()  // ida y vuelta a la nube
+if (!perfil || perfil.ingreso !== true) { await auth.signOut(); return false; }   // <-- no escribe sesionActiva
+```
+
+Con una cuenta **no aprobada**, la prueba decía "login OK", y en la página siguiente `sesion.js`
+(exige la marca `sesionActiva`, que solo se escribe si el login termina bien) devolvía todo a
+`index.html`. De ahí los 8 fallos en cascada (`A.4b`, `A.4c`, `B.5c`, `C.8c`, `C.8d`, `D.9b`,
+`D.9d`, `D.9f`). **Ahora el éxito exige navegación a página interna o `sesionActiva`**, y si la
+app rechaza el login se reporta con su motivo exacto (toast de "no aprobada").
+
+También se corrigió un fallo **de la propia prueba**: la siembra se hacía desde un `addInitScript`
+con una marca en `sessionStorage`; al cerrar sesión (que limpiaba `sessionStorage`) la marca
+desaparecía y **la prueba resembraba** claves sin prefijo a mitad del escenario C, y la migración
+de B las reclamaba. Eso era la causa real de `C.8c`. Ahora la siembra es **un paso explícito, una
+sola vez**, con las funciones crudas de Storage.
+
+## D.1 · Barrido completo de `currentUser` y puertas equivalentes
+
+| Archivo:línea | Uso | Clase | Acción |
+|---|---|---|---|
+| `menu.html:3896` (+ `3923`, `3928`) | `sessionStorage['currentUser']` → `window.location.href='index.html'` | **(a) PUERTA** | **ARREGLADA** |
+| `gestion_proveedores.html:1620` (helper `1568`) | `!getCurrentUserEmail()` → alert + redirect | **(a) PUERTA** | **ARREGLADA** |
+| `gestion_usuario.html:2061` (helper `2035`) | ídem | **(a) PUERTA** | **ARREGLADA** |
+| `mini_market_pos.html:2097-2103` | ídem (ya arreglada, patrón de referencia) | (a) | ya estaba |
+| `config.html:2000` `checkAdminAccess()` | `role !== 'Administrador'` → alert + redirect | **(c) PERMISO** | **NO tocada**: es la puerta del **reseteo de fábrica**; aceptar la marca compartida daría permiso destructivo a cualquiera. Decisión aparte. |
+| `config.html:2497`, `menu.html:4046` | cierre de sesión explícito del usuario | (b) legítimo | no |
+| `menu.html:2923`, `menu.html:3137` | rol y nombre del operador en pantalla | (b) legítimo | no |
+| `mini_market_pos.html:4718`, `:5100` | nombre del vendedor / autor de la operación | (b) legítimo | no |
+| `almacenamiento.js:1586`, `:1591` | email del usuario para el respaldo | (b) legítimo | no |
+| `motor_operaciones.js:1211` | autor de la operación | (b) legítimo | no |
+| `config_recibo.html:705`, `gestion_empresa.html:1598`, `cuentas.html:1424` | **respaldo** dentro de `getCurrentUserEmail()` (no redirigen) | (b) legítimo | no |
+| `index.html:1758`, `:1778` | escribe / borra la marca del operador (origen) | (b) legítimo | no |
+| `sesion.js:79`, `config.html:2267` | `firebase.auth().currentUser` (otra cosa) | (b) legítimo | no |
+
+**Familia cerrada:** las tres puertas (a) llevan ya el criterio "salir al login **solo si no existe
+ninguna de las dos** marcas". Las de `propietarioActual` se arreglaron **en el helper**, añadiendo el
+respaldo de la marca compartida `sesionActiva`, de modo que la página no solo no expulsa: además
+recupera el correo que necesita para trabajar.
+
+## D.2 · La contradicción, resuelta con evidencia (no por suposición)
+
+La sonda del otro agente (`_sonda_menu_rebote_salida.txt`, ya borrada) deja la traza exacta:
+
+```
+CASO A  · login de PROPIETARIO y salto directo a menu.html
+  línea de tiempo de URLs: /menu.html -> /index.html
+  currentUser  : null        aviso fase 1 : false
+  REBOTA al login
+CASO A2 · igual pasando antes por inventario.html (como la suite)
+  línea de tiempo de URLs: /menu.html?v=... -> /index.html
+  REBOTA al login
+CASO B  · con currentUser de operador presente
+  URL final: /menu.html        SE QUEDA en menu.html
+```
+
+Y por lectura de código: la puerta **sí se ejecuta** (está dentro del `DOMContentLoaded` de
+`menu.html:3871`) y `currentUser` **solo lo escribe** `index.html:1758`, en el login de **operador**
+(por pestaña). Un propietario nunca lo tiene → **rebote garantizado**.
+
+Es decir: **no era una contradicción de la app, sino un falso verde de B.5**. Las comprobaciones
+`B.5a`/`B.5b` (no hay datos de muestra) las cumple **también la página de login**, así que podían
+pasar sobre la página equivocada. Ahora:
+- `B.5d` exige **título propio** (`Ciervo Administrativo`) + URL de `menu.html` + **sin** aviso de
+  fase 1 ni aviso de sesión.
+- `B.5e` exige **elementos propios** (`#user-name`, `#user-role`, `#notificationPanel`).
+- `B.5x1` con sesión de propietario y `currentUser=null` → **NO** navega al login.
+- `B.5x2` sin ninguna sesión → **SÍ** va al login (la seguridad no se relaja).
+
+Con esto B.5 ya no puede volver a pasar en la página equivocada.
+
+## D.3 · Verificación
+
+**13 suites: 1163 OK · 0 FALLAS** (salida literal en `_salida_regresion_completa.txt`):
+
+`pruebas_datos_cuenta` 202 · `pruebas_cuenta_local` 81 · `pruebas_acceso` 65 · `pruebas_sesion` 42 ·
+`pruebas_sin_datos_muestra` 82 · `pruebas_guardian_cuota_paginas` 96/96 ·
+`pruebas_restaurar_respaldo` 55/55 · `pruebas_sincronizacion` 83 · `pruebas_lector_ventas` 64 ·
+`pruebas_motor_operaciones` 49 · `pruebas_stock_movimientos` 56 ·
+`_pruebas_historial_almacenamiento` 161/161 · `pruebas_motor_real` 127.
+
+- `new vm.Script` de **todos** los bloques en línea de las páginas tocadas: `menu.html` (1 bloque),
+  `gestion_proveedores.html` (2), `gestion_usuario.html` (1) → **OK**.
+- `node --check pruebas_navegador.js` → OK. **CRLF** verificado en los 5 archivos.
+- `pruebas_navegador.js --preflight` → 7 OK · 1 FALLA (solo el lanzamiento de Chromium aquí).
+
+```
+ gestion_proveedores.html |  8 +++++
+ gestion_usuario.html     |  8 +++++
+ menu.html                | 27 +++++++++++---
+ pruebas_cuenta_local.js  |  9 +++--
+ pruebas_navegador.js     | 91 ++++++++++++++++++++++++++++++++++++++++++++++++
+ 5 files changed, 136 insertions(+), 7 deletions(-)
+```
+
+**Sondas borradas:** `_sonda_menu.js`, `_sonda_menu_salida.txt`, `_sonda_menu_rebote.js`,
+`_sonda_menu_rebote_salida.txt`. **Quedan en disco** `_sonda_arranque*` y `_sonda_login*` (no se
+mencionaron en la orden; díganme si también se borran).
+
+## D.4 · Comando para la corrida de navegador
+
+```powershell
+cd C:\Users\FOLGORESB\Documents\Ciervo_Mini_Market\Mini-Market-GH
+node pruebas_navegador.js --preflight      # ojo: si PW_EMAIL_A no está aprobada, lo dice aquí
+$env:PW_EMAIL_A='correo-aprobado@dominio.com'
+$env:PW_PASS_A='la-clave'
+node pruebas_navegador.js
+```
+
+**Si A no está aprobada**, `A.2` fallará con el motivo exacto de la app y B–F saldrán SALTADAS (ya no
+hay cascada de 8 fallos confusos). El preflight comprueba la aprobación por adelantado.
+
+---
+
+## D.5 · `sesion.js` en `menu.html`: se cierra la última puerta sin guardián
+
+**Corrida en navegador: 46 OK · 1 FALLA · 1 saltada.** El único fallo era `B.5x2` ("sin ninguna
+sesión, menu.html SÍ va al login"): la página se quedaba en `menu.html`. `B.5x1` (propietario sin
+operador → se queda) y las nuevas `B.5d`/`B.5e` (contenido propio) quedaron en verde.
+
+**Causa:** `menu.html` era **la única página interna que no cargaba `sesion.js`**. Su única
+protección al abrir sin sesión era el candado legado de `sessionStorage['currentUser']`, que ahora
+es tolerante (a propósito, para no expulsar al propietario). Sin `sesion.js` nadie comprobaba la
+marca compartida, así que abrir el menú sin sesión no expulsaba a nadie.
+
+**Arreglo:** `<script src="sesion.js"></script>` al final del `<body>`, después de los scripts
+propios y **antes** de `cerrar_sesion.js` — exactamente el mismo orden que en `config.html`, que ya
+lleva los dos. `new vm.Script` de todos los bloques en línea de `menu.html`: **OK**.
+
+Dos detalles comprobados por lectura, para que el orden no rompa nada:
+
+- `menu.html` **no carga el SDK de Firebase** (trabaja contra `localStorage`). `sesion.js` resuelve
+  `'sin-comprobacion'` **de inmediato** en ese caso (no arma el temporizador de 10 s), así que la
+  comprobación que aplica es la de la marca compartida y el menú abre igual que antes cuando la hay.
+- `sesion.js` frena `DOMContentLoaded` y lo **re-emite** cuando la sesión está confirmada; el
+  inicializador propio de `menu.html` (rol, nombre del operador, `systemManager`) corre en esa
+  segunda emisión. El rol y el nombre siguen saliendo de `sessionStorage['currentUser']`, sin
+  cambios. `B.5d`/`B.5e` lo verifican en la página real en la próxima corrida.
+
+**Blindaje estático:** `pruebas_cuenta_local.js` pasa de 81 a **93** comprobaciones: ahora exige,
+para **las 12 páginas internas** (todas menos `index.html`, que es el login), que carguen
+`sesion.js`. Así esta carencia no puede volver a colarse.
+
+**Traza si vuelve a fallar:** `B.5x2` ya no se limita a comparar la URL. Si la página no expulsa,
+imprime y captura: si `sesion.js` está cargado en la página, la marca `sesionActiva`, el aviso
+exacto de `sesion.js`, el usuario de Firebase, el título, el `readyState` y los toasts capturados.
+Con eso se sabe **qué condición** falla sin tocar nada más.
+
+**`config.html` no se toca** (decidido): la puerta del reseteo de fábrica se queda como está.
+
+**Sondas:** borradas las cuatro de `menu` **y** las de `_sonda_arranque*` y `_sonda_login*`. **No
+queda ninguna `_sonda*` en disco.**
+
+**Verificación de esta iteración**
+
+- 13 suites: **1175 OK · 0 FALLAS** (los 1163 previos + 12 del blindaje de `sesion.js`):
+  `pruebas_datos_cuenta` 202 · `pruebas_cuenta_local` **93** · `pruebas_acceso` 65 ·
+  `pruebas_sesion` 42 · `pruebas_sin_datos_muestra` 82 · `pruebas_guardian_cuota_paginas` 96/96 ·
+  `pruebas_restaurar_respaldo` 55/55 · `pruebas_sincronizacion` 83 · `pruebas_lector_ventas` 64 ·
+  `pruebas_motor_operaciones` 49 · `pruebas_stock_movimientos` 56 ·
+  `_pruebas_historial_almacenamiento` 161/161 · `pruebas_motor_real` 127.
+- `new vm.Script` de `menu.html` → OK. `node --check` de las dos suites → OK.
+- **CRLF** y 0 LF sueltos en los 6 archivos.
+- `git diff --stat`: **6 files changed, 370 insertions(+), 8 deletions(-)**.

@@ -540,6 +540,11 @@
         }
         .stock-indicator.low { background: #ef4444; }
         .stock-indicator.medium { background: #f59e0b; }
+        /* Reservas de carrito (B): aviso discreto de unidades apartadas en otra pestaña. */
+        .stock-apartada {
+            color: #f59e0b;
+            font-size: 0.7rem;
+        }
 
         /* ====== CONTEXT MENU ====== */
         .context-menu {
@@ -2638,6 +2643,9 @@ function handleClientSearch(documentValue) {
 
 function renderProductList() {
     const list = document.getElementById('productsList');
+
+    // B) Unidades apartadas por OTRAS pestañas: una sola lectura para toda la lista.
+    const apartadasPorProducto = reservasDeOtrasPestanas();
     
     list.innerHTML = inventoryProducts.map(product => {
         const stockLevel = getStockLevel(product);
@@ -2647,6 +2655,11 @@ function renderProductList() {
 
         const unitDisplay = product.isBulk ? `/${product.unit}` : '';
         const stockDisplay = product.isBulk ? `${product.stock.toFixed(3)} ${product.unit}` : `${product.stock} unidades`;
+        // B) Aviso discreto: cuántas unidades tiene apartadas otra pestaña.
+        const apartadas = apartadasPorProducto[String(product.id)] || 0;
+        const apartadasHtml = apartadas > 0
+            ? `<span class="stock-apartada">· ${textoApartadas(apartadas)}</span>`
+            : '';
         
         const safeName = escapeHtml(product.name);
         const safeCode = escapeHtml(product.code || '');
@@ -2683,6 +2696,7 @@ function renderProductList() {
                     <div class="product-stock">
                         <span class="stock-indicator ${stockLevel}"></span>
                         <span>Stock: ${stockDisplay}</span>
+                        ${apartadasHtml}
                     </div>
                 </div>
             </div>`;
@@ -2813,8 +2827,12 @@ function filterAndDisplayProducts(searchTerm = '') {
         // ===== MODAL DE CANTIDAD =====
         function openQuantityModal(productId) {
             const product = inventoryProducts.find(p => p.id === productId);
-            if (!product || !(product.stock > 0)) {
-                showToast('Producto sin stock disponible');
+            // B) Se valida contra el DISPONIBLE: lo que otra pestaña tiene apartado no
+            // está disponible aquí aunque el stock bruto diga otra cosa.
+            const apartadas = reservasDeOtrasPestanas()[String(productId)] || 0;
+            const disponible = product ? disponibleParaPestana(product) : 0;
+            if (!product || !(disponible > 0)) {
+                showToast(product ? avisoSinDisponible(product, disponible, apartadas) : 'Producto sin stock disponible');
                 return;
             }
             
@@ -2823,17 +2841,19 @@ function filterAndDisplayProducts(searchTerm = '') {
             
             const modalQuantityInput = document.getElementById('modalQuantity');
             const modalProductStockInfo = document.getElementById('modalProductStockInfo');
+            // B) Aviso discreto de las unidades apartadas en otra pestaña.
+            const notaApartadas = apartadas > 0 ? ` · ${textoApartadas(apartadas)}` : '';
 
             if (product.isBulk) {
                 modalQuantityInput.value = ''; // Initialize with empty string for bulk products
                 modalQuantityInput.step = 'any'; // Allow any decimal step
                 modalQuantityInput.min = '0'; // Allow 0 for initial input, validation will handle positive
-                modalProductStockInfo.textContent = `Ingresar Peso (${product.unit}). Stock disponible: ${product.stock.toFixed(3)} ${product.unit}`;
+                modalProductStockInfo.textContent = `Ingresar Peso (${product.unit}). Stock disponible: ${disponible.toFixed(3)} ${product.unit}${notaApartadas}`;
             } else {
                 modalQuantityInput.value = '1';
                 modalQuantityInput.step = '1';
                 modalQuantityInput.min = '1';
-                modalProductStockInfo.textContent = `Ingresar Cantidad (unidades). Stock disponible: ${product.stock} unidades`;
+                modalProductStockInfo.textContent = `Ingresar Cantidad (unidades). Stock disponible: ${disponible} unidades${notaApartadas}`;
             }
             
             document.getElementById('quantityModal').classList.add('active');
@@ -2850,22 +2870,23 @@ function filterAndDisplayProducts(searchTerm = '') {
             const input = document.getElementById('modalQuantity');
             let value = parseNumber(input.value);
             if (isNaN(value)) value = 0;
+            const limite = limiteDisponibleActual();   // B) disponible, no stock bruto
 
             if (currentProductToAdd.isBulk) {
                 const step = 0.001; // Smallest increment for bulk
                 value = value + (change * step);
                 if (value < 0) value = 0; // Allow 0 temporarily, validation will handle
-                if (value > currentProductToAdd.stock) {
-                    value = currentProductToAdd.stock;
-                    showToast(`Stock máximo: ${currentProductToAdd.stock.toFixed(3)} ${currentProductToAdd.unit}`);
+                if (value > limite) {
+                    value = limite;
+                    showToast(`Stock máximo: ${limite.toFixed(3)} ${currentProductToAdd.unit}`);
                 }
                 input.value = value.toFixed(3); // Keep formatted for display after adjustment
             } else {
                 value = value + change;
                 if (value < 1) value = 1;
-                if (value > currentProductToAdd.stock) {
-                    value = currentProductToAdd.stock;
-                    showToast(`Stock máximo: ${currentProductToAdd.stock} unidades`);
+                if (value > limite) {
+                    value = limite;
+                    showToast(`Stock máximo: ${limite} unidades`);
                 }
                 input.value = Math.round(value);
             }
@@ -2874,6 +2895,7 @@ function filterAndDisplayProducts(searchTerm = '') {
         function validateModalQuantity() {
             const input = document.getElementById('modalQuantity');
             let value = parseNumber(input.value);
+            const limite = limiteDisponibleActual();   // B) disponible, no stock bruto
             
             if (currentProductToAdd.isBulk) {
                 // Allow empty or partial input for flexible typing
@@ -2888,9 +2910,9 @@ function filterAndDisplayProducts(searchTerm = '') {
                     input.value = '0'; // Don't allow negative
                     value = 0;
                 }
-                if (value > currentProductToAdd.stock) {
-                    input.value = currentProductToAdd.stock; // Set to max stock if exceeded
-                    showToast(`Stock disponible: ${currentProductToAdd.stock.toFixed(3)} ${currentProductToAdd.unit}`);
+                if (value > limite) {
+                    input.value = limite; // Set to max available if exceeded
+                    showToast(`Stock disponible: ${limite.toFixed(3)} ${currentProductToAdd.unit}`);
                 }
                 // Do NOT format to fixed decimals here, let user type freely
             } else {
@@ -2898,9 +2920,9 @@ function filterAndDisplayProducts(searchTerm = '') {
                     input.value = 1;
                     value = 1;
                 }
-                if (value > currentProductToAdd.stock) {
-                    input.value = currentProductToAdd.stock;
-                    showToast(`Stock disponible: ${currentProductToAdd.stock} unidades`);
+                if (value > limite) {
+                    input.value = limite;
+                    showToast(`Stock disponible: ${limite} unidades`);
                 }
             }
         }
@@ -2908,14 +2930,15 @@ function filterAndDisplayProducts(searchTerm = '') {
         function confirmQuantity() {
             if (!currentProductToAdd) return;
             let quantity = parseNumber(document.getElementById('modalQuantity').value);
+            const limite = limiteDisponibleActual();   // B) disponible, no stock bruto
 
             if (currentProductToAdd.isBulk) {
                 if (isNaN(quantity) || quantity <= 0) {
                     showToast('El peso debe ser un número positivo.');
                     return;
                 }
-                if (quantity > currentProductToAdd.stock) {
-                    showToast(`Stock insuficiente. Máximo disponible: ${currentProductToAdd.stock.toFixed(3)} ${currentProductToAdd.unit}`);
+                if (quantity > limite) {
+                    showToast(`Stock insuficiente. Máximo disponible: ${limite.toFixed(3)} ${currentProductToAdd.unit}`);
                     return;
                 }
                 // Format to 3 decimal places only when confirming for bulk products
@@ -2927,8 +2950,8 @@ function filterAndDisplayProducts(searchTerm = '') {
                     showToast('La cantidad debe ser un número entero positivo.');
                     return;
                 }
-                if (quantity > currentProductToAdd.stock) {
-                    showToast(`Stock insuficiente. Máximo disponible: ${currentProductToAdd.stock} unidades`);
+                if (quantity > limite) {
+                    showToast(`Stock insuficiente. Máximo disponible: ${limite} unidades`);
                     return;
                 }
                 addToCart(currentProductToAdd, quantity, 'unidades');
@@ -2939,26 +2962,290 @@ function filterAndDisplayProducts(searchTerm = '') {
             document.getElementById('searchInput').focus();
         }
 
+        /* =====================================================================
+           RESERVAS DE CARRITO COMPARTIDAS ENTRE PESTAÑAS (B)
+
+           PROBLEMA: el stock es un número que cada pestaña carga en memoria al abrir.
+           Con DOS pestañas se puede vender la última unidad dos veces.
+
+           SOLUCIÓN LOCAL (funciona sin internet): cada pestaña APARTA en localStorage
+           (NUNCA sessionStorage: se copia entre pestañas y no sirve de candado) las
+           unidades que tiene en su carrito. La otra pestaña ve entonces el
+           DISPONIBLE = stock real − reservas vigentes de las DEMÁS.
+
+           - Clave de negocio 'pos_reservas_carrito': con el aislamiento por cuenta
+             (datos_cuenta.js) queda automáticamente por negocio.
+           - Estructura: { [tabId]: { [productoId]: { cantidad, ts } } }.
+           - Caducidad: una reserva sin actividad durante RESERVA_CADUCIDAD_MS se
+             considera LIBRE. Esa caducidad es la garantía (no la buena voluntad del
+             navegador): si una pestaña se cuelga, sus unidades se liberan solas.
+           - El carrito propio NO se descuenta dos veces: solo se restan las OTRAS.
+           - Todo es local y síncrono: sin internet nada cambia.
+           ===================================================================== */
+
+        /* Clave de negocio compartida entre pestañas del mismo negocio. */
+        const RESERVAS_CLAVE = 'pos_reservas_carrito';
+        /* Una reserva sin actividad durante este tiempo se considera libre (15 min). */
+        const RESERVA_CADUCIDAD_MS = 15 * 60 * 1000;
+        /* Identificador de ESTA pestaña: se genera una vez y vive solo en memoria
+           (nunca se persiste, para que dos pestañas no compartan identidad). */
+        var RESERVA_TAB_ID = 'tab-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+        /* Tolerancia para productos a granel (decimales de 3 cifras). */
+        const RESERVA_EPSILON = 0.0005;
+
+        /* Lee el inventario REAL del almacén compartido (no el de memoria de esta pestaña). */
+        function leerInventarioReal() {
+            try {
+                const crudo = localStorage.getItem('ciervo_inventory');
+                if (!crudo) return [];
+                const lista = JSON.parse(crudo);
+                return Array.isArray(lista) ? lista : [];
+            } catch (e) {
+                return [];
+            }
+        }
+
+        /* Stock real de un producto según el disco; si no está en el inventario, se usa el
+           de memoria. Los productos virtuales ("Producto Varios") tienen stock infinito:
+           no se reservan ni se descuentan. */
+        function stockRealDe(producto) {
+            if (producto && producto.stock === Infinity) return Infinity;
+            const id = String((producto && producto.id != null) ? producto.id : '');
+            const enDisco = leerInventarioReal().find(function (p) { return String(p.id) === id; });
+            if (enDisco && isFinite(Number(enDisco.stock))) return Number(enDisco.stock);
+            return (producto && isFinite(Number(producto.stock))) ? Number(producto.stock) : 0;
+        }
+
+        /* Lee el objeto de reservas del almacén compartido. Nunca lanza. */
+        function leerReservasCrudas() {
+            try {
+                const crudo = localStorage.getItem(RESERVAS_CLAVE);
+                if (!crudo) return {};
+                const datos = JSON.parse(crudo);
+                if (!datos || typeof datos !== 'object' || Array.isArray(datos)) return {};
+                return datos;
+            } catch (e) {
+                return {};
+            }
+        }
+
+        /* Escribe el objeto de reservas (si queda vacío, se borra la clave). */
+        function escribirReservas(reservas) {
+            try {
+                if (!reservas || Object.keys(reservas).length === 0) localStorage.removeItem(RESERVAS_CLAVE);
+                else localStorage.setItem(RESERVAS_CLAVE, JSON.stringify(reservas));
+            } catch (e) { /* sin almacén no hay reservas: se sigue funcionando como antes */ }
+        }
+
+        /* Reservas VIGENTES: ignora las caducadas (sin actividad) y las ilegibles, y deja
+           limpio el almacén compartido (se limpian en cada lectura). */
+        function reservasVigentes(ahora) {
+            const t = (typeof ahora === 'number') ? ahora : Date.now();
+            const crudas = leerReservasCrudas();
+            const vigentes = {};
+            let huboRestos = false;
+            Object.keys(crudas).forEach(function (tabId) {
+                const porProducto = crudas[tabId];
+                if (!porProducto || typeof porProducto !== 'object') { huboRestos = true; return; }
+                const limpias = {};
+                Object.keys(porProducto).forEach(function (productoId) {
+                    const r = porProducto[productoId] || {};
+                    const cantidad = Number(r.cantidad);
+                    const ts = Number(r.ts);
+                    const caducada = !isFinite(ts) || (t - ts) >= RESERVA_CADUCIDAD_MS;
+                    if (!isFinite(cantidad) || cantidad <= 0 || caducada) { huboRestos = true; return; }
+                    limpias[productoId] = { cantidad: cantidad, ts: ts };
+                });
+                if (Object.keys(limpias).length > 0) vigentes[tabId] = limpias;
+                else huboRestos = true;
+            });
+            if (huboRestos) escribirReservas(vigentes);
+            return vigentes;
+        }
+
+        /* Unidades apartadas por OTRAS pestañas, sumadas por producto. Las de esta
+           pestaña no entran: así el carrito propio no se descuenta dos veces. */
+        function reservasDeOtrasPestanas(ahora) {
+            const vigentes = reservasVigentes(ahora);
+            const suma = {};
+            Object.keys(vigentes).forEach(function (tabId) {
+                if (tabId === RESERVA_TAB_ID) return;
+                const porProducto = vigentes[tabId];
+                Object.keys(porProducto).forEach(function (productoId) {
+                    suma[productoId] = (suma[productoId] || 0) + porProducto[productoId].cantidad;
+                });
+            });
+            return suma;
+        }
+
+        /* DISPONIBLE para esta pestaña = stock real − reservas vigentes de OTRAS pestañas. */
+        function disponibleParaPestana(producto, ahora) {
+            if (producto && producto.stock === Infinity) return Infinity;
+            const id = String((producto && producto.id != null) ? producto.id : '');
+            const apartadas = reservasDeOtrasPestanas(ahora)[id] || 0;
+            return Math.max(0, stockRealDe(producto) - apartadas);
+        }
+
+        /* Reescribe las reservas de ESTA pestaña a partir del carrito. Se llama al agregar,
+           al cambiar cantidad y al quitar; renueva el ts con cada interacción del carrito. */
+        function refrescarReservasCarrito() {
+            const vigentes = reservasVigentes();
+            const mias = {};
+            const ahora = Date.now();
+            cart.forEach(function (item) {
+                if (!item || !item.product) return;
+                if (item.product.stock === Infinity) return;   // "Producto Varios": no reserva
+                const id = String(item.product.id);
+                const cantidad = Number(item.quantity);
+                if (!id || !isFinite(cantidad) || cantidad <= 0) return;
+                mias[id] = { cantidad: cantidad, ts: ahora };
+            });
+            if (Object.keys(mias).length > 0) vigentes[RESERVA_TAB_ID] = mias;
+            else delete vigentes[RESERVA_TAB_ID];
+            escribirReservas(vigentes);
+        }
+
+        /* Libera TODAS las reservas de esta pestaña (carrito vacío, venta cerrada,
+           pestaña que se cierra/oculta). */
+        function liberarReservasPropias() {
+            const vigentes = reservasVigentes();
+            if (vigentes[RESERVA_TAB_ID]) {
+                delete vigentes[RESERVA_TAB_ID];
+                escribirReservas(vigentes);
+            }
+        }
+
+        /* Cantidad en castellano llano ("3 unidades", "1 unidad", "1.500 kg"). */
+        function textoCantidad(producto, cantidad) {
+            const n = Number(cantidad) || 0;
+            if (producto && producto.isBulk) return n.toFixed(3) + ' ' + (producto.unit || 'unidades');
+            return n + (n === 1 ? ' unidad' : ' unidades');
+        }
+
+        /* "1 apartada en otra pestaña" / "2 apartadas en otra pestaña". */
+        function textoApartadas(cantidad) {
+            const n = Number(cantidad) || 0;
+            return (n === 1) ? '1 apartada en otra pestaña' : n + ' apartadas en otra pestaña';
+        }
+
+        /* Aviso claro cuando no hay disponible suficiente para agregar. */
+        function avisoSinDisponible(producto, disponible, apartadas) {
+            const nombre = (producto && producto.name) ? producto.name : 'este producto';
+            let mensaje = 'No se puede agregar «' + nombre + '»: en el sistema quedan ' +
+                textoCantidad(producto, disponible);
+            if (apartadas > 0) mensaje += ' (' + textoApartadas(apartadas) + ')';
+            return mensaje + '.';
+        }
+
+        /* Límite real de la cantidad que se está pidiendo en el modal (disponible). */
+        function limiteDisponibleActual(ahora) {
+            if (!currentProductToAdd) return 0;
+            return disponibleParaPestana(currentProductToAdd, ahora);
+        }
+
+        /* Al cerrar u ocultar la pestaña se liberan sus reservas (best-effort: si el
+           navegador no llega a ejecutarlo, la caducidad de 15 min las libera igual).
+           La comprobación de `addEventListener` es por si el entorno no lo trae. */
+        if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+            window.addEventListener('pagehide', function () {
+                try { liberarReservasPropias(); } catch (e) { /* el cierre nunca se rompe por esto */ }
+            });
+        }
+
+        /* =====================================================================
+           A) RE-LECTURA DEL STOCK AL CONFIRMAR LA VENTA
+
+           Justo antes de registrar la venta se vuelve a leer el inventario REAL del
+           almacén compartido (no el de memoria) y se descuentan las reservas de OTRAS
+           pestañas. Si falta stock se avisa con el detalle y se pide confirmación.
+           ===================================================================== */
+
+        /* Política por defecto: AVISAR Y PERMITIR si el vendedor confirma.
+           Poner en true para BLOQUEAR la venta cuando falte stock (una sola línea). */
+        const BLOQUEAR_SIN_STOCK = false;
+
+        /* Comprueba el carrito contra el stock real. Devuelve la lista de faltantes y su
+           detalle en castellano llano (uno por producto). */
+        function revisarStockParaVenta() {
+            const apartadas = reservasDeOtrasPestanas();
+            const faltantes = [];
+            cart.forEach(function (item) {
+                if (!item || !item.product) return;
+                if (item.product.stock === Infinity) return;   // "Producto Varios"
+                const id = String(item.product.id);
+                const hay = Math.max(0, stockRealDe(item.product) - (apartadas[id] || 0));
+                const pedido = Number(item.quantity) || 0;
+                const tolerancia = item.product.isBulk ? RESERVA_EPSILON : 0;
+                if (pedido - hay > tolerancia) {
+                    faltantes.push({
+                        id: id,
+                        nombre: item.product.name || id,
+                        producto: item.product,
+                        pedido: pedido,
+                        hay: hay,
+                        apartadas: apartadas[id] || 0
+                    });
+                }
+            });
+            return { faltantes: faltantes, detalle: detalleFaltantesStock(faltantes) };
+        }
+
+        /* Detalle del aviso: "En el sistema quedan N unidades de «X»". */
+        function detalleFaltantesStock(faltantes) {
+            const lineas = (faltantes || []).map(function (f) {
+                let linea = '• En el sistema quedan ' + textoCantidad(f.producto, f.hay) +
+                    ' de «' + f.nombre + '» y en el carrito hay ' + textoCantidad(f.producto, f.pedido);
+                if (f.apartadas > 0) linea += ' (' + textoApartadas(f.apartadas) + ')';
+                return linea;
+            });
+            return 'No hay stock suficiente para esta venta:\n' + lineas.join('\n');
+        }
+
+        /* Pide confirmación para vender por debajo del stock disponible. Usa el diálogo
+           del navegador para no alterar el flujo del modal de cobro. */
+        function pedirConfirmacionSinStock(detalle) {
+            const mensaje = detalle + '\n\n¿Desea vender igual? La venta quedará registrada ' +
+                'como venta por debajo del stock disponible.';
+            try {
+                if (typeof window !== 'undefined' && typeof window.confirm === 'function') {
+                    return window.confirm(mensaje) === true;
+                }
+            } catch (e) { /* sin diálogo posible no se vende por debajo del stock */ }
+            return false;
+        }
+
+        /* Deja el botón del modal de confirmación usable cuando la venta se cancela. */
+        function reactivarBotonConfirmar() {
+            const btn = document.getElementById('confirmActionBtn');
+            if (btn) { btn.disabled = false; btn.textContent = 'Confirmar (F2)'; }
+        }
+
         // ===== CARRITO =====
         function addToCart(product, quantity, unit) {
+            // B) Solo se puede agregar hasta el DISPONIBLE (stock real − apartadas por
+            // otras pestañas). El carrito de esta pestaña no se descuenta dos veces.
+            const apartadas = reservasDeOtrasPestanas()[String(product.id)] || 0;
+            const disponible = disponibleParaPestana(product);
             const existing = cart.find(item => item.product.id === product.id);
+            const newQuantity = (existing ? existing.quantity : 0) + quantity;
+            const tolerancia = product.isBulk ? RESERVA_EPSILON : 0;
+            if (newQuantity - disponible > tolerancia) {
+                showToast(avisoSinDisponible(product, disponible, apartadas));
+                return;
+            }
             if (existing) {
-                const newQuantity = existing.quantity + quantity;
-                if (newQuantity <= product.stock) {
-                    existing.quantity = newQuantity;
-                } else {
-                    showToast(`Stock insuficiente. Máximo disponible: ${product.stock} ${unit}`);
-                    return;
-                }
+                existing.quantity = newQuantity;
             } else {
                 cart.push({ product, quantity, unit });
             }
+            refrescarReservasCarrito();   // B) aparta las unidades para las demás pestañas
             updateCartUI();
         }
 
         // REEMPLAZA LA FUNCIÓN ANTERIOR CON ESTA VERSIÓN CORREGIDA
         function removeFromCart(productId) {
             cart = cart.filter(item => item.product.id != productId); // <-- CAMBIO AQUÍ
+            refrescarReservasCarrito();   // B) libera lo que esta pestaña tenía apartado
             updateCartUI();
             showToast("Producto eliminado");
         }
@@ -2968,11 +3255,15 @@ function filterAndDisplayProducts(searchTerm = '') {
             if (!item) return;
             
             const product = item.product;
+            // B) El tope es el DISPONIBLE: lo apartado por otras pestañas no se vende aquí.
+            const apartadas = reservasDeOtrasPestanas()[String(productId)] || 0;
+            const disponible = disponibleParaPestana(product);
+            const notaApartadas = apartadas > 0 ? ` (${textoApartadas(apartadas)})` : '';
             if (product.isBulk) {
                 newQuantity = parseNumber(newQuantity);
-                if (newQuantity > product.stock) {
-                    showToast(`Stock disponible: ${product.stock.toFixed(3)} ${product.unit}`);
-                    newQuantity = product.stock;
+                if (newQuantity > disponible) {
+                    showToast(`Stock disponible: ${disponible.toFixed(3)} ${product.unit}${notaApartadas}`);
+                    newQuantity = disponible;
                 }
                 if (newQuantity <= 0.001) { // Minimum for bulk
                     removeFromCart(productId);
@@ -2981,9 +3272,9 @@ function filterAndDisplayProducts(searchTerm = '') {
                 item.quantity = parseFloat(newQuantity.toFixed(3)); // Format to 3 decimals for bulk
             } else {
                 newQuantity = Math.round(newQuantity); // Ensure integer for units
-                if (newQuantity > product.stock) {
-                    showToast(`Stock disponible: ${product.stock} unidades`);
-                    newQuantity = product.stock;
+                if (newQuantity > disponible) {
+                    showToast(`Stock disponible: ${disponible} unidades${notaApartadas}`);
+                    newQuantity = disponible;
                 }
                 if (newQuantity <= 0) {
                     removeFromCart(productId);
@@ -2992,6 +3283,7 @@ function filterAndDisplayProducts(searchTerm = '') {
                 item.quantity = newQuantity;
             }
             
+            refrescarReservasCarrito();   // B) renueva el ts y la cantidad apartada
             updateCartUI();
         }
 
@@ -4237,6 +4529,30 @@ function filterAndDisplayProducts(searchTerm = '') {
 
         async function processSale() {
             try {
+                // --- A) RE-LECTURA DEL STOCK JUSTO ANTES DE REGISTRAR LA VENTA ---
+                // Se vuelve a leer el inventario REAL del almacén compartido (no el de
+                // memoria) y se descuentan las reservas de OTRAS pestañas. Si falta
+                // stock: aviso con el detalle y confirmación del vendedor.
+                const revisionStock = revisarStockParaVenta();
+                let ventaSobrestock = false;
+                if (revisionStock.faltantes.length > 0) {
+                    if (BLOQUEAR_SIN_STOCK) {
+                        // Política de bloqueo: no se vende y el carrito queda intacto.
+                        showToast('Venta bloqueada: no hay stock suficiente.');
+                        console.warn('[stock] venta bloqueada:\n' + revisionStock.detalle);
+                        reactivarBotonConfirmar();
+                        return;
+                    }
+                    if (!pedirConfirmacionSinStock(revisionStock.detalle)) {
+                        // El vendedor cancela: no se registra nada y el carrito queda intacto.
+                        showToast('Venta cancelada: revisa el stock del carrito.');
+                        reactivarBotonConfirmar();
+                        return;
+                    }
+                    // Se vende por debajo de lo disponible: queda constancia en el registro.
+                    ventaSobrestock = true;
+                }
+
                 const reservedSaleId = await reserveSaleId();
                 // Capture specific payment details based on selected method
                 let finalPaymentDetails = { ...paymentDetails };
@@ -4293,6 +4609,9 @@ function filterAndDisplayProducts(searchTerm = '') {
                     rateSource: rateMode === 'auto' ? rateSource : 'manual', // Referencia usada (euro => la tasa está en Bs/€)
                     ivaApplied: applyIVA // Store whether IVA was applied for this sale
                 };
+
+                // A) Constancia auditable: esta venta se hizo por debajo del stock disponible.
+                if (ventaSobrestock) saleData.ventaSobrestock = true;
                 
                 // Guardar venta
                 ventas.push(saleData);
@@ -4321,6 +4640,10 @@ function filterAndDisplayProducts(searchTerm = '') {
                 }
                 
                 updateInventory();
+
+                // B) La venta ya está registrada: esta pestaña libera sus reservas para
+                // que las demás vean el inventario nuevo cuanto antes.
+                liberarReservasPropias();
 
                 // Fase B (E1): con el interruptor en 'operaciones' la venta se registra
                 // como OPERACIÓN (la cola durable se escribe primero) y la subida y la
@@ -4453,6 +4776,9 @@ function filterAndDisplayProducts(searchTerm = '') {
 
         function resetSale(generateNewId = true) {
     cart = [];
+    // B) Carrito vacío (venta cerrada, vaciado o carrito guardado): esta pestaña
+    // libera sus reservas para que las demás vuelvan a ver las unidades.
+    liberarReservasPropias();
     selectedPaymentMethod = null;
     currentDiscount = 0;
     customerData = null;
@@ -4645,6 +4971,7 @@ function filterAndDisplayProducts(searchTerm = '') {
             heldCarts.splice(index, 1);
             saveHeldCarts();
 
+            refrescarReservasCarrito();   // B) el carrito restaurado vuelve a apartar sus unidades
             updateCartUI();
             document.getElementById('discountInput').value = currentDiscount > 0 ? `${currentDiscount}%` : '';
             showToast(`Carrito "${cartToRestore.name}" restaurado.`);

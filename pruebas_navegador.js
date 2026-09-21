@@ -676,6 +676,24 @@ async function leerNodo(ruta, idToken) {
     return { ok: r.ok, status: r.status, cuerpo: await r.text().catch(() => '') };
 }
 
+/**
+ * Inicia sesión en Firebase Auth por REST (cuenta YA existente, p. ej. PW_EMAIL_A).
+ * Solo se usa para LEER su perfil y comprobar la aprobación; no crea ni borra nada.
+ */
+async function iniciarSesionRest(email, password) {
+    const r = await fetch(AUTH_REST + 'signInWithPassword?key=' + API_KEY, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email, password: password, returnSecureToken: true })
+    });
+    const datos = await r.json().catch(() => ({}));
+    if (!r.ok || !datos.idToken) {
+        const motivo = (datos && datos.error && datos.error.message) || ('HTTP ' + r.status);
+        throw new Error('no se pudo iniciar sesión con esa cuenta: ' + motivo);
+    }
+    return { idToken: datos.idToken, localId: datos.localId, email: email };
+}
+
 /* =====================================================================
    6. LANZAMIENTO DEL NAVEGADOR
    ===================================================================== */
@@ -1234,12 +1252,30 @@ async function escenarioB(page) {
     const menu = await page.evaluate(function () {
         return {
             url: location.href,
+            titulo: document.title,
             texto: document.body ? document.body.innerText : '',
+            /* ¿La página es de verdad menu.html, o la ha secuestrado el aviso de la
+               fase 1 / un rebote al login? Sin esto, B.5a/B.5b pueden pasar sobre la
+               página EQUIVOCADA (el login tampoco muestra datos de muestra). */
+            avisoCuentaAjena: !!document.getElementById('avisoCuentaAjena'),
+            avisoSesion: (function () {
+                const d = document.querySelectorAll('div');
+                for (let i = 0; i < d.length; i++) {
+                    const t = String(d[i].textContent || '');
+                    if (t.indexOf('Sesión no activa') !== -1 && t.length < 500) return t.replace(/\s+/g, ' ').trim().slice(0, 120);
+                }
+                return null;
+            })(),
+            currentUser: (function () { try { return sessionStorage.getItem('currentUser') ? 'presente' : null; } catch (e) { return null; } })(),
             inventarioLocal: (function () {
                 try { return localStorage.getItem('ciervo_inventory'); } catch (e) { return 'ERROR'; }
             })()
         };
     });
+    info('B.5 · URL de menu.html', menu.url + '  ·  título: ' + menu.titulo);
+    info('B.5 · aviso de fase 1', String(menu.avisoCuentaAjena) +
+        ' · aviso de sesión: ' + JSON.stringify(menu.avisoSesion) +
+        ' · sessionStorage.currentUser: ' + JSON.stringify(menu.currentUser));
     info('inventario visible para la cuenta A en menu.html',
         menu.inventarioLocal === null ? '(vacío)' : String(menu.inventarioLocal).slice(0, 120));
     const muestraMenu = MARCAS_MUESTRA.filter((m) => menu.texto.indexOf(m) !== -1);
@@ -1249,7 +1285,122 @@ async function escenarioB(page) {
     check('B.5b menu.html sin rastro de las 12 marcas de muestra', muestraMenu.length === 0,
         muestraMenu.join(', '));
     check('B.5c menu.html abre limpio (no redirige al login)', menu.url.indexOf('menu.html') !== -1, menu.url);
+    // B.5c-endurecida · Que la página sea DE VERDAD menu.html y no otra cosa (el login
+    // tampoco muestra datos de muestra, así que B.5a/B.5b podían pasar sobre la página
+    // EQUIVOCADA: era la contradicción entre "B.5 en verde" y "menu.html rebota").
+    check('B.5d La página es menu.html de verdad (título propio + elemento propio, sin avisos)',
+        menu.url.indexOf('menu.html') !== -1 &&
+        /Ciervo Administrativo/.test(menu.titulo) &&
+        !menu.avisoCuentaAjena && !menu.avisoSesion,
+        'url=' + menu.url + ' · título="' + menu.titulo + '" · aviso fase1=' + menu.avisoCuentaAjena +
+        ' · aviso sesión=' + JSON.stringify(menu.avisoSesion));
+    const propio = await page.evaluate(function () {
+        return {
+            user: !!document.getElementById('user-name'),
+            rol: !!document.getElementById('user-role'),
+            panel: !!document.getElementById('notificationPanel'),
+            modulos: document.querySelectorAll('.module-card, .menu-item, .nav-item').length
+        };
+    });
+    check('B.5e menu.html renderiza su propio contenido (nombre, rol y módulos)',
+        propio.user && propio.rol && propio.panel,
+        JSON.stringify(propio));
+    info('B.5 · elementos propios de menu.html', JSON.stringify(propio));
     await captura(page, 'B5_menu_sin_datos_de_muestra');
+
+    /* =================================================================
+       B.5x · REGRESIÓN DE LA PUERTA DE SESIÓN (familia del bug del POS)
+       La puerta legada exigía sessionStorage['currentUser'], que SOLO escribe
+       el login de OPERADOR y es POR PESTAÑA: un propietario con sesión válida
+       que abría el menú en una pestaña nueva acababa en el login.
+       Se prueban los dos lados: con sesión compartida NO debe salir; sin
+       ninguna sesión SÍ debe salir (la seguridad no se relaja).
+       ================================================================= */
+    const marcaGuardada = await page.evaluate(function () {
+        try { return localStorage.getItem('sesionActiva'); } catch (e) { return null; }
+    });
+    check('B.5x0 Hay marca compartida de sesión antes de la regresión', !!marcaGuardada,
+        'sesionActiva=' + String(marcaGuardada).slice(0, 80));
+
+    // (1) Propietario con sesión válida y SIN operador en esta pestaña.
+    await page.evaluate(function () {
+        try { sessionStorage.removeItem('currentUser'); } catch (e) { /* nada */ }
+        try { sessionStorage.removeItem('propietarioActual'); } catch (e) { /* nada */ }
+    });
+    await irA(page, ORIGEN + '/menu.html', 'menu sin operador');
+    await esperar(3000);
+    const sinOperador = await page.evaluate(function () {
+        return {
+            url: location.href,
+            titulo: document.title,
+            currentUser: (function () { try { return sessionStorage.getItem('currentUser'); } catch (e) { return null; } })(),
+            sesionActiva: (function () { try { return localStorage.getItem('sesionActiva') ? 'presente' : null; } catch (e) { return null; } })()
+        };
+    });
+    check('B.5x1 Con sesión de propietario y currentUser ausente, menu.html NO navega al login',
+        sinOperador.url.indexOf('menu.html') !== -1,
+        'url=' + sinOperador.url + ' · currentUser=' + JSON.stringify(sinOperador.currentUser) +
+        ' · sesionActiva=' + JSON.stringify(sinOperador.sesionActiva));
+    await captura(page, 'B5x_menu_con_sesion_sin_operador');
+
+    // (2) Sin NINGUNA sesión: la puerta debe seguir expulsando al login.
+    //     Con sesion.js cargado en menu.html, la condición que debe fallar es la marca
+    //     compartida 'sesionActiva' (menu.html no carga el SDK de Firebase, así que la
+    //     comprobación de Auth queda en 'sin-comprobacion' y no bloquea).
+    await page.evaluate(function () {
+        try { localStorage.removeItem('sesionActiva'); } catch (e) { /* nada */ }
+        try { sessionStorage.removeItem('currentUser'); } catch (e) { /* nada */ }
+    });
+    await irA(page, ORIGEN + '/menu.html', 'menu sin sesión');
+    await esperar(3500);
+    const sinSesion = await page.evaluate(function () {
+        let marca = null;
+        let usuario = null;
+        try { marca = localStorage.getItem('sesionActiva'); } catch (e) { /* nada */ }
+        try {
+            const u = window.firebase && firebase.auth && firebase.auth().currentUser;
+            if (u) usuario = { uid: String(u.uid).slice(0, 12), email: u.email };
+        } catch (e) { /* nada */ }
+        // Capa de aviso de sesion.js: dice el motivo EXACTO de la expulsión.
+        let aviso = null;
+        try {
+            const capas = Array.from(document.querySelectorAll('div'));
+            const capa = capas.filter(function (d) {
+                const estilo = d.getAttribute && (d.getAttribute('style') || '');
+                return /position:\s*fixed/.test(estilo) && /Sesi[oó]n no activa/i.test(d.textContent || '');
+            })[0];
+            if (capa) aviso = (capa.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 160);
+        } catch (e) { /* nada */ }
+        return {
+            url: location.href,
+            readyState: document.readyState,
+            sesionActiva: marca ? 'presente' : null,
+            sesionJsCargado: !!document.querySelector('script[src*="sesion.js"]'),
+            avisoSesionJs: aviso,
+            usuarioFirebase: usuario,
+            titulo: document.title,
+            toasts: (window.__toasts || []).slice(-4)
+        };
+    });
+    const expulsado = sinSesion.url.indexOf('index.html') !== -1;
+    check('B.5x2 Sin NINGUNA sesión, menu.html SÍ va al login (la seguridad no se relaja)',
+        expulsado, expulsado ? '' : 'TRAZA: ' + JSON.stringify(sinSesion));
+    if (!expulsado) {
+        nota('La página NO expulsó. Condiciones medidas, para saber cuál falla:');
+        nota('  · sesion.js cargado en la página : ' + sinSesion.sesionJsCargado);
+        nota('  · marca sesionActiva             : ' + String(sinSesion.sesionActiva));
+        nota('  · aviso de sesion.js             : ' + JSON.stringify(sinSesion.avisoSesionJs));
+        nota('  · usuario de Firebase            : ' + JSON.stringify(sinSesion.usuarioFirebase));
+        nota('  · título / readyState            : "' + sinSesion.titulo + '" / ' + sinSesion.readyState);
+        nota('  · toasts capturados              : ' + JSON.stringify(sinSesion.toasts));
+        await capturarPuertaDeSesion(page, 'B.5x2 menu sin sesion no expulso');
+    }
+
+    // (3) Restaurar la marca compartida para los escenarios siguientes.
+    await page.evaluate(function (marca) {
+        try { if (marca) localStorage.setItem('sesionActiva', marca); } catch (e) { /* nada */ }
+    }, marcaGuardada);
+    nota('marca de sesión restaurada para el resto de la suite');
 
     // B.6 · config_recibo.html
     await irA(page, ORIGEN + '/config_recibo.html', 'config_recibo');
@@ -1918,7 +2069,33 @@ async function preflight() {
         check('Firebase Auth REST: borrar la cuenta de prueba usada en el preflight', borrado.ok, borrado.detalle);
     }
 
-    // 7. Resumen
+    // 7. ¿La cuenta PW_EMAIL_A está APROBADA? Es LA puerta que bloquea toda la corrida:
+    //    index.html activa y migra antes de comprobar la aprobación, así que sin
+    //    usuarios/<uid>.ingreso === true el login se rechaza DESPUÉS de haber migrado,
+    //    no se escribe 'sesionActiva' y todas las páginas internas rebotan al login.
+    if (OPCIONES.emailA && OPCIONES.passA) {
+        try {
+            const sesion = await iniciarSesionRest(OPCIONES.emailA, OPICIONES.passA);
+            const perfil = await leerNodo('usuarios/' + sesion.localId, sesion.idToken);
+            let ingreso = null;
+            try { ingreso = JSON.parse(perfil.cuerpo).ingreso; } catch (e) { ingreso = null; }
+            check('La cuenta PW_EMAIL_A está APROBADA (usuarios/<uid>.ingreso === true)',
+                ingreso === true,
+                'ingreso=' + JSON.stringify(ingreso) + ' · HTTP ' + perfil.status + ' · ' +
+                String(perfil.cuerpo).replace(/\s+/g, ' ').slice(0, 140));
+            if (ingreso !== true) {
+                nota('SIN APROBAR: la corrida se parará en A.2 con el motivo exacto de la app.');
+                nota('Aprobar la cuenta en la consola de Firebase (usuarios/<uid>/ingreso = true)');
+                nota('o usar PW_EMAIL_A/PW_PASS_A de una cuenta ya aprobada.');
+            }
+        } catch (e) {
+            check('La cuenta PW_EMAIL_A puede iniciar sesión en Firebase Auth', false, e.message);
+        }
+    } else {
+        nota('PW_EMAIL_A/PW_PASS_A no definidos: no se puede comprobar la aprobación por adelantado.');
+    }
+
+    // 8. Resumen
     titulo('RESUMEN DEL PREFLIGHT');
     console.log('Comprobaciones OK: ' + CONTADOR_OK + '   FALLAS: ' + CONTADOR_FALLA);
 }
