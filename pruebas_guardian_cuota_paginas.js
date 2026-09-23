@@ -233,7 +233,8 @@ const PAGINAS = [
         funciones: [
             {
                 nombre: 'saveAccountsCache',
-                generar: extraerCon(/function saveAccountsCache\(\) \{[\s\S]*?\r?\n {8}\}/),
+                // Acepta parámetros (fase 0 de cuentas: `saveAccountsCache({ sinMarca: true })`).
+                generar: extraerCon(/function saveAccountsCache\([^)]*\) \{[\s\S]*?\r?\n {8}\}/),
                 args: []
             }
         ]

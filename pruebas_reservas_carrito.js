@@ -136,12 +136,20 @@ const FUNCIONES_NUCLEO = [
     'avisoSinDisponible', 'limiteDisponibleActual', 'openQuantityModal',
     'confirmQuantity', 'revisarStockParaVenta',
     'detalleFaltantesStock', 'pedirConfirmacionSinStock', 'reactivarBotonConfirmar',
+    // Puerta de administrador (funciones REALES del POS, no dobles): processSale la
+    // llama antes de tocar el stock. Con un método normal no se llega a leer
+    // sessionStorage (cortocircuito), que es justo lo que comprueba esta suite.
+    'leerOperadorActual', 'esSesionDePropietario', 'esOperadorAdministrador',
+    'metodoSoloAdmin', 'puedeUsarMetodoPago', 'nombreClienteFiado',
     'parseNumber', 'addToCart', 'removeFromCart', 'updateQuantity', 'updateInventory',
     'calculateSaleTotals', 'processSale', 'resetSale'
 ];
 const CONSTANTES_NUCLEO = [
     'RESERVAS_CLAVE', 'RESERVA_CADUCIDAD_MS', 'RESERVA_TAB_ID', 'RESERVA_EPSILON',
-    'BLOQUEAR_SIN_STOCK'
+    'BLOQUEAR_SIN_STOCK',
+    // Puerta de administrador de las formas de pago de dueño: `processSale` la usa
+    // al principio, así que el arnés necesita la constante real del POS.
+    'METODOS_SOLO_ADMIN'
 ];
 
 /** Extrae el registro real del manejador de `pagehide`. */

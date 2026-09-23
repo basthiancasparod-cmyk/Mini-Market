@@ -635,21 +635,9 @@
             margin-top: 0.25rem;
         }
 
-        .stat-change {
-            font-size: 0.75rem;
-            font-weight: 500;
-            display: flex;
-            align-items: center;
-            gap: 0.25rem;
-        }
-
-        .stat-change.positive {
-            color: #059669;
-        }
-
-        .stat-change.negative {
-            color: #dc2626;
-        }
+        /* (Aquí vivían las clases de la «variación» decorativa de las tarjetas viejas
+           decorativa de las tarjetas viejas. Se quitaron con el rediseño: eran
+           porcentajes inventados.) */
 
         .data-container {
             border-radius: 24px;
@@ -951,7 +939,191 @@
             transition: background 0.3s;
             flex-shrink: 0;
         }
+        /* Detalle de una deuda del POS dentro de la fila (ticket, Bs, productos,
+           abonos) y los días que lleva. */
+        .cell-detalle {
+            margin-top: 6px;
+            font-size: 0.75rem;
+            line-height: 1.4;
+            color: #64748b;
+            white-space: normal;
+            max-width: 320px;
+        }
+
+        .cell-dias {
+            font-variant-numeric: tabular-nums;
+            font-weight: 600;
+        }
+
+        body.dark-mode .cell-detalle { color: #94a3b8; }
+
+        /* Puerta de rol (fase 0): aviso de sin-acceso y modo solo-consulta. */
+        .acceso-denegado {
+            max-width: 560px;
+            margin: 3rem auto;
+            padding: 2rem;
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 1rem;
+            text-align: center;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+        .acceso-denegado h3 { margin: 0 0 .5rem; color: #1e293b; font-size: 1.25rem; }
+        .acceso-denegado p { margin: 0; color: #64748b; }
+        body.dark-mode .acceso-denegado { background: #2d3748; border-color: #4a5568; }
+        body.dark-mode .acceso-denegado h3 { color: #e2e8f0; }
+        .banner-solo-lectura {
+            margin: 0 0 1rem;
+            padding: .75rem 1rem;
+            border-radius: .5rem;
+            background: #fef3c7;
+            color: #92400e;
+            font-size: .9rem;
+        }
+        body.cuentas-solo-lectura [data-accion-admin],
+        body.cuentas-solo-lectura .action-buttons-cell,
+        body.cuentas-solo-lectura th.accion-admin { display: none !important; }
+
+        /* ===== Rediseño de cuentas (la información creció: se organiza por bloques) ===== */
+        .resumen-cuentas {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+            gap: .85rem;
+            margin-bottom: 1.25rem;
+        }
+        .kpi {
+            display: flex; align-items: center; gap: .75rem;
+            background: #fff; border: 1px solid #e2e8f0; border-radius: 1rem;
+            padding: .85rem 1rem; box-shadow: 0 1px 3px rgba(0, 0, 0, .06);
+        }
+        .kpi-icono {
+            width: 38px; height: 38px; border-radius: .7rem; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .kpi-valor { font-size: 1.2rem; font-weight: 700; color: #1e293b; line-height: 1.15; font-variant-numeric: tabular-nums; }
+        .kpi-etiqueta { font-size: .74rem; color: #64748b; }
+        .kpi-extra { font-size: .72rem; color: #94a3b8; }
+        .kpi-aviso .kpi-valor { color: #b45309; }
+        .kpi-bien .kpi-valor { color: #15803d; }
+
+        .cuentas-panel {
+            background: #fff; border: 1px solid #e2e8f0; border-radius: 1rem;
+            padding: 1rem; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, .08);
+        }
+        .tabs-cuentas { display: flex; gap: .25rem; border-bottom: 1px solid #e2e8f0; margin-bottom: .9rem; }
+        .tab-cuenta {
+            border: none; background: transparent; cursor: pointer;
+            padding: .6rem .9rem; font-size: .9rem; font-weight: 600; color: #64748b;
+            border-bottom: 2px solid transparent;
+        }
+        .tab-cuenta.activo { color: #2563eb; border-bottom-color: #2563eb; }
+        .tab-cuenta .contador {
+            display: inline-block; min-width: 1.4rem; margin-left: .35rem;
+            background: #eff6ff; color: #2563eb; border-radius: 9999px;
+            font-size: .72rem; padding: .05rem .4rem;
+        }
+        .fila-filtros { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; margin-bottom: .6rem; }
+        .fila-filtros .search-container { flex: 1 1 240px; margin: 0; }
+        .filtro-compacto { display: flex; align-items: center; gap: .35rem; font-size: .78rem; color: #64748b; }
+        .filtro-compacto select { padding: .4rem .5rem; font-size: .82rem; border-radius: .5rem; }
+        .chips-filtro { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: .9rem; }
+        .chip-filtro {
+            border: 1px solid #cbd5e1; background: #f8fafc; color: #475569;
+            border-radius: 9999px; padding: .28rem .7rem; font-size: .76rem; cursor: pointer;
+        }
+        .chip-filtro:hover { background: #f1f5f9; }
+        .chip-filtro.activo { background: #2563eb; border-color: #2563eb; color: #fff; }
+        .resumen-lista { display: flex; justify-content: space-between; align-items: baseline; font-size: .78rem; color: #64748b; margin-bottom: .5rem; }
+
+        .fila-cuenta {
+            border: 1px solid #e2e8f0; border-left: 4px solid #cbd5e1; border-radius: .85rem;
+            background: #fff; margin-bottom: .6rem; overflow: hidden;
+        }
+        .fila-cuenta.estado-overdue { border-left-color: #ef4444; }
+        .fila-cuenta.estado-pending { border-left-color: #f59e0b; }
+        .fila-cuenta.estado-paid { border-left-color: #22c55e; opacity: .82; }
+        .fila-cuenta.fila-destacada { box-shadow: inset 0 0 0 2px #2563eb; }
+        .fila-principal {
+            display: grid; align-items: center; gap: 1rem; padding: .85rem 1rem;
+            grid-template-columns: minmax(200px, 1.5fr) minmax(230px, 1.3fr) minmax(150px, .9fr) auto;
+        }
+        /* En grid, un hijo con texto largo no encoge solo: sin esto, un nombre o un
+           ticket largo puede empujar la tarjeta fuera de la pantalla. */
+        .fila-principal > * { min-width: 0; }
+        .fila-identidad, .fila-dinero, .fila-estado, .fila-acciones { min-width: 0; }
+        .fila-titulo, .fila-contacto { overflow-wrap: anywhere; }
+        .fila-titulo { font-weight: 600; color: #1e293b; }
+        .fila-contacto { font-size: .88rem; color: #334155; margin-top: .1rem; }
+        .fila-chips { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .4rem; }
+        .chip {
+            font-size: .68rem; background: #f1f5f9; color: #475569;
+            border: 1px solid #e2e8f0; border-radius: 9999px; padding: .1rem .5rem;
+        }
+        .chip-pos { background: #e0e7ff; color: #4338ca; border-color: #c7d2fe; }
+        .fila-dinero { display: flex; flex-wrap: wrap; gap: .9rem; }
+        .dato { display: flex; flex-direction: column; min-width: 68px; }
+        .dato-etiqueta { font-size: .66rem; text-transform: uppercase; letter-spacing: .03em; color: #94a3b8; }
+        .dato-valor { font-size: .95rem; color: #334155; font-variant-numeric: tabular-nums; }
+        .dato-saldo .dato-valor { font-size: 1.1rem; font-weight: 700; color: #0f172a; }
+        .dato-bs .dato-valor { font-size: .8rem; color: #64748b; }
+        .fila-estado { display: flex; flex-direction: column; gap: .3rem; align-items: flex-start; }
+        .cell-dias { font-size: .72rem; color: #475569; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 9999px; padding: .1rem .5rem; }
+        .fila-vencimiento { font-size: .74rem; color: #64748b; }
+        .barra-progreso { width: 100%; max-width: 150px; height: 6px; border-radius: 9999px; background: #e2e8f0; overflow: hidden; }
+        .barra-progreso > span { display: block; height: 100%; background: #22c55e; }
+        .fila-acciones { display: flex; gap: .35rem; align-items: center; justify-content: flex-end; }
+        .btn-detalle {
+            border: 1px solid #cbd5e1; background: #fff; color: #475569; cursor: pointer;
+            border-radius: .5rem; padding: .3rem .55rem; font-size: .74rem; white-space: nowrap;
+        }
+        .btn-detalle:hover { background: #f1f5f9; }
+        .fila-detalle {
+            border-top: 1px dashed #e2e8f0; background: #f8fafc; padding: .8rem 1rem;
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1rem;
+        }
+        /* OJO: con `display: grid` el atributo `hidden` DEJA DE OCULTAR (esta regla
+           gana a la del navegador). Sin esta línea, «Ver detalle» no hacía nada: el
+           detalle estaba siempre a la vista. */
+        .fila-detalle[hidden] { display: none !important; }
+        .detalle-bloque h5 {
+            margin: 0 0 .35rem; font-size: .7rem; text-transform: uppercase;
+            letter-spacing: .04em; color: #64748b;
+        }
+        .detalle-bloque table { width: 100%; border-collapse: collapse; font-size: .8rem; }
+        .detalle-bloque td { padding: .12rem 0; color: #334155; vertical-align: top; }
+        .detalle-bloque td.der { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+        .detalle-bloque .btn-detalle { margin-top: .35rem; }
+
+        body.dark-mode .kpi, body.dark-mode .cuentas-panel, body.dark-mode .fila-cuenta { background: #2d3748; border-color: #4a5568; }
+        body.dark-mode .kpi-valor, body.dark-mode .fila-titulo, body.dark-mode .dato-saldo .dato-valor { color: #e2e8f0; }
+        body.dark-mode .fila-contacto, body.dark-mode .dato-valor, body.dark-mode .detalle-bloque td { color: #cbd5e1; }
+        body.dark-mode .chip { background: #4a5568; color: #cbd5e1; border-color: #718096; }
+        body.dark-mode .chip-pos { background: #3730a3; color: #e0e7ff; border-color: #4338ca; }
+        body.dark-mode .cell-dias { background: #4a5568; color: #e2e8f0; border-color: #718096; }
+        body.dark-mode .chip-filtro { background: #4a5568; color: #e2e8f0; border-color: #718096; }
+        body.dark-mode .chip-filtro.activo { background: #2563eb; border-color: #2563eb; }
+        body.dark-mode .btn-detalle { background: #4a5568; color: #e2e8f0; border-color: #718096; }
+        body.dark-mode .fila-detalle { background: #1a202c; border-color: #4a5568; }
+        body.dark-mode .tab-cuenta { color: #a0aec0; }
+        body.dark-mode .tab-cuenta.activo { color: #90cdf4; border-bottom-color: #90cdf4; }
+
+        @media (max-width: 1024px) {
+            .fila-principal { grid-template-columns: 1fr 1fr; }
+            .fila-acciones { justify-content: flex-start; }
+        }
+        @media (max-width: 700px) {
+            .fila-principal { grid-template-columns: 1fr; padding: .75rem; }
+            .fila-dinero { gap: .6rem; }
+            .cuentas-panel { padding: .75rem; }
+            .tabs-cuentas { flex-wrap: wrap; }
+            /* Los botones de acción ENVUELVEN: con las etiquetas largas se salían de
+               la pantalla (medido: 466 px de ancho en una ventana de 420). */
+            .action-bar .action-buttons { flex-wrap: wrap; justify-content: flex-start; }
+            .action-bar .action-buttons .btn { flex: 1 1 100%; justify-content: center; }
+        }
+
     </style>
+
 </head>
 <body>
     <!-- Top Bar -->
@@ -1014,132 +1186,95 @@
             </p>
         </div>
 
-        <!-- Action Bar -->
+        <!-- Barra de herramientas: buscar, filtrar, ordenar y las acciones -->
         <div class="action-bar">
-            <div class="search-container">
-                <input type="text" class="search-input" placeholder="Buscar por descripción, contacto o tipo..." id="searchInput">
-                <svg xmlns="http://www.w3.org/2000/svg" class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="11" cy="11" r="8"/>
-                    <path d="m21 21-4.35-4.35"/>
-                </svg>
-            </div>
-            <div class="filter-group">
-                <label class="form-label" for="categoryFilter" style="margin-bottom: 0;">Categoría:</label>
-                <select class="form-select" id="categoryFilter" onchange="filterAccounts()">
-                    <option value="">Todas</option>
-                    <option value="Operaciones">Operaciones</option>
-                    <option value="Marketing">Marketing</option>
-                    <option value="Ventas">Ventas</option>
-                    <option value="Personal">Personal</option>
-                    <option value="Administración">Administración</option>
-                    <option value="Otros">Otros</option>
-                </select>
-            </div>
             <div class="action-buttons">
-                <button class="btn btn-primary" onclick="openModal('add', 'cobrar')">
+                <button class="btn btn-primary" data-accion-admin onclick="openModal('add', 'cobrar')">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M5 12h14"/>
-                        <path d="M12 5v14"/>
+                        <path d="M5 12h14"/><path d="M12 5v14"/>
                     </svg>
                     Nueva Cuenta por Cobrar
                 </button>
-                <button class="btn btn-secondary" onclick="openModal('add', 'pagar')">
+                <button class="btn btn-secondary" data-accion-admin onclick="openModal('add', 'pagar')">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M5 12h14"/>
-                        <path d="M12 5v14"/>
+                        <path d="M5 12h14"/><path d="M12 5v14"/>
                     </svg>
                     Nueva Cuenta por Pagar
                 </button>
                 <button class="btn btn-secondary" onclick="exportAccounts()">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                        <polyline points="7,10 12,15 17,10"/>
-                        <line x1="12" y1="15" x2="12" y2="3"/>
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/>
                     </svg>
                     Exportar
                 </button>
                 <button class="btn btn-secondary" onclick="toggleReportsSection()">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M3 3v18h18"/>
-                        <path d="M18.7 8.3l-4.4 4.4-6-6L3 14"/>
+                        <path d="M3 3v18h18"/><path d="M18.7 8.3l-4.4 4.4-6-6L3 14"/>
                     </svg>
                     Reportes
                 </button>
             </div>
         </div>
 
-        <!-- Stats Grid -->
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-header">
-                    <div class="stat-icon" style="background: linear-gradient(to bottom right, #34d399, #14b8a6);">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M12 2v20M17 5H7l-5 5 5 5h10l5-5-5-5z"/>
-                        </svg>
-                    </div>
-                    <div class="stat-change positive">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <polyline points="23,6 13.5,15.5 8.5,10.5 1,18"/>
-                        </svg>
-                        +5%
-                    </div>
+        <!-- Resumen: solo datos reales (antes estas tarjetas traían variaciones decorativas inventadas) -->
+        <div class="resumen-cuentas" id="resumenCuentas">
+            <div class="kpi">
+                <div class="kpi-icono" style="background: linear-gradient(to bottom right, #34d399, #14b8a6);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H7l-5 5 5 5h10l5-5-5-5z"/></svg>
                 </div>
-                <div class="stat-value" id="totalReceivable">\$0</div>
-                <div class="stat-label">Total por Cobrar</div>
+                <div>
+                    <div class="kpi-valor" id="totalReceivable">$0.00</div>
+                    <div class="kpi-etiqueta">Saldo por cobrar</div>
+                </div>
             </div>
-
-            <div class="stat-card">
-                <div class="stat-header">
-                    <div class="stat-icon" style="background: linear-gradient(to bottom right, #ef4444, #dc2626);">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M12 2v20M17 5H7l-5 5 5 5h10l5-5-5-5z"/>
-                        </svg>
-                    </div>
-                    <div class="stat-change negative">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <polyline points="23,18 13.5,8.5 8.5,13.5 1,6"/>
-                        </svg>
-                        -2%
-                    </div>
+            <div class="kpi">
+                <div class="kpi-icono" style="background: linear-gradient(to bottom right, #ef4444, #dc2626);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H7l-5 5 5 5h10l5-5-5-5z"/></svg>
                 </div>
-                <div class="stat-value" id="totalPayable">\$0</div>
-                <div class="stat-label">Total por Pagar</div>
+                <div>
+                    <div class="kpi-valor" id="totalPayable">$0.00</div>
+                    <div class="kpi-etiqueta">Saldo por pagar</div>
+                </div>
             </div>
-
-            <div class="stat-card">
-                <div class="stat-header">
-                    <div class="stat-icon" style="background: linear-gradient(to bottom right, #f59e0b, #fbbf24);">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M12 2v20M17 5H7l-5 5 5 5h10l5-5-5-5z"/>
-                        </svg>
-                    </div>
-                    <div class="stat-change positive">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <polyline points="23,6 13.5,15.5 8.5,10.5 1,18"/>
-                        </svg>
-                        +1
-                    </div>
+            <div class="kpi kpi-aviso">
+                <div class="kpi-icono" style="background: linear-gradient(to bottom right, #f59e0b, #fbbf24);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                 </div>
-                <div class="stat-value" id="overdueReceivable">0</div>
-                <div class="stat-label">Cuentas por Cobrar Vencidas</div>
+                <div>
+                    <div class="kpi-valor" id="overdueReceivable">$0.00</div>
+                    <div class="kpi-etiqueta">Cobros vencidos</div>
+                    <div class="kpi-extra" id="overdueReceivableMonto"></div>
+                </div>
             </div>
-
-            <div class="stat-card">
-                <div class="stat-header">
-                    <div class="stat-icon" style="background: linear-gradient(to bottom right, #60a5fa, #3b82f6);">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M12 2v20M17 5H7l-5 5 5 5h10l5-5-5-5z"/>
-                        </svg>
-                    </div>
-                    <div class="stat-change negative">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <polyline points="23,18 13.5,8.5 8.5,13.5 1,6"/>
-                        </svg>
-                        -1
-                    </div>
+            <div class="kpi kpi-aviso">
+                <div class="kpi-icono" style="background: linear-gradient(to bottom right, #60a5fa, #3b82f6);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                 </div>
-                <div class="stat-value" id="overduePayable">0</div>
-                <div class="stat-label">Cuentas por Pagar Vencidas</div>
+                <div>
+                    <div class="kpi-valor" id="overduePayable">$0.00</div>
+                    <div class="kpi-etiqueta">Pagos vencidos</div>
+                    <div class="kpi-extra" id="overduePayableMonto"></div>
+                </div>
+            </div>
+            <div class="kpi">
+                <div class="kpi-icono" style="background: linear-gradient(to bottom right, #a78bfa, #8b5cf6);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg>
+                </div>
+                <div>
+                    <div class="kpi-valor" id="porVencerCuentas">$0.00</div>
+                    <div class="kpi-etiqueta">Por vencer (próximos días)</div>
+                    <div class="kpi-extra" id="porVencerMonto"></div>
+                </div>
+            </div>
+            <div class="kpi kpi-bien">
+                <div class="kpi-icono" style="background: linear-gradient(to bottom right, #22c55e, #16a34a);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4z"/></svg>
+                </div>
+                <div>
+                    <div class="kpi-valor" id="cobradoMesCuentas">$0.00</div>
+                    <div class="kpi-etiqueta">Cobrado este mes</div>
+                    <div class="kpi-extra" id="cobradoMesDetalle"></div>
+                </div>
             </div>
         </div>
 
@@ -1149,89 +1284,104 @@
             <canvas id="cashFlowChart"></canvas>
         </div>
 
-        <!-- Accounts Receivable Table -->
-        <div class="data-container">
-            <div class="data-header">
-                <h3 class="section-title">Cuentas por Cobrar</h3>
-                <p class="section-subtitle">Gestiona el dinero que tus clientes te deben.</p>
+        <!-- Panel de cuentas: pestañas + filtros + tarjetas (una por cuenta) -->
+        <div class="cuentas-panel" id="cuentasPanel">
+            <div class="tabs-cuentas" role="tablist">
+                <button class="tab-cuenta activo" id="tabCobrar" role="tab" onclick="cambiarVistaCuentas('cobrar')">
+                    Por cobrar <span class="contador" id="contadorCobrar">0</span>
+                </button>
+                <button class="tab-cuenta" id="tabPagar" role="tab" onclick="cambiarVistaCuentas('pagar')">
+                    Por pagar <span class="contador" id="contadorPagar">0</span>
+                </button>
             </div>
-            <div class="table-container">
-                <table class="data-table" id="receivableTable">
-                    <thead>
-                        <tr>
-                            <th data-sort-key="description">Descripción</th>
-                            <th data-sort-key="contact">Contacto</th>
-                            <th data-sort-key="category">Categoría</th>
-                            <th data-sort-key="amount">Monto Total</th>
-                            <th data-sort-key="pendingAmount">Monto Pendiente</th>
-                            <th data-sort-key="dueDate">Fecha de Vencimiento</th>
-                            <th data-sort-key="status">Estado</th>
-                            <th>Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody id="receivableTableBody">
-                        <!-- Dynamic content will be inserted here -->
-                    </tbody>
-                </table>
-                <div id="emptyStateReceivable" class="empty-state" style="display: none;">
-                    <div class="empty-state-icon">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M12 2v20M17 5H7l-5 5 5 5h10l5-5-5-5z"/>
-                        </svg>
-                    </div>
-                    <h3>No hay cuentas por cobrar</h3>
-                    <p>Registra tus primeras cuentas por cobrar para empezar a gestionar tus ingresos.</p>
-                    <button class="btn btn-primary" onclick="openModal('add', 'cobrar')" style="margin-top: 1rem;">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M5 12h14"/>
-                            <path d="M12 5v14"/>
-                        </svg>
-                        Agregar Cuenta por Cobrar
-                    </button>
-                </div>
-            </div>
-        </div>
 
-        <!-- Accounts Payable Table -->
-        <div class="data-container">
-            <div class="data-header">
-                <h3 class="section-title">Cuentas por Pagar</h3>
-                <p class="section-subtitle">Gestiona el dinero que le debes a tus proveedores o acreedores.</p>
-            </div>
-            <div class="table-container">
-                <table class="data-table" id="payableTable">
-                    <thead>
-                        <tr>
-                            <th data-sort-key="description">Descripción</th>
-                            <th data-sort-key="contact">Contacto</th>
-                            <th data-sort-key="category">Categoría</th>
-                            <th data-sort-key="amount">Monto Total</th>
-                            <th data-sort-key="pendingAmount">Monto Pendiente</th>
-                            <th data-sort-key="dueDate">Fecha de Vencimiento</th>
-                            <th data-sort-key="status">Estado</th>
-                            <th>Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody id="payableTableBody">
-                        <!-- Dynamic content will be inserted here -->
-                    </tbody>
-                </table>
-                <div id="emptyStatePayable" class="empty-state" style="display: none;">
-                    <div class="empty-state-icon">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M12 2v20M17 5H7l-5 5 5 5h10l5-5-5-5z"/>
-                        </svg>
-                    </div>
-                    <h3>No hay cuentas por pagar</h3>
-                    <p>Registra tus primeras cuentas por pagar para mantener un control de tus obligaciones.</p>
-                    <button class="btn btn-primary" onclick="openModal('add', 'pagar')" style="margin-top: 1rem;">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M5 12h14"/>
-                            <path d="M12 5v14"/>
-                        </svg>
-                        Agregar Cuenta por Pagar
-                    </button>
+            <div class="fila-filtros">
+                <div class="search-container">
+                    <input type="text" class="search-input" placeholder="Buscar por descripción, contacto, documento, ticket o nota..." id="searchInput">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+                    </svg>
                 </div>
+                <label class="filtro-compacto">Estado
+                    <select class="form-select" id="estadoFilter" onchange="filterAccounts()">
+                        <option value="">Todos</option>
+                        <option value="pending">Pendientes</option>
+                        <option value="overdue">Vencidas</option>
+                        <option value="paid">Pagadas</option>
+                    </select>
+                </label>
+                <label class="filtro-compacto">Origen
+                    <select class="form-select" id="origenFilter" onchange="filterAccounts()">
+                        <option value="">Todos</option>
+                        <option value="pos">Ventas del POS (fiados)</option>
+                        <option value="manual">Creadas a mano</option>
+                    </select>
+                </label>
+                <label class="filtro-compacto">Categoría
+                    <select class="form-select" id="categoryFilter" onchange="filterAccounts()">
+                        <option value="">Todas</option>
+                        <option value="Operaciones">Operaciones</option>
+                        <option value="Marketing">Marketing</option>
+                        <option value="Ventas">Ventas</option>
+                        <option value="Personal">Personal</option>
+                        <option value="Administración">Administración</option>
+                        <option value="Otros">Otros</option>
+                    </select>
+                </label>
+                <label class="filtro-compacto">Orden
+                    <select class="form-select" id="ordenFilter" onchange="aplicarOrdenCuentas(this.value)">
+                        <option value="vencimiento">Por vencimiento</option>
+                        <option value="saldo">Por saldo pendiente</option>
+                        <option value="dias">Por días de deuda</option>
+                        <option value="monto">Por monto total</option>
+                        <option value="contacto">Por contacto</option>
+                    </select>
+                </label>
+            </div>
+
+            <div class="chips-filtro" id="chipsCuentas">
+                <button class="chip-filtro" data-chip="vencidas" onclick="alternarChipCuentas('vencidas', this)">Vencidas</button>
+                <button class="chip-filtro" data-chip="por-vencer" onclick="alternarChipCuentas('por-vencer', this)">Por vencer</button>
+                <button class="chip-filtro" data-chip="con-abonos" onclick="alternarChipCuentas('con-abonos', this)">Con abonos</button>
+                <button class="chip-filtro" data-chip="pos" onclick="alternarChipCuentas('pos', this)">Fiados del POS</button>
+                <button class="chip-filtro" data-chip="sin-fecha" onclick="alternarChipCuentas('sin-fecha', this)">Sin vencimiento</button>
+                <button class="chip-filtro" onclick="limpiarFiltrosCuentas()">Limpiar filtros</button>
+            </div>
+
+            <div class="resumen-lista" id="resumenLista"><span id="resumenListaTexto"></span><span id="resumenListaSaldo"></span></div>
+
+            <div class="lista-cuentas" id="receivableTableBody"></div>
+            <div id="emptyStateReceivable" class="empty-state" style="display: none;">
+                <div class="empty-state-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 2v20M17 5H7l-5 5 5 5h10l5-5-5-5z"/>
+                    </svg>
+                </div>
+                <h3 id="tituloVacio">No hay cuentas por cobrar</h3>
+                <p id="textoVacio">Registra tus primeras cuentas por cobrar para empezar a gestionar tus ingresos.</p>
+                <button class="btn btn-primary" data-accion-admin onclick="openModal('add', 'cobrar')" style="margin-top: 1rem;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M5 12h14"/><path d="M12 5v14"/>
+                    </svg>
+                    Agregar Cuenta por Cobrar
+                </button>
+            </div>
+
+            <div class="lista-cuentas" id="payableTableBody" hidden></div>
+            <div id="emptyStatePayable" class="empty-state" style="display: none;">
+                <div class="empty-state-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 2v20M17 5H7l-5 5 5 5h10l5-5-5-5z"/>
+                    </svg>
+                </div>
+                <h3>No hay cuentas por pagar</h3>
+                <p>Registra tus primeras cuentas por pagar para mantener un control de tus obligaciones.</p>
+                <button class="btn btn-primary" data-accion-admin onclick="openModal('add', 'pagar')" style="margin-top: 1rem;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M5 12h14"/><path d="M12 5v14"/>
+                    </svg>
+                    Agregar Cuenta por Pagar
+                </button>
             </div>
         </div>
     </div>
@@ -1303,7 +1453,11 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-cancel" onclick="closeModal()">Cancelar</button>
-                <button type="submit" class="btn btn-primary" id="saveButton">Guardar Cuenta</button>
+                <!-- OJO: este botón vive en el footer, FUERA del <form id="accountForm">
+                     (el formulario cierra antes). Un `type="submit"` sin `form` asociado
+                     NO envía nada: «Guardar Cuenta» no hacía nada (ni crear ni editar).
+                     El atributo `form` de HTML5 lo asocia por id. -->
+                <button type="submit" form="accountForm" class="btn btn-primary" id="saveButton">Guardar Cuenta</button>
             </div>
         </div>
     </div>
@@ -1381,6 +1535,267 @@
         let deletingAccountId = null;
         let payingAccountId = null;
         let nextAccountId = 1;
+        /* Cuentas BORRADAS en esta pestaña. Es una caché en memoria de las LÁPIDAS
+           persistidas (clave de negocio 'cuentas_borradas'): la unión por id con el
+           almacén compartido no debe resucitar lo que se ha borrado, ni aquí ni en
+           otra pestaña que guarde después con una copia vieja. */
+        const _cuentasEliminadas = {};
+        const CUENTAS_BORRADAS_CLAVE = 'cuentas_borradas';
+        /* Contador de ids, persistido: un id NO se reutiliza nunca. Antes se
+           recalculaba al cargar (`max+1`) y, al borrar la última cuenta y recargar,
+           el id volvía a salir: chocaba con cualquier copia vieja de esa cuenta. */
+        const CUENTAS_ULTIMO_ID_CLAVE = 'cuentas_ultimo_id';
+
+        /* ===== PUERTA DE ROL (fase 0) ===== 
+
+           Este módulo maneja dinero de terceros. El menú ya esconde la entrada a los
+           vendedores (menu.html deshabilita `accountsItem` si el rol es 'Vendedor'),
+           pero ocultarlo no basta: aquí se comprueba el rol en DOS capas.
+             1. Al arrancar: si no se puede ver, NO se cargan datos ni se pinta nada.
+             2. En cada escritura (alta, abono, borrado): se vuelve a comprobar.
+
+           De dónde sale el rol: `sessionStorage['currentUser'].role`, la marca POR
+           PESTAÑA que escribe el login de operador (el mismo criterio que el POS):
+             · si hay operador, MANDA SU ROL ('Administrador' sí; otro, no);
+             · sin operador, el PROPIETARIO cuenta como administrador;
+             · sin operador y sin marca de propietario NO se concede nada.
+           El rol del menú sale de `userSettings` (localStorage) y puede quedar
+           desfasado; por eso esta página no se fía de él.
+
+           `CTA_MODO_VENDEDOR` decide qué pasa con un vendedor. Es UNA línea:
+             · 'sin-acceso'    (por defecto) no ve el módulo ni los datos;
+             · 'solo-consulta' los ve, pero no puede crear, abonar ni borrar. */
+        const CTA_MODO_VENDEDOR = 'sin-acceso';
+
+        function leerOperadorActual() {
+            try {
+                const bruto = sessionStorage.getItem('currentUser');
+                return bruto ? JSON.parse(bruto) : null;
+            } catch (e) { return null; }
+        }
+
+        function esSesionDePropietario() {
+            try {
+                if (sessionStorage.getItem('propietarioActual')) return true;
+                return !!sessionStorage.getItem('currentOwner');
+            } catch (e) { return false; }
+        }
+
+        function esOperadorAdministrador() {
+            const operador = leerOperadorActual();
+            if (operador && operador.role) return operador.role === 'Administrador';
+            return esSesionDePropietario();
+        }
+
+        function permiteVerCuentas() {
+            if (esOperadorAdministrador()) return true;
+            return CTA_MODO_VENDEDOR === 'solo-consulta';
+        }
+
+        /** Capa 2: sin esto no se escribe NADA (ni alta, ni abono, ni borrado). */
+        function permiteEditarCuentas() { return esOperadorAdministrador(); }
+
+        /* Aviso de sin-acceso. Se construye en JS (no hay que tocar el HTML) y va
+           envuelto en try/catch: una puerta nunca debe romper la página que cierra. */
+        function mostrarAvisoSinAcceso() {
+            try {
+                const principal = document.querySelector('.main-content');
+                const aviso = document.createElement('div');
+                aviso.id = 'accesoDenegadoCuentas';
+                aviso.className = 'acceso-denegado';
+                aviso.innerHTML = '<h3>Solo para administradores</h3>' +
+                    '<p>Este módulo maneja deudas de clientes y proveedores. ' +
+                    'Entra con un usuario administrador para verlo.</p>';
+                if (principal && principal.parentNode) principal.parentNode.insertBefore(aviso, principal);
+                else document.body.appendChild(aviso);
+                if (principal) principal.style.display = 'none';
+            } catch (e) { /* si no se puede pintar el aviso, al menos no se cargan datos */ }
+        }
+
+        function mostrarBannerSoloLectura() {
+            try {
+                const principal = document.querySelector('.main-content');
+                if (!principal) return;
+                const banner = document.createElement('div');
+                banner.id = 'bannerSoloLecturaCuentas';
+                banner.className = 'banner-solo-lectura';
+                banner.textContent = 'Modo solo consulta: puedes ver las cuentas, pero no ' +
+                    'crear, abonar ni borrar (eso es de administradores).';
+                principal.insertBefore(banner, principal.firstChild);
+            } catch (e) { /* el banner es informativo: si falla, se sigue */ }
+        }
+
+        /** Devuelve true si la página puede seguir cargando datos. */
+        function aplicarPuertaDeRol() {
+            try {
+                if (permiteVerCuentas()) {
+                    if (!permiteEditarCuentas()) {
+                        document.body.classList.add('cuentas-solo-lectura');
+                        mostrarBannerSoloLectura();
+                    }
+                    return true;
+                }
+                mostrarAvisoSinAcceso();
+                return false;
+            } catch (e) {
+                // Ante la duda, cerrado: mejor no mostrar que mostrar de más.
+                try { mostrarAvisoSinAcceso(); } catch (e2) { /* nada */ }
+                return false;
+            }
+        }
+
+        /* ===== Normalizador y saldo (fase 0) ===== */
+
+        function numeroSeguro(valor, porDefecto) {
+            const n = Number(valor);
+            return isFinite(n) ? n : porDefecto;
+        }
+
+        function fechaHoyIso() { return new Date().toISOString().split('T')[0]; }
+
+        function fechaValida(valor) {
+            if (valor === null || valor === undefined || valor === '') return false;
+            return !isNaN(Date.parse(String(valor)));
+        }
+
+        function normalizarPago(pago) {
+            const p = Object.assign({}, pago);
+            p.amount = numeroSeguro(p.amount, 0);
+            p.date = fechaValida(p.date) ? String(p.date).slice(0, 10) : '';
+            return p;
+        }
+
+        /** Cuenta SANA: nunca lanza y conserva los campos extra (los del POS). */
+        function normalizarCuenta(cuenta) {
+            if (!cuenta || typeof cuenta !== 'object') return null;
+            const c = Object.assign({}, cuenta);
+            if (c.id === undefined || c.id === null || c.id === '') c.id = null;
+            c.type = (c.type === 'pagar') ? 'pagar' : 'cobrar';
+            c.description = (c.description === null || c.description === undefined) ? '' : String(c.description);
+            c.contact = (c.contact === null || c.contact === undefined) ? '' : String(c.contact);
+            c.category = (c.category === null || c.category === undefined) ? 'Otros' : String(c.category);
+            c.notes = (c.notes === null || c.notes === undefined) ? '' : String(c.notes);
+            c.amount = numeroSeguro(c.amount, 0);
+            c.dueDate = fechaValida(c.dueDate) ? String(c.dueDate).slice(0, 10) : '';
+            c.payments = Array.isArray(c.payments)
+                ? c.payments.filter(p => p && typeof p === 'object').map(normalizarPago)
+                : [];
+            if (['pending', 'paid', 'overdue'].indexOf(c.status) === -1) c.status = 'pending';
+            return c;
+        }
+
+        function abonosDe(cuenta) {
+            return Array.isArray(cuenta && cuenta.payments) ? cuenta.payments : [];
+        }
+
+        /** Total abonado (los importes vienen normalizados a número). */
+        function abonadoDe(cuenta) {
+            return abonosDe(cuenta).reduce((suma, p) => suma + numeroSeguro(p && p.amount, 0), 0);
+        }
+
+        /** Lo que falta por cobrar/pagar. Es la única fuente de verdad del saldo. */
+        function saldoPendiente(cuenta) {
+            const total = numeroSeguro(cuenta && cuenta.amount, 0);
+            return Math.round((total - abonadoDe(cuenta)) * 100) / 100;
+        }
+
+        /* ESTADO DERIVADO. No es un dato que se guarde y se quede viejo: se calcula
+           siempre desde el saldo y la fecha. Antes se conservaba el estado anterior y,
+           si ya era 'paid', una subida del importe dejaba la deuda invisible. */
+        function estadoDeCuenta(cuenta, hoy) {
+            if (saldoPendiente(cuenta) <= 0) return 'paid';
+            const vence = String((cuenta && cuenta.dueDate) || '');
+            return (vence && vence < (hoy || fechaHoyIso())) ? 'overdue' : 'pending';
+        }
+
+        /* Mes (AAAA-MM) de un abono, sacado del TEXTO de la fecha. Con `new Date()`,
+           '2026-03-01' cae en febrero en la zona horaria de Venezuela. */
+        function mesDePago(pago) {
+            const m = /^(\d{4})-(\d{2})/.exec(String((pago && pago.date) || ''));
+            return m ? (m[1] + '-' + m[2]) : '';
+        }
+
+        /* ===== Lápidas de borrado e ids monótonos (fase 0) ===== */
+
+        function leerCuentasBorradas() {
+            try {
+                const bruto = localStorage.getItem(CUENTAS_BORRADAS_CLAVE);
+                if (!bruto) return {};
+                const datos = JSON.parse(bruto);
+                return (datos && typeof datos === 'object' && !Array.isArray(datos)) ? datos : {};
+            } catch (e) { return {}; }
+        }
+
+        function guardarCuentasBorradas(mapa) {
+            try {
+                const claves = Object.keys(mapa || {});
+                if (!claves.length) { localStorage.removeItem(CUENTAS_BORRADAS_CLAVE); return; }
+                const texto = JSON.stringify(mapa);
+                if (typeof window.guardarLocalSeguro === 'function') window.guardarLocalSeguro(CUENTAS_BORRADAS_CLAVE, texto);
+                else localStorage.setItem(CUENTAS_BORRADAS_CLAVE, texto);
+            } catch (e) { /* sin almacén no hay lápida: se sigue funcionando */ }
+        }
+
+        function marcarCuentaBorrada(id) {
+            const clave = String(id);
+            _cuentasEliminadas[clave] = true;                 // esta pestaña
+            const mapa = leerCuentasBorradas();
+            mapa[clave] = new Date().toISOString();           // y todas las demás
+            guardarCuentasBorradas(mapa);
+        }
+
+        function olvidarCuentaBorrada(id) {
+            const clave = String(id);
+            delete _cuentasEliminadas[clave];
+            const mapa = leerCuentasBorradas();
+            if (Object.prototype.hasOwnProperty.call(mapa, clave)) {
+                delete mapa[clave];
+                guardarCuentasBorradas(mapa);
+            }
+        }
+
+        function idEstaLapidado(id, mapa) {
+            const clave = String(id);
+            if (_cuentasEliminadas[clave]) return true;
+            return !!(mapa && Object.prototype.hasOwnProperty.call(mapa, clave));
+        }
+
+        function leerUltimoIdCuentas() {
+            const n = parseInt(localStorage.getItem(CUENTAS_ULTIMO_ID_CLAVE), 10);
+            return (isNaN(n) || n < 0) ? 0 : n;
+        }
+
+        function maxIdDeCuentas(cuentas) {
+            let max = 0;
+            (Array.isArray(cuentas) ? cuentas : []).forEach(c => {
+                const n = parseInt(c && c.id, 10);
+                if (!isNaN(n) && n > max) max = n;
+            });
+            return max;
+        }
+
+        /** Siguiente id disponible SIN reservarlo (para pintar/estimar). */
+        function proximoIdCuenta(cuentas) {
+            return Math.max(leerUltimoIdCuentas(), maxIdDeCuentas(cuentas)) + 1;
+        }
+
+        /* Fija el contador con los ids que YA existen (incluidos los de antes de esta
+           fase). Nunca lo baja: el contador es «el último id entregado», así que
+           `proximoIdCuenta` = contador + 1. Sin esto, con datos viejos el contador no
+           existía y el id de la última cuenta borrada se volvía a usar tras recargar. */
+        function sincronizarContadorId(cuentas) {
+            const max = maxIdDeCuentas(cuentas);
+            if (max > leerUltimoIdCuentas()) {
+                try { localStorage.setItem(CUENTAS_ULTIMO_ID_CLAVE, String(max)); } catch (e) { /* nada */ }
+            }
+        }
+
+        /** Reserva un id y lo persiste: nunca se reutiliza el de una cuenta borrada. */
+        function reservarIdCuenta(cuentas) {
+            const id = proximoIdCuenta(cuentas);
+            try { localStorage.setItem(CUENTAS_ULTIMO_ID_CLAVE, String(id)); } catch (e) { /* nada */ }
+            return id;
+        }
         let currentSort = { key: null, direction: 'asc' };
         let cashFlowChartInstance = null;
 
@@ -1554,9 +1969,16 @@
             // no puede lanzar ni frenar el arranque de la página.
             var emailDeLaCuenta = getCurrentUserEmail();
             if (window.datosCuenta && emailDeLaCuenta) datosCuenta.activarYMigrar(emailDeLaCuenta);
+            // Puerta de rol (capa 1): si esta pestaña no puede ver las cuentas, NO se
+            // cargan datos ni se pinta la pantalla: se muestra el aviso y se sale.
+            if (!aplicarPuertaDeRol()) return;
             if (typeof lucide !== 'undefined') {
                 lucide.createIcons();
             }
+            // Filtros del enlace (?q= ?id= ?tipo= ?estado= ?origen= ?categoria= ?orden=):
+            // se aplican ANTES de pintar, así `cuentas.html?id=…&type=…` (lo que genera
+            // el menú) por fin abre algo con sentido.
+            aplicarParametrosCuentas();
             loadAccounts();
             loadAccountsAsync();
             setupEventListeners();
@@ -1581,11 +2003,23 @@
                 if (e.target === this) closePaymentModal();
             });
 
-            document.querySelectorAll('.data-table th[data-sort-key]').forEach(header => {
-                header.addEventListener('click', function() {
-                    const sortKey = this.getAttribute('data-sort-key');
-                    sortAccounts(sortKey);
-                });
+            /* OJO: aquí había un manejador de clic sobre las cabeceras ordenables
+               de las tablas. Las tablas ya no existen (la lista es de tarjetas) y el
+               orden se elige en el desplegable «Orden», así que aquello era código
+               muerto: se quitó a propósito. */
+
+            /* El POS (u otra pestaña) escribe los fiados en el MISMO almacén
+               compartido. El navegador avisa aquí cuando eso pasa: se relee, se une
+               por id y se repinta, para que la deuda nueva aparezca sin recargar. */
+            window.addEventListener('storage', function (e) {
+                try {
+                    if (!e || !e.key || e.key.indexOf('ciervo_accounts') === -1) return;
+                    if (!permiteVerCuentas()) return;   // la puerta manda también aquí
+                    _accountsCache = fusionarCuentasConAlmacen(_accountsCache);
+                    updateAccountStatuses();
+                    renderAccounts();
+                    updateDashboard();
+                } catch (err) { /* un refresco nunca debe romper la pantalla */ }
             });
         }
 
@@ -1594,8 +2028,11 @@
             const savedAccounts = localStorage.getItem('ciervo_accounts');
             if (savedAccounts) {
                 try {
-                    _accountsCache = JSON.parse(savedAccounts);
-                    nextAccountId = _accountsCache.length > 0 ? Math.max(..._accountsCache.map(a => a.id)) + 1 : 1;
+                    // Se normaliza a ARREGLO: Realtime Database entrega los arreglos como
+                    // objetos con claves '0','1',... y el resto de la página asume arreglo.
+                    _accountsCache = normalizarCuentas(JSON.parse(savedAccounts));
+                    sincronizarContadorId(_accountsCache);             // datos viejos: fija el contador
+                    nextAccountId = proximoIdCuenta(_accountsCache);   // ids monótonos
                     updateAccountStatuses();
                 } catch (e) {
                     console.error("Error parsing accounts from localStorage:", e);
@@ -1610,19 +2047,32 @@
         }
 
         async function loadAccountsAsync() {
+            if (!permiteVerCuentas()) return;
             const fbData = await loadFromFirebase();
-            if (fbData && Array.isArray(fbData) && fbData.length > 0) {
-                _accountsCache = fbData;
-                nextAccountId = _accountsCache.length > 0 ? Math.max(..._accountsCache.map(a => a.id)) + 1 : 1;
+            // La nube puede llegar como ARREGLO o como OBJETO con claves '0','1',...
+            // (RTDB entrega el arreglo DISPERSO en cuanto falta una posición). Antes se
+            // exigía `Array.isArray` y, con la forma de objeto, se ignoraba en silencio:
+            // la pantalla seguía con datos viejos y al guardar se resubía el arreglo viejo.
+            const lapidas = leerCuentasBorradas();
+            const deNube = normalizarCuentas(fbData).filter(c => !idEstaLapidado(c.id, lapidas));
+            if (deNube.length > 0) {
+                _accountsCache = deNube;
+                sincronizarContadorId(_accountsCache);
+                nextAccountId = proximoIdCuenta(_accountsCache);
                 updateAccountStatuses();
-                saveAccountsCache();
+                saveAccountsCache({ sinMarca: true });   // bajar no es «tener cambios que subir»
                 renderAccounts();
                 updateDashboard();
             }
         }
 
-        function saveAccountsCache() {
-                        marcarPendienteSync('cuentas'); // Fase A: hay un cambio local sin confirmar
+        /* `sinMarca` se usa para los cambios DERIVADOS (el estado se recalcula solo) y
+           para lo que se acaba de DESCARGAR: eso no es información nueva que haya que
+           subir. Antes se marcaba siempre y el equipo quedaba «con cambios sin subir»
+           de forma permanente, sin volver a descargar nunca. */
+        function saveAccountsCache(opciones) {
+            const op = opciones || {};
+            if (!op.sinMarca) marcarPendienteSync('cuentas'); // hay algo que subir
             // Guardián de almacenamiento (almacenamiento.js): avisa si la cuota está llena.
             if (typeof window.guardarLocalSeguro === 'function') {
                 window.guardarLocalSeguro('ciervo_accounts', JSON.stringify(_accountsCache));
@@ -1631,136 +2081,529 @@
             }
         }
 
-        async function persistAccounts() {
-            saveAccountsCache();
-            await syncToFirebase(_accountsCache);
+        /** Normaliza a ARREGLO lo que devuelve el almacén o la nube (Realtime Database
+            entrega los arreglos como objetos con claves '0','1',...). Además SANA cada
+            cuenta: un registro a medio formar no puede tumbar la pantalla. */
+        function normalizarCuentas(datos) {
+            let lista = [];
+            if (Array.isArray(datos)) {
+                lista = datos;
+            } else if (datos && typeof datos === 'object') {
+                lista = Object.keys(datos)
+                    .sort((a, b) => (parseInt(a, 10) || 0) - (parseInt(b, 10) || 0))
+                    .map(k => datos[k]);
+            }
+            return lista.map(normalizarCuenta).filter(c => c !== null);
         }
 
-        function updateAccountStatuses() {
-            const today = new Date().toISOString().split('T')[0];
-            let statusChanged = false;
+        function leerCuentasDelAlmacen() {
+            try { return normalizarCuentas(JSON.parse(localStorage.getItem('ciervo_accounts') || 'null')); }
+            catch (e) { return []; }
+        }
 
-            _accountsCache.forEach(a => {
-                const oldStatus = a.status;
-                if (oldStatus !== 'paid') {
-                    const totalPaid = a.payments.reduce((sum, p) => sum + p.amount, 0);
-                    if (totalPaid >= a.amount) {
-                        a.status = 'paid';
-                    } else if (a.dueDate < today) {
-                        a.status = 'overdue';
-                    } else {
-                        a.status = 'pending';
+        /* UNIÓN POR ID con el almacén compartido. El POS escribe los fiados ahí y
+           `ciervo_accounts` se sincroniza como ARREGLO COMPLETO: si esta página
+           guardara su copia en memoria sin unir, borraría el fiado recién creado.
+           La memoria manda para los ids que ya conoce; lo que solo está en el
+           almacén se añade (nunca se pierde), salvo lo borrado en esta pestaña. */
+        function fusionarCuentasConAlmacen(lista) {
+            const memoria = Array.isArray(lista) ? lista : [];
+            const almacen = leerCuentasDelAlmacen();
+            const lapidas = leerCuentasBorradas();            // borrados que NO deben volver
+            const vistos = {};
+            const salida = [];
+            memoria.forEach(c => {
+                if (!c || typeof c !== 'object') return;
+                const clave = (c.id === undefined || c.id === null) ? '' : String(c.id);
+                // La MEMORIA también respeta las lápidas: una pestaña que tenía la
+                // cuenta en su copia vieja no puede devolverla a la vida al guardar.
+                if (clave && idEstaLapidado(clave, lapidas)) return;
+                if (clave) vistos[clave] = true;
+                salida.push(c);
+            });
+            almacen.forEach(c => {
+                if (!c || typeof c !== 'object') return;
+                const clave = (c.id === undefined || c.id === null) ? '' : String(c.id);
+                if (clave && vistos[clave]) return;                 // la memoria manda
+                if (clave && idEstaLapidado(clave, lapidas)) return; // no resucitar lo borrado
+                if (clave) vistos[clave] = true;
+                salida.push(c);
+            });
+            nextAccountId = Math.max(nextAccountId, proximoIdCuenta(salida));   // sin repetir ids
+            return salida;
+        }
+
+        /* Días que lleva la deuda. Los fiados del POS traen `fecha`; las cuentas
+           creadas a mano traen `createdAt` desde ahora. Sin fecha: null (se pinta '—'). */
+        function diasDeDeuda(account) {
+            const base = account && (account.fecha || account.createdAt);
+            if (!base) return null;
+            const t = Date.parse(base);
+            if (isNaN(t)) return null;
+            return Math.max(0, Math.floor((Date.now() - t) / 86400000));
+        }
+
+        /* Detalle de la deuda dentro de la fila: ticket, monto en Bs con su tasa,
+           productos y abonos. Solo se pinta lo que la cuenta traiga. */
+        function detalleDeudaHtml(account) {
+            try {
+                const partes = [];
+                if (account && account.origen === 'pos') {
+                    if (account.saleId) partes.push('Ticket ' + escapeHtml(String(account.saleId)));
+                    if (account.totalBs !== undefined && account.exchangeRate) {
+                        partes.push('Bs. ' + (Number(account.totalBs) || 0).toFixed(2) +
+                            ' (tasa ' + (Number(account.exchangeRate) || 0).toFixed(2) + ')');
+                    }
+                    if (Array.isArray(account.productos) && account.productos.length) {
+                        const items = account.productos.map(function (p) {
+                            const cant = Number(p && p.quantity) || 0;
+                            const sub = Number(p && p.subtotal) || 0;
+                            return escapeHtml('- ' + ((p && p.name) || 'Producto') + ' x' + cant +
+                                ' ' + ((p && p.unit) || 'unidades') + ' ($' + sub.toFixed(2) + ')');
+                        });
+                        partes.push('Productos:<br>' + items.join('<br>'));
                     }
                 }
-                if (oldStatus !== a.status) {
-                    statusChanged = true;
+                const abonos = Array.isArray(account && account.payments) ? account.payments : [];
+                if (abonos.length) {
+                    const items = abonos.map(function (p) {
+                        return escapeHtml('- $' + (Number(p && p.amount) || 0).toFixed(2) +
+                            ' el ' + String((p && p.date) || ''));
+                    });
+                    partes.push('Abonos (' + abonos.length + '):<br>' + items.join('<br>'));
                 }
-            });
-
-            if (statusChanged) {
-                saveAccountsCache();
-            }
+                if (!partes.length) return '';
+                return '<div class="cell-detalle">' + partes.join('<br>') + '</div>';
+            } catch (e) { return ''; }
         }
 
-        function renderAccounts() {
-            const receivableBody = document.getElementById('receivableTableBody');
-            const payableBody = document.getElementById('payableTableBody');
-            const emptyStateReceivable = document.getElementById('emptyStateReceivable');
-            const emptyStatePayable = document.getElementById('emptyStatePayable');
+        async function persistAccounts() {
+            // Puerta de rol (capa 2): sin permiso de escritura no se toca el almacén
+            // ni la nube. Se comprueba AQUÍ, no solo en los botones.
+            if (!permiteEditarCuentas()) {
+                showNotification('Solo un administrador puede modificar las cuentas.', 'error');
+                return false;
+            }
+            // UNIÓN POR ID ANTES DE GUARDAR: mientras esta página tenía el arreglo en
+            // memoria, el POS (o otra pestaña) pudo añadir cuentas. Sin unir, guardar
+            // las pisaría. Y se sube el resultado unido, no la copia en memoria.
+            _accountsCache = fusionarCuentasConAlmacen(_accountsCache);
+            saveAccountsCache();
+            await syncToFirebase(_accountsCache);
+            return true;   // se guardó en local y se intentó subir
+        }
 
-            receivableBody.innerHTML = '';
-            payableBody.innerHTML = '';
+        /* Recalcula el estado de TODAS las cuentas, siempre y sin excepciones: el
+           estado es DERIVADO del saldo y de la fecha. Es lo que arregla que una cuenta
+           pagada a la que le suben el importe siguiera «Pagado» (y no sumara). */
+        function updateAccountStatuses() {
+            const hoy = fechaHoyIso();
+            let cambio = false;
 
-            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-            const categoryFilter = document.getElementById('categoryFilter').value;
-
-            const filteredAccounts = _accountsCache.filter(a => {
-                const matchesSearch = a.description.toLowerCase().includes(searchTerm) ||
-                                      a.contact.toLowerCase().includes(searchTerm) ||
-                                      a.type.toLowerCase().includes(searchTerm);
-                const matchesCategory = categoryFilter === '' || a.category === categoryFilter;
-                return matchesSearch && matchesCategory;
+            _accountsCache.forEach(a => {
+                if (!a || typeof a !== 'object') return;
+                const nuevo = estadoDeCuenta(a, hoy);
+                if (a.status !== nuevo) { a.status = nuevo; cambio = true; }
             });
 
-            const filteredReceivable = filteredAccounts.filter(a => a.type === 'cobrar');
-            const filteredPayable = filteredAccounts.filter(a => a.type === 'pagar');
+            // Es un cambio derivado: se guarda en la caché local, pero NO se marca el
+            // módulo como pendiente de subir (cualquier lector lo recalcula igual).
+            if (cambio && permiteEditarCuentas()) saveAccountsCache({ sinMarca: true });
+            return cambio;
+        }
 
-            const sortedReceivable = [...filteredReceivable].sort((a, b) => sortCompare(a, b, currentSort.key, currentSort.direction));
-            const sortedPayable = [...filteredPayable].sort((a, b) => sortCompare(a, b, currentSort.key, currentSort.direction));
+        /* ===== Rediseño: vista, filtros, orden y detalle ===== 
 
-            if (sortedReceivable.length === 0) {
-                emptyStateReceivable.style.display = 'block';
-            } else {
-                emptyStateReceivable.style.display = 'none';
-                sortedReceivable.forEach(account => {
-                    receivableBody.innerHTML += createAccountRow(account);
-                });
+           La información de una cuenta creció (ticket, productos, monto en Bs con su
+           tasa, días, abonos, vendedor) y en una tabla de 9 columnas no cabía. Ahora
+           cada cuenta es una TARJETA con la información agrupada y el detalle plegado.
+           Estas funciones son solo de presentación: no tocan el modelo ni el guardado. */
+        let vistaCuentas = 'cobrar';
+        let ordenCuentas = 'vencimiento';
+        let chipsCuentas = {};
+        let cuentaDestacada = '';
+
+        /* Días de recordatorio de cuentas por cobrar: ajuste que YA existe (config.html). */
+        function diasRecordatorioCuentas() {
+            try {
+                const dias = parseInt(localStorage.getItem('cta_reminder_days'), 10);
+                return (isNaN(dias) || dias < 0) ? 7 : dias;
+            } catch (e) { return 7; }
+        }
+
+        function fechaMasDias(isoDia, dias) {
+            const base = Date.parse(String(isoDia || '') + 'T00:00:00.000Z');
+            if (isNaN(base)) return '';
+            return new Date(base + (Number(dias) || 0) * 86400000).toISOString().split('T')[0];
+        }
+
+        /* Los botones de la tarjeta pasan el id como TEXTO (es lo seguro dentro de un
+           atributo `onclick`), pero el id del modelo es un NÚMERO: comparar con `===`
+           hacía que «Registrar pago», «Editar» y «Eliminar» no encontrasen la cuenta y
+           no hicieran nada. Esta es la única comparación de identidad que se usa. */
+        function mismaCuenta(cuenta, id) {
+            if (!cuenta || typeof cuenta !== 'object') return false;
+            const a = (cuenta.id === null || cuenta.id === undefined) ? '' : String(cuenta.id);
+            const b = (id === null || id === undefined) ? '' : String(id);
+            return a !== '' && a === b;
+        }
+
+        /** Id seguro para usar en un atributo HTML (los ids del modelo son números). */
+        function idSeguroCuenta(id) {
+            return String(id === null || id === undefined ? '' : id).replace(/[^a-zA-Z0-9_-]/g, '');
+        }
+
+        function escribirTexto(id, valor) {
+            const el = document.getElementById(id);
+            if (el) el.textContent = String(valor);
+        }
+
+        function cambiarVistaCuentas(vista) {
+            vistaCuentas = (String(vista) === 'pagar') ? 'pagar' : 'cobrar';
+            const tabCobrar = document.getElementById('tabCobrar');
+            const tabPagar = document.getElementById('tabPagar');
+            if (tabCobrar) tabCobrar.classList.toggle('activo', vistaCuentas === 'cobrar');
+            if (tabPagar) tabPagar.classList.toggle('activo', vistaCuentas === 'pagar');
+            renderAccounts();
+        }
+
+        /* Órdenes pensados para decidir cobros: lo más urgente y lo más gordo, arriba. */
+        const ORDENES_CUENTAS = {
+            vencimiento: { key: 'dueDate', direction: 'asc' },
+            saldo: { key: 'pendingAmount', direction: 'desc' },
+            dias: { key: 'dias', direction: 'desc' },
+            monto: { key: 'amount', direction: 'desc' },
+            contacto: { key: 'contact', direction: 'asc' }
+        };
+
+        function aplicarOrdenCuentas(valor) {
+            ordenCuentas = Object.prototype.hasOwnProperty.call(ORDENES_CUENTAS, String(valor))
+                ? String(valor) : 'vencimiento';
+            const orden = ORDENES_CUENTAS[ordenCuentas];
+            currentSort = { key: orden.key, direction: orden.direction };
+            renderAccounts();
+        }
+
+        /* Comparador de la lista: por vencimiento se ordena el TEXTO de la fecha (las
+           cuentas sin fecha van al final, no mezcladas), y para el resto se usa el
+           comparador de siempre (sortCompare). */
+        function compararCuentas(a, b) {
+            if (currentSort.key === 'dueDate') {
+                const va = String((a && a.dueDate) || '9999-12-31');
+                const vb = String((b && b.dueDate) || '9999-12-31');
+                if (va === vb) return 0;
+                const orden = (va < vb) ? -1 : 1;
+                return (currentSort.direction === 'desc') ? -orden : orden;
+            }
+            return sortCompare(a, b, currentSort.key, currentSort.direction);
+        }
+
+        function alternarChipCuentas(chip, boton) {
+            const clave = String(chip || '');
+            if (!clave) return;
+            if (chipsCuentas[clave]) delete chipsCuentas[clave]; else chipsCuentas[clave] = true;
+            if (boton && boton.classList) boton.classList.toggle('activo', !!chipsCuentas[clave]);
+            renderAccounts();
+        }
+
+        function limpiarFiltrosCuentas() {
+            chipsCuentas = {};
+            document.querySelectorAll('#chipsCuentas .chip-filtro').forEach(b => b.classList.remove('activo'));
+            ['searchInput', 'categoryFilter', 'estadoFilter', 'origenFilter'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.value = '';
+            });
+            ordenCuentas = 'vencimiento';
+            const orden = document.getElementById('ordenFilter');
+            if (orden) orden.value = 'vencimiento';
+            currentSort = { key: 'dueDate', direction: 'asc' };
+            cuentaDestacada = '';
+            renderAccounts();
+        }
+
+        function hayFiltrosCuentas() {
+            const valor = id => String((document.getElementById(id) || {}).value || '').trim();
+            return !!(valor('searchInput') || valor('categoryFilter') || valor('estadoFilter') ||
+                valor('origenFilter') || Object.keys(chipsCuentas).length);
+        }
+
+        /** Filtros de esta pantalla, en un solo sitio (la tabla ya no filtra por su cuenta). */
+        function cuentaPasaFiltros(a, hoy) {
+            if (!a || typeof a !== 'object') return false;
+            const valor = id => String((document.getElementById(id) || {}).value || '').trim();
+            const buscar = valor('searchInput').toLowerCase();
+            const categoria = valor('categoryFilter');
+            const estado = valor('estadoFilter');
+            const origen = valor('origenFilter');
+            const dia = hoy || fechaHoyIso();
+
+            if (categoria && a.category !== categoria) return false;
+            if (estado && a.status !== estado) return false;
+            if (origen === 'pos' && a.origen !== 'pos') return false;
+            if (origen === 'manual' && a.origen === 'pos') return false;
+
+            const saldo = saldoPendiente(a);
+            if (chipsCuentas['vencidas'] && !(saldo > 0 && a.dueDate && a.dueDate < dia)) return false;
+            if (chipsCuentas['por-vencer']) {
+                const limite = fechaMasDias(dia, diasRecordatorioCuentas());
+                if (!(saldo > 0 && a.dueDate && a.dueDate >= dia && limite && a.dueDate <= limite)) return false;
+            }
+            if (chipsCuentas['con-abonos'] && abonadoDe(a) <= 0) return false;
+            if (chipsCuentas['pos'] && a.origen !== 'pos') return false;
+            if (chipsCuentas['sin-fecha'] && a.dueDate) return false;
+
+            if (buscar) {
+                const texto = [a.description, a.contact, a.contactoDocumento, a.saleId,
+                    a.notes, a.category, a.vendedor].map(v => String(v || '')).join(' ').toLowerCase();
+                if (texto.indexOf(buscar) === -1) return false;
+            }
+            return true;
+        }
+
+        function toggleDetalleCuenta(id) {
+            const caja = document.getElementById('detalle-cuenta-' + idSeguroCuenta(id));
+            if (!caja) return;
+            const abierto = !caja.hasAttribute('hidden');
+            if (abierto) caja.setAttribute('hidden', ''); else caja.removeAttribute('hidden');
+            const boton = document.getElementById('btn-detalle-' + idSeguroCuenta(id));
+            if (boton) boton.textContent = abierto ? 'Ver detalle ▾' : 'Ocultar detalle ▴';
+        }
+
+        /** Conexiones entre módulos, desde la propia cuenta. */
+        function filtrarPorContacto(nombre) {
+            const campo = document.getElementById('searchInput');
+            if (campo) campo.value = String(nombre || '');
+            renderAccounts();
+        }
+
+        function filtrarPorContactoDeCuenta(id) {
+            const a = _accountsCache.find(x => String(x.id) === String(id));
+            if (a) filtrarPorContacto(a.contact);
+        }
+
+        /** Abre el resumen de ventas ya filtrado por ese ticket (el resumen lee ?q=). */
+        function abrirVentaEnResumen(ticket) {
+            const t = String(ticket || '').trim();
+            if (!t) return;
+            window.open('mini_market_pos_resumen.html?q=' + encodeURIComponent(t), '_blank');
+        }
+
+        function abrirDetalleCuentaDestacada() {
+            if (!cuentaDestacada) return;
+            const caja = document.getElementById('detalle-cuenta-' + idSeguroCuenta(cuentaDestacada));
+            if (caja) caja.removeAttribute('hidden');
+        }
+
+        /* Enlace profundo: ?q= ?id= ?tipo= ?estado= ?origen= ?categoria= ?orden=. Es lo que
+           hace que el `cuentas.html?id=…&type=…` del menú sirva para algo. */
+        function aplicarParametrosCuentas() {
+            try {
+                const params = new URLSearchParams(location.search);
+                const poner = (id, valor) => {
+                    const el = document.getElementById(id);
+                    if (el && valor) el.value = valor;
+                };
+                poner('searchInput', params.get('q') || params.get('buscar') || '');
+                poner('estadoFilter', params.get('estado') || '');
+                poner('origenFilter', params.get('origen') || '');
+                poner('categoryFilter', params.get('categoria') || '');
+                const orden = params.get('orden');
+                if (orden) aplicarOrdenCuentas(orden);
+                const tipo = params.get('tipo') || params.get('type');
+                if (String(tipo) === 'pagar' || String(tipo) === 'cobrar') cambiarVistaCuentas(String(tipo));
+                const id = params.get('id');
+                if (id) cuentaDestacada = String(id).replace(/[^a-zA-Z0-9_-]/g, '');
+                return true;
+            } catch (e) { return false; }
+        }
+
+        /* Filtra, ordena, cuenta y pinta las dos listas (una por pestaña). */
+        function renderAccounts() {
+            const contenedorCobrar = document.getElementById('receivableTableBody');
+            const contenedorPagar = document.getElementById('payableTableBody');
+            const vacioCobrar = document.getElementById('emptyStateReceivable');
+            const vacioPagar = document.getElementById('emptyStatePayable');
+            const hoy = fechaHoyIso();
+
+            const listaCobrar = [];
+            const listaPagar = [];
+            _accountsCache.forEach(a => {
+                if (!cuentaPasaFiltros(a, hoy)) return;
+                if (a.type === 'pagar') listaPagar.push(a); else listaCobrar.push(a);
+            });
+            const ordenar = lista => lista.sort(compararCuentas);
+            ordenar(listaCobrar);
+            ordenar(listaPagar);
+
+            if (contenedorCobrar) contenedorCobrar.innerHTML = listaCobrar.map(createAccountRow).join('');
+            if (contenedorPagar) contenedorPagar.innerHTML = listaPagar.map(createAccountRow).join('');
+
+            const verCobrar = vistaCuentas !== 'pagar';
+            if (contenedorCobrar) contenedorCobrar.hidden = !verCobrar;
+            if (contenedorPagar) contenedorPagar.hidden = verCobrar;
+            const visibles = verCobrar ? listaCobrar : listaPagar;
+
+            escribirTexto('contadorCobrar', listaCobrar.length);
+            escribirTexto('contadorPagar', listaPagar.length);
+
+            const conFiltros = hayFiltrosCuentas();
+            const saldoVisible = visibles.reduce((suma, a) => suma + Math.max(0, saldoPendiente(a)), 0);
+            escribirTexto('resumenListaTexto', visibles.length + (visibles.length === 1 ? ' cuenta' : ' cuentas') +
+                (conFiltros ? ' (con filtros)' : ''));
+            escribirTexto('resumenListaSaldo', 'Saldo de lo mostrado: $' + saldoVisible.toFixed(2));
+
+            const vacioActivo = verCobrar ? vacioCobrar : vacioPagar;
+            const vacioOtro = verCobrar ? vacioPagar : vacioCobrar;
+            if (vacioActivo) vacioActivo.style.display = (visibles.length === 0) ? 'block' : 'none';
+            if (vacioOtro) vacioOtro.style.display = 'none';
+            if (visibles.length === 0) {
+                escribirTexto('tituloVacio', conFiltros ? 'Ninguna cuenta coincide con los filtros' : 'No hay cuentas por cobrar');
+                escribirTexto('textoVacio', conFiltros
+                    ? 'Quita algún filtro o busca otra cosa. Los filtros activos están marcados arriba.'
+                    : 'Registra tus primeras cuentas por cobrar para empezar a gestionar tus ingresos.');
             }
 
-            if (sortedPayable.length === 0) {
-                emptyStatePayable.style.display = 'block';
-            } else {
-                emptyStatePayable.style.display = 'none';
-                sortedPayable.forEach(account => {
-                    payableBody.innerHTML += createAccountRow(account);
-                });
-            }
-            
-            if (typeof lucide !== 'undefined') {
-                lucide.createIcons();
-            }
+            if (typeof lucide !== 'undefined') lucide.createIcons();
             updateSortIndicators();
+            abrirDetalleCuentaDestacada();
         }
 
         function createAccountRow(account) {
-            const statusClass = `status-${account.status}`;
+            // Se pinta sobre una cuenta SANA: un registro raro no rompe la lista.
+            const cta = normalizarCuenta(account) ||
+                { id: '', description: '', contact: '', category: 'Otros', amount: 0, dueDate: '', payments: [], status: 'pending' };
+            const idSeg = idSeguroCuenta(cta.id);
+            const total = numeroSeguro(cta.amount, 0);
+            const abonado = abonadoDe(cta);
+            const saldo = saldoPendiente(cta);
+            const abonos = abonosDe(cta);
+            const soloLectura = !permiteEditarCuentas();
             const statusText = {
                 'pending': 'Pendiente',
                 'paid': 'Pagado',
                 'overdue': 'Vencido'
-            }[account.status];
+            }[cta.status] || 'Pendiente';
+            const dias = diasDeDeuda(cta);
+            const diasTexto = (dias === null) ? 'sin fecha' : (dias === 0 ? 'hoy' : 'hace ' + dias + ' días');
+            const pagadoPct = total > 0 ? Math.max(0, Math.min(100, Math.round((abonado / total) * 100))) : 100;
+            const vence = cta.dueDate
+                ? new Date(cta.dueDate).toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' })
+                : 'sin fecha';
+            const documento = cta.contactoDocumento ? ' · ' + escapeHtml(String(cta.contactoDocumento)) : '';
 
-            const dueDate = new Date(account.dueDate).toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' });
-            const totalPaid = account.payments.reduce((sum, p) => sum + p.amount, 0);
-            const pendingAmount = account.amount - totalPaid;
+            /* Chips: solo lo que la cuenta trae de verdad. */
+            const chips = [];
+            if (cta.category) chips.push('<span class="chip">' + escapeHtml(cta.category) + '</span>');
+            if (cta.origen === 'pos') chips.push('<span class="chip chip-pos">Venta del POS</span>');
+            if (cta.saleId) chips.push('<span class="chip">Ticket ' + escapeHtml(String(cta.saleId)) + '</span>');
+            if (cta.vendedor) chips.push('<span class="chip">' + escapeHtml(String(cta.vendedor)) + '</span>');
+            if (abonos.length) chips.push('<span class="chip">' + abonos.length + (abonos.length === 1 ? ' abono' : ' abonos') + '</span>');
+
+            const bloqueBs = (cta.totalBs !== undefined && cta.exchangeRate)
+                ? '<div class="dato dato-bs"><span class="dato-etiqueta">Bs. (tasa ' +
+                  numeroSeguro(cta.exchangeRate, 0).toFixed(2) + ')</span><span class="dato-valor">' +
+                  numeroSeguro(cta.totalBs, 0).toFixed(2) + '</span></div>'
+                : '';
+
+            const filasProductos = (Array.isArray(cta.productos) ? cta.productos : []).map(p => {
+                const cant = numeroSeguro(p && p.quantity, 0);
+                const sub = numeroSeguro(p && p.subtotal, 0);
+                return '<tr><td>' + escapeHtml((p && p.name) || 'Producto') + ' x' + cant + ' ' +
+                    escapeHtml((p && p.unit) || 'unidades') + '</td><td class="der">$' + sub.toFixed(2) + '</td></tr>';
+            }).join('');
+            const bloqueProductos = filasProductos
+                ? '<div class="detalle-bloque"><h5>Productos:</h5><table>' + filasProductos + '</table></div>'
+                : '';
+
+            const filasAbonos = abonos.map(p => '<tr><td>' +
+                escapeHtml(String((p && p.date) || 'sin fecha')) +
+                (p && p.metodo ? ' · ' + escapeHtml(String(p.metodo)) : '') +
+                (p && p.referencia ? ' · ' + escapeHtml(String(p.referencia)) : '') +
+                '</td><td class="der">$' + numeroSeguro(p && p.amount, 0).toFixed(2) + '</td></tr>').join('');
+            const bloqueAbonos = abonos.length
+                ? '<div class="detalle-bloque"><h5>Abonos (' + abonos.length + '):</h5><table>' + filasAbonos +
+                  '</table></div>'
+                : '';
+
+            const filasDatos = [];
+            filasDatos.push('<tr><td>Origen</td><td class="der">' +
+                (cta.origen === 'pos' ? 'Venta del POS' : 'Creada a mano') + '</td></tr>');
+            if (cta.saleId) filasDatos.push('<tr><td>Ticket</td><td class="der">' + escapeHtml(String(cta.saleId)) + '</td></tr>');
+            if (cta.vendedor) filasDatos.push('<tr><td>Vendedor</td><td class="der">' + escapeHtml(String(cta.vendedor)) + '</td></tr>');
+            if (cta.contactoDocumento) filasDatos.push('<tr><td>Documento</td><td class="der">' + escapeHtml(String(cta.contactoDocumento)) + '</td></tr>');
+            if (cta.fecha || cta.createdAt) {
+                filasDatos.push('<tr><td>Alta</td><td class="der">' +
+                    escapeHtml(String(cta.fecha || cta.createdAt).slice(0, 10)) + '</td></tr>');
+            }
+            filasDatos.push('<tr><td>Vencimiento</td><td class="der">' + escapeHtml(vence) + '</td></tr>');
+            const bloqueDatos = '<div class="detalle-bloque"><h5>Datos de la cuenta</h5><table>' +
+                filasDatos.join('') + '</table>' +
+                (cta.notes ? '<div class="kpi-extra" style="margin-top:.4rem">' + escapeHtml(String(cta.notes)) + '</div>' : '') +
+                '</div>';
+
+            /* Conexiones: el mismo contacto y la venta que originó la deuda. */
+            const botonesConexion = [];
+            if (cta.contact) {
+                botonesConexion.push('<button class="btn-detalle" onclick="filtrarPorContactoDeCuenta(\'' + idSeg + '\')">' +
+                    'Ver todas las de este contacto</button>');
+            }
+            if (cta.saleId) {
+                botonesConexion.push('<button class="btn-detalle" onclick="abrirVentaEnResumen(\'' +
+                    escapeHtml(String(cta.saleId)).replace(/'/g, '') + '\')">Ver la venta en el resumen</button>');
+            }
+            const bloqueConexiones = botonesConexion.length
+                ? '<div class="detalle-bloque"><h5>Conexiones</h5>' + botonesConexion.join('<br>') + '</div>'
+                : '';
+
+            const acciones = [];
+            if (!soloLectura) {
+                if (cta.status !== 'paid' && saldo > 0) {
+                    acciones.push('<button class="btn-icon btn-partial-pay" onclick="openPaymentModal(\'' + idSeg + '\')" title="Registrar pago">' +
+                        '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+                        '<path d="M12 2v20M17 5H7l-5 5 5 5h10l5-5-5-5z"/></svg></button>');
+                }
+                acciones.push('<button class="btn-icon btn-edit" onclick="editAccount(\'' + idSeg + '\')" title="Editar">' +
+                    '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+                    '<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>' +
+                    '<path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>');
+                acciones.push('<button class="btn-icon btn-delete" onclick="deleteAccount(\'' + idSeg + '\')" title="Eliminar">' +
+                    '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+                    '<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c0-1-1-2-1-2V6"/>' +
+                    '<path d="M8 6V4c0-1 1-2 2-2h4c0 1 1 2 1 2v2"/></svg></button>');
+            }
+            acciones.push('<button class="btn-detalle" id="btn-detalle-' + idSeg + '" onclick="toggleDetalleCuenta(\'' + idSeg + '\')">Ver detalle ▾</button>');
+
+            const destacada = (cuentaDestacada && String(cuentaDestacada) === String(idSeg)) ? ' fila-destacada' : '';
 
             return `
-                <tr data-account-id="${account.id}">
-                    <td>${escapeHtml(account.description)}</td>
-                    <td>${escapeHtml(account.contact)}</td>
-                    <td>${escapeHtml(account.category || 'N/A')}</td>
-                    <td>\$${account.amount.toFixed(2)}</td>
-                    <td>\$${pendingAmount.toFixed(2)}</td>
-                    <td>${dueDate}</td>
-                    <td>
-                        <span class="status-badge ${statusClass}">
-                            ${statusText}
-                        </span>
-                    </td>
-                    <td>
-                        <div class="action-buttons-cell">
-                            ${account.status !== 'paid' ? `<button class="btn-icon btn-partial-pay" onclick="openPaymentModal(${account.id})" title="Registrar Pago">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M12 2v20M17 5H7l-5 5 5 5h10l5-5-5-5z"/>
-                                </svg>
-                            </button>` : ''}
-                            <button class="btn-icon btn-edit" onclick="editAccount(${account.id})" title="Editar">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                                </svg>
-                            </button>
-                            <button class="btn-icon btn-delete" onclick="deleteAccount(${account.id})" title="Eliminar">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M3 6h18"/>
-                                    <path d="M19 6v14c0 1-1 2-2 2H7c0-1-1-2-1-2V6"/>
-                                    <path d="M8 6V4c0-1 1-2 2-2h4c0 1 1 2 1 2v2"/>
-                                </svg>
-                            </button>
-                        </div>
-                    </td>
-                </tr>
-            `;
+            <article class="fila-cuenta estado-${cta.status}${destacada}" data-account-id="${cta.id}" id="cuenta-${idSeg}">
+                <div class="fila-principal">
+                    <div class="fila-identidad">
+                        <div class="fila-titulo">${escapeHtml(cta.description)}</div>
+                        <div class="fila-contacto">${escapeHtml(cta.contact)}${documento}</div>
+                        <div class="fila-chips">${chips.join('')}</div>
+                    </div>
+                    <div class="fila-dinero">
+                        <div class="dato"><span class="dato-etiqueta">Total</span><span class="dato-valor">$${total.toFixed(2)}</span></div>
+                        <div class="dato"><span class="dato-etiqueta">Abonado</span><span class="dato-valor">$${abonado.toFixed(2)}</span></div>
+                        <div class="dato dato-saldo"><span class="dato-etiqueta">Saldo</span><span class="dato-valor">$${saldo.toFixed(2)}</span></div>
+                        ${bloqueBs}
+                    </div>
+                    <div class="fila-estado">
+                        <span class="status-badge status-${cta.status}">${statusText}</span>
+                        <span class="cell-dias">${diasTexto}</span>
+                        <div class="fila-vencimiento">Vence: ${vence}</div>
+                        <div class="barra-progreso" title="${pagadoPct}% abonado"><span style="width:${pagadoPct}%"></span></div>
+                    </div>
+                    <div class="fila-acciones action-buttons-cell">${acciones.join('')}</div>
+                </div>
+                <div class="fila-detalle" id="detalle-cuenta-${idSeg}" hidden>
+                    ${bloqueProductos}
+                    ${bloqueAbonos}
+                    ${bloqueDatos}
+                    ${bloqueConexiones}
+                </div>
+            </article>`;
         }
 
         function filterAccounts() {
@@ -1785,7 +2628,7 @@
                     accountTypeSelect.disabled = false;
                 }
             } else {
-                const account = _accountsCache.find(a => a.id === accountId);
+                const account = _accountsCache.find(a => mismaCuenta(a, accountId));
                 if (!account) {
                     console.error('Account not found for editing:', accountId);
                     closeModal();
@@ -1864,6 +2707,12 @@
 
         async function saveAccount(event) {
             if (event) event.preventDefault();
+
+            // Puerta de rol (capa 2): crear o editar una cuenta es escribir dinero.
+            if (!permiteEditarCuentas()) {
+                showNotification('Solo un administrador puede crear o editar cuentas.', 'error');
+                return;
+            }
             
             if (!validateForm()) {
                 showNotification('Por favor, corrige los errores del formulario.', 'error');
@@ -1889,20 +2738,34 @@
             };
 
             if (editingAccountId) {
-                const index = _accountsCache.findIndex(a => a.id === editingAccountId);
+                const index = _accountsCache.findIndex(a => mismaCuenta(a, editingAccountId));
                 if (index !== -1) {
-                    accountData.payments = _accountsCache[index].payments || [];
-                    accountData.status = _accountsCache[index].status;
-                    _accountsCache[index] = { ..._accountsCache[index], ...accountData };
+                    // El estado NO se copia: es DERIVADO (lo recalcula updateAccountStatuses).
+                    // Antes se conservaba el viejo y, si ya era 'paid', subir el importe
+                    // dejaba la deuda invisible para el tablero.
+                    _accountsCache[index] = normalizarCuenta({ ..._accountsCache[index], ...accountData });
                     showNotification('Cuenta actualizada exitosamente', 'success');
                 } else {
                     showNotification('Error: Cuenta no encontrada para actualizar.', 'error');
                 }
             } else {
-                accountData.id = nextAccountId++;
-                accountData.payments = [];
-                _accountsCache.push(accountData);
-                showNotification('Cuenta agregada exitosamente', 'success');
+                // Id MONÓTONO persistido: no se reutiliza el de una cuenta borrada.
+                const nueva = normalizarCuenta({
+                    ...accountData,
+                    id: reservarIdCuenta(_accountsCache),
+                    payments: [],
+                    // Fecha de alta: permite contar los días de la deuda, como en los
+                    // fiados del POS (que traen `fecha`).
+                    createdAt: new Date().toISOString()
+                });
+                if (nueva) {
+                    nextAccountId = proximoIdCuenta(_accountsCache.concat([nueva]));
+                    _accountsCache.push(nueva);
+                    olvidarCuentaBorrada(nueva.id);   // por si quedara una lápida de ese id
+                    showNotification('Cuenta agregada exitosamente', 'success');
+                } else {
+                    showNotification('Error: no se pudo preparar la cuenta.', 'error');
+                }
             }
             
             updateAccountStatuses();
@@ -1927,9 +2790,18 @@
         }
 
         async function confirmDelete() {
+            // Puerta de rol (capa 2): borrar una deuda es escribir.
+            if (!permiteEditarCuentas()) {
+                showNotification('Solo un administrador puede eliminar cuentas.', 'error');
+                closeDeleteModal();
+                return;
+            }
             if (deletingAccountId) {
+                // LÁPIDA PERSISTIDA: la unión por id no debe traer de vuelta lo borrado,
+                // ni en esta pestaña ni en otra que guarde después con una copia vieja.
+                marcarCuentaBorrada(deletingAccountId);
                 const initialLength = _accountsCache.length;
-                _accountsCache = _accountsCache.filter(a => a.id !== deletingAccountId);
+                _accountsCache = _accountsCache.filter(a => !mismaCuenta(a, deletingAccountId));
                 if (_accountsCache.length < initialLength) {
                     await persistAccounts();
                     renderAccounts();
@@ -1944,13 +2816,18 @@
 
         // Partial Payment Functions
         function openPaymentModal(accountId) {
+            // Puerta de rol (capa 2): abrir el abono lleva a escribir.
+            if (!permiteEditarCuentas()) {
+                showNotification('Solo un administrador puede registrar abonos.', 'error');
+                return;
+            }
             payingAccountId = accountId;
-            const account = _accountsCache.find(a => a.id === accountId);
+            const account = _accountsCache.find(a => mismaCuenta(a, accountId));
             if (!account) {
                 showNotification('Error: Cuenta no encontrada para registrar pago.', 'error');
                 return;
             }
-            const totalPaid = account.payments.reduce((sum, p) => sum + p.amount, 0);
+            const totalPaid = abonadoDe(account);
             const pendingAmount = account.amount - totalPaid;
             document.getElementById('paymentAmount').value = pendingAmount.toFixed(2);
             document.getElementById('paymentAmount').max = pendingAmount.toFixed(2);
@@ -1969,6 +2846,12 @@
         }
 
         async function confirmPayment() {
+            // Puerta de rol (capa 2): registrar un abono es escribir dinero.
+            if (!permiteEditarCuentas()) {
+                showNotification('Solo un administrador puede registrar abonos.', 'error');
+                closePaymentModal();
+                return;
+            }
             const paymentInput = document.getElementById('paymentAmount');
             const paymentAmount = parseFloat(paymentInput.value);
             const errorMsg = document.getElementById('paymentAmount-error');
@@ -1982,14 +2865,14 @@
                 return;
             }
 
-            const account = _accountsCache.find(a => a.id === payingAccountId);
+            const account = _accountsCache.find(a => mismaCuenta(a, payingAccountId));
             if (!account) {
                 showNotification('Error: Cuenta no encontrada para registrar pago.', 'error');
                 closePaymentModal();
                 return;
             }
 
-            const totalPaid = account.payments.reduce((sum, p) => sum + p.amount, 0);
+            const totalPaid = abonadoDe(account);
             const pendingAmount = account.amount - totalPaid;
 
             if (paymentAmount > pendingAmount) {
@@ -2013,40 +2896,60 @@
             await persistAccounts();
             renderAccounts();
             updateDashboard();
+            // El flujo de caja cuenta TODOS los abonos: si la sección está a la vista,
+            // se repinta para que el cobro recién anotado aparezca sin recargar.
+            try {
+                const seccion = document.getElementById('reportsSection');
+                if (seccion && seccion.style.display === 'block') renderCashFlowChart();
+            } catch (e) { /* repintar nunca debe romper el cobro */ }
             showNotification('Pago registrado exitosamente.', 'success');
             closePaymentModal();
         }
 
         // Dashboard Functions
         function updateDashboard() {
-            let totalReceivable = 0;
-            let totalPayable = 0;
-            let overdueReceivable = 0;
-            let overduePayable = 0;
+            let totalReceivable = 0, totalPayable = 0;
+            let overdueReceivable = 0, overdueReceivableMonto = 0;
+            let overduePayable = 0, overduePayableMonto = 0;
+            let porVencer = 0, porVencerMonto = 0, porVencerOtroTipo = 0;
+            let cobradoMes = 0, cobradoMesAbonos = 0;
+            const hoy = fechaHoyIso();
+            const limite = fechaMasDias(hoy, diasRecordatorioCuentas());
+            const mesActual = hoy.slice(0, 7);
 
             _accountsCache.forEach(a => {
-                if (a.status !== 'paid') {
-                    const totalPaid = a.payments.reduce((sum, p) => sum + p.amount, 0);
-                    const pendingAmount = a.amount - totalPaid;
-
-                    if (a.type === 'cobrar') {
-                        totalReceivable += pendingAmount;
-                        if (a.status === 'overdue') {
-                            overdueReceivable++;
-                        }
-                    } else {
-                        totalPayable += pendingAmount;
-                        if (a.status === 'overdue') {
-                            overduePayable++;
-                        }
+                if (!a || typeof a !== 'object') return;
+                const saldo = saldoPendiente(a);
+                if (saldo > 0) {
+                    if (a.type === 'cobrar') totalReceivable += saldo; else totalPayable += saldo;
+                    if (a.dueDate && a.dueDate < hoy) {
+                        if (a.type === 'cobrar') { overdueReceivable++; overdueReceivableMonto += saldo; }
+                        else { overduePayable++; overduePayableMonto += saldo; }
+                    } else if (a.dueDate && limite && a.dueDate <= limite) {
+                        // Dentro de la ventana de recordatorio (cta_reminder_days).
+                        if (a.type === 'cobrar') { porVencer++; porVencerMonto += saldo; }
+                        else porVencerOtroTipo++;
                     }
                 }
+                abonosDe(a).forEach(p => {
+                    if (a.type !== 'cobrar') return;
+                    if (mesDePago(p) !== mesActual) return;
+                    cobradoMes += numeroSeguro(p && p.amount, 0);
+                    cobradoMesAbonos++;
+                });
             });
 
-            document.getElementById('totalReceivable').textContent = `\$${totalReceivable.toFixed(2)}`;
-            document.getElementById('totalPayable').textContent = `\$${totalPayable.toFixed(2)}`;
-            document.getElementById('overdueReceivable').textContent = overdueReceivable;
-            document.getElementById('overduePayable').textContent = overduePayable;
+            escribirTexto('totalReceivable', '$' + totalReceivable.toFixed(2));
+            escribirTexto('totalPayable', '$' + totalPayable.toFixed(2));
+            escribirTexto('overdueReceivable', overdueReceivable);
+            escribirTexto('overdueReceivableMonto', '$' + overdueReceivableMonto.toFixed(2) + ' pendientes');
+            escribirTexto('overduePayable', overduePayable);
+            escribirTexto('overduePayableMonto', '$' + overduePayableMonto.toFixed(2) + ' pendientes');
+            escribirTexto('porVencerCuentas', porVencer);
+            escribirTexto('porVencerMonto', '$' + porVencerMonto.toFixed(2) + ' por cobrar · en ' +
+                diasRecordatorioCuentas() + ' días' + (porVencerOtroTipo > 0 ? ' · ' + porVencerOtroTipo + ' por pagar' : ''));
+            escribirTexto('cobradoMesCuentas', '$' + cobradoMes.toFixed(2));
+            escribirTexto('cobradoMesDetalle', cobradoMesAbonos + (cobradoMesAbonos === 1 ? ' abono' : ' abonos') + ' este mes');
         }
 
         // Utility Functions
@@ -2057,16 +2960,17 @@
             }
 
             const data = _accountsCache.map(a => {
-                const totalPaid = a.payments.reduce((sum, p) => sum + p.amount, 0);
-                const pendingAmount = a.amount - totalPaid;
+                const totalPaid = abonadoDe(a);
+                const pendingAmount = saldoPendiente(a);
                 return {
                     Tipo: a.type === 'cobrar' ? 'Por Cobrar' : 'Por Pagar',
                     Descripción: a.description,
                     Contacto: a.contact,
                     Categoría: a.category || '',
-                    'Monto Total': a.amount.toFixed(2),
+                    'Monto Total': numeroSeguro(a.amount, 0).toFixed(2),
                     'Monto Pagado': totalPaid.toFixed(2),
                     'Monto Pendiente': pendingAmount.toFixed(2),
+                    'Días de Deuda': (diasDeDeuda(a) === null ? '' : diasDeDeuda(a)),
                     'Fecha de Vencimiento': a.dueDate,
                     Estado: { 'pending': 'Pendiente', 'paid': 'Pagado', 'overdue': 'Vencido' }[a.status],
                     Notas: a.notes || ''
@@ -2123,19 +3027,19 @@
             let valA = a[key];
             let valB = b[key];
 
-            if (key === 'dueDate') {
+            if (key === 'dias') {
+                // Días transcurridos desde que nació la deuda (sin fecha, 0).
+                valA = diasDeDeuda(a) || 0;
+                valB = diasDeDeuda(b) || 0;
+            } else if (key === 'dueDate') {
                 valA = new Date(valA);
                 valB = new Date(valB);
             } else if (key === 'amount') {
                 valA = parseFloat(valA);
                 valB = parseFloat(valB);
             } else if (key === 'pendingAmount') {
-                const totalPaidA = a.payments.reduce((sum, p) => sum + p.amount, 0);
-                const pendingAmountA = a.amount - totalPaidA;
-                const totalPaidB = b.payments.reduce((sum, p) => sum + p.amount, 0);
-                const pendingAmountB = b.amount - totalPaidB;
-                valA = pendingAmountA;
-                valB = pendingAmountB;
+                valA = saldoPendiente(a);
+                valB = saldoPendiente(b);
             } else if (typeof valA === 'string') {
                 return direction === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
             }
@@ -2149,13 +3053,11 @@
             return 0;
         }
 
+        /* Ya no hay cabeceras que marcar: la lista es de tarjetas y el orden se ve en el
+           desplegable. Se deja la función (la llama renderAccounts) para no romper a
+           quien la use y para que el día que vuelvan las cabeceras haya un sitio. */
         function updateSortIndicators() {
-            document.querySelectorAll('.data-table th[data-sort-key]').forEach(header => {
-                header.classList.remove('asc', 'desc');
-                if (header.getAttribute('data-sort-key') === currentSort.key) {
-                    header.classList.add(currentSort.direction);
-                }
-            });
+            return true;
         }
 
         // Reports Section
@@ -2176,23 +3078,20 @@
 
             const monthlyData = {};
 
+            /* TODOS los abonos cuentan, esté la cuenta saldada o no: un cobro parcial es
+               dinero que entró. Antes solo se miraban las cuentas con estado 'paid', así
+               que el caso normal (abonar a una cuenta pendiente) no salía en el gráfico.
+               El mes se saca del TEXTO de la fecha ('AAAA-MM-DD'): con `new Date()`,
+               '2026-03-01' cae en febrero en la zona horaria de Venezuela. */
             _accountsCache.forEach(account => {
-                if (account.status === 'paid') {
-                    account.payments.forEach(payment => {
-                        const paymentDate = new Date(payment.date);
-                        const monthKey = `${paymentDate.getFullYear()}-${(paymentDate.getMonth() + 1).toString().padStart(2, '0')}`;
-                        
-                        if (!monthlyData[monthKey]) {
-                            monthlyData[monthKey] = { income: 0, expense: 0 };
-                        }
-
-                        if (account.type === 'cobrar') {
-                            monthlyData[monthKey].income += payment.amount;
-                        } else {
-                            monthlyData[monthKey].expense += payment.amount;
-                        }
-                    });
-                }
+                abonosDe(account).forEach(payment => {
+                    const monthKey = mesDePago(payment);
+                    if (!monthKey) return;               // sin fecha válida no se inventa un mes
+                    if (!monthlyData[monthKey]) monthlyData[monthKey] = { income: 0, expense: 0 };
+                    const importe = numeroSeguro(payment && payment.amount, 0);
+                    if (account.type === 'cobrar') monthlyData[monthKey].income += importe;
+                    else monthlyData[monthKey].expense += importe;
+                });
             });
 
             const sortedMonths = Object.keys(monthlyData).sort();

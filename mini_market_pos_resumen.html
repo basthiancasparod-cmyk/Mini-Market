@@ -1209,6 +1209,30 @@
             color: #cbd5e1;
         }
 
+        /* Formas de pago de dueño: el consumo interno se marca como lo que es (no
+           una venta) y el fiado como pendiente de cobro. */
+        .sale-tag.consumo-interno {
+            background: #e2e8f0;
+            color: #334155;
+            border: 1px dashed #94a3b8;
+        }
+
+        .dark-mode .sale-tag.consumo-interno {
+            background: #334155;
+            color: #e2e8f0;
+            border: 1px dashed #64748b;
+        }
+
+        .sale-tag.por-cobrar {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .dark-mode .sale-tag.por-cobrar {
+            background: #5a4a2a;
+            color: #f6ad55;
+        }
+
         @media print {
             body { background: white !important; color: black !important; }
             .glassmorphic-bar, .btn, button { display: none !important; }
@@ -1344,6 +1368,8 @@
                         <option value="ves-biopago">Biopago</option>
                         <option value="usd-zelle">Zelle</option>
                         <option value="combined">Combinado USD/VES</option>
+                        <option value="por-cobrar">Por Cobrar (fiado)</option>
+                        <option value="consumo-interno">Consumo Interno</option>
                     </select>
                 </div>
                 
@@ -1417,6 +1443,8 @@
                         <option value="high-value">Alto Valor</option>
                         <option value="foreign">Moneda Extranjera</option>
                         <option value="combined-payment">Pago Combinado</option>
+                        <option value="por-cobrar">Por Cobrar (fiado)</option>
+                        <option value="consumo-interno">Consumo interno</option>
                         <!-- Add more tags as needed -->
                     </select>
                 </div>
@@ -1463,6 +1491,11 @@
         let allSales = [];
         let mainInventory = [];
         let filteredSales = [];
+        /* Ventas del filtro que SÍ cuentan para los totales: las mismas que
+           `filteredSales` menos el consumo interno (que no es una venta). Los
+           gráficos, las tarjetas y el PDF usan ESTA lista; la lista de resultados
+           sigue usando `filteredSales` para poder enseñar y etiquetar el consumo. */
+        let ventasContablesFiltradas = [];
         let currentPage = 1;
         let itemsPerPage = 10;
         let currentFilters = {
@@ -1486,6 +1519,27 @@
         let _recargaVentasTimer = null;   // relectura con retardo tras cambios en ops
         let _modoSyncResumen = null;      // 'clasico' | 'operaciones' | null (sin resolver)
 
+        /* Las dos formas de pago de dueño, con el MISMO criterio que el lector de
+           ventas y que el POS: la marca propia manda y el método de pago es la
+           segunda señal. Si el lector está cargado, se le pregunta a él. */
+        function esConsumoInternoVenta(sale) {
+            try {
+                if (window.lectorVentas && typeof window.lectorVentas.esConsumoInterno === 'function') {
+                    return window.lectorVentas.esConsumoInterno(sale) === true;
+                }
+            } catch (e) { /* si el lector falla, se decide aquí mismo */ }
+            return !!(sale && (sale.consumoInterno === true || sale.paymentMethod === 'consumo-interno'));
+        }
+
+        function esVentaPorCobrar(sale) {
+            try {
+                if (window.lectorVentas && typeof window.lectorVentas.esPorCobrar === 'function') {
+                    return window.lectorVentas.esPorCobrar(sale) === true;
+                }
+            } catch (e) { /* si el lector falla, se decide aquí mismo */ }
+            return !!(sale && (sale.porCobrar === true || sale.paymentMethod === 'por-cobrar'));
+        }
+
         function escapeHtml(str) {
             if (typeof str !== 'string') return str;
             const div = document.createElement('div');
@@ -1494,6 +1548,25 @@
         }
 
         // Initialize application
+        /* Enlace profundo del resumen: lo usa el módulo de cuentas para abrir «la venta
+           de este ticket» ya filtrada. Si el parámetro no existe, no hace nada. */
+        function aplicarParametrosResumen() {
+            try {
+                const params = new URLSearchParams(location.search);
+                const poner = (id, valor) => {
+                    const el = document.getElementById(id);
+                    if (el && valor) el.value = valor;
+                };
+                poner('searchInput', params.get('q') || params.get('buscar') || '');
+                poner('dateFrom', params.get('desde') || '');
+                poner('dateTo', params.get('hasta') || '');
+                poner('paymentFilter', params.get('metodo') || '');
+                poner('currencyFilter', params.get('moneda') || '');
+                poner('tagFilter', params.get('etiqueta') || '');
+                return true;
+            } catch (e) { return false; }
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
             // Aislamiento por cuenta (fase 2, datos_cuenta.js): activa el prefijo de la
             // cuenta y migra UNA sola vez los datos que quedaron sin prefijo. Se pasa el
@@ -1503,6 +1576,8 @@
             if (window.datosCuenta && emailDeLaCuenta) datosCuenta.activarYMigrar(emailDeLaCuenta);
             loadSales().then(() => {
                 initializeDateInputs();
+                // Conexión con cuentas: la venta de un ticket concreto llega por la URL.
+                aplicarParametrosResumen();
                 setupEventListeners();
                 applySavedTheme();
                 updateUserEmail();
@@ -1752,12 +1827,12 @@
         function calculateSalesByDay() {
     const result = {};
 
-    if (filteredSales.length === 0) {
+    if (ventasContablesFiltradas.length === 0) {
         return {};
     }
 
     // 1. Encuentra el rango de fechas dentro de los resultados filtrados.
-    const dates = filteredSales.map(s => {
+    const dates = ventasContablesFiltradas.map(s => {
         const saleDate = new Date(s.timestamp);
         return new Date(saleDate.getFullYear(), saleDate.getMonth(), saleDate.getDate());
     });
@@ -1773,7 +1848,7 @@
     }
     
     // 3. Llena los datos usando únicamente las ventas que pasaron el filtro.
-    filteredSales.forEach(sale => {
+    ventasContablesFiltradas.forEach(sale => {
         const saleDate = new Date(sale.timestamp);
         const saleDateString = new Date(saleDate.getFullYear(), saleDate.getMonth(), saleDate.getDate()).toISOString().split('T')[0];
         
@@ -1799,7 +1874,7 @@
     const result = {};
     
     // ✨ CORRECCIÓN: Ahora itera sobre las ventas filtradas (`filteredSales`).
-    filteredSales.forEach(sale => {
+    ventasContablesFiltradas.forEach(sale => {
         const method = getPaymentMethodName(sale.paymentMethod);
         if (!result[method]) {
             result[method] = { ves: 0 }; // El gráfico solo está mostrando montos en VES.
@@ -2129,6 +2204,8 @@ function applyFilters() {
             if (currentFilters.tag === 'high-value' && totalInUSD <= 50) return false;
             if (currentFilters.tag === 'foreign' && !(sale.currency === 'USD' || (sale.paymentMethod === 'combined' && sale.combinedPayment && sale.combinedPayment.paidUsd > 0))) return false;
             if (currentFilters.tag === 'combined-payment' && sale.paymentMethod !== 'combined') return false;
+            if (currentFilters.tag === 'consumo-interno' && !esConsumoInternoVenta(sale)) return false;
+            if (currentFilters.tag === 'por-cobrar' && !esVentaPorCobrar(sale)) return false;
         }
         if (currentFilters.search) {
             const saleDateString = saleDate.toISOString().split('T')[0];
@@ -2142,6 +2219,29 @@ function applyFilters() {
         return true;
     });
 
+    /* CONSUMO INTERNO: no entra en NINGÚN total de venta, pero se cuenta aparte
+       para poder enseñarlo sin engañar a nadie. POR COBRAR: sí es venta (ya está
+       en los totales), se cuenta aparte porque NO está cobrada. */
+    ventasContablesFiltradas = filteredSales.filter(sale => !esConsumoInternoVenta(sale));
+    let consumoInternoCount = 0, consumoInternoUsd = 0, consumoInternoVes = 0;
+    let porCobrarCount = 0, porCobrarUsd = 0, porCobrarVes = 0;
+    filteredSales.forEach(sale => {
+        const totalesDueno = recalculateTotalFromItems(sale);
+        const tasaDueno = Number(sale.exchangeRate) || 0;
+        const esUsd = sale.currency === 'USD';
+        const totalUsd = esUsd ? totalesDueno.total : (tasaDueno > 0 ? totalesDueno.total / tasaDueno : 0);
+        const totalVes = esUsd ? totalesDueno.total * tasaDueno : totalesDueno.total;
+        if (esConsumoInternoVenta(sale)) {
+            consumoInternoCount++;
+            consumoInternoUsd += totalUsd;
+            consumoInternoVes += totalVes;
+        } else if (esVentaPorCobrar(sale)) {
+            porCobrarCount++;
+            porCobrarUsd += totalUsd;
+            porCobrarVes += totalVes;
+        }
+    });
+
     // ✨ INICIO DE LA NUEVA LÓGICA DE CÁLCULO POR MONEDA ✨
     // 3. Calcula las métricas separando por moneda desde el principio.
     let totalVesSales = 0;
@@ -2150,7 +2250,7 @@ function applyFilters() {
     let totalUsdProfit = 0;
     const productSales = {};
 
-    filteredSales.forEach(sale => {
+    ventasContablesFiltradas.forEach(sale => {
         const correctTotals = recalculateTotalFromItems(sale);
         const exchangeRate = sale.exchangeRate;
 
@@ -2187,7 +2287,7 @@ function applyFilters() {
         });
     });
 
-    const filteredTransactions = filteredSales.length;
+    const filteredTransactions = ventasContablesFiltradas.length;
     const topProduct = Object.entries(productSales).sort((a, b) => b[1] - a[1])[0];
 
     // 4. Construye el array de tarjetas con la nueva estructura clara.
@@ -2223,7 +2323,9 @@ function applyFilters() {
         {
             title: 'Transacciones del Filtro',
             value: filteredTransactions,
-            subtitle: `Total de ventas en el período`,
+            subtitle: consumoInternoCount > 0
+                ? `Ventas del período (sin ${consumoInternoCount} de consumo interno)`
+                : `Total de ventas en el período`,
             icon: '📊',
             color: 'linear-gradient(135deg, #8b5cf6, #a855f7)'
         },
@@ -2233,6 +2335,20 @@ function applyFilters() {
             subtitle: topProduct ? `${topProduct[1].toLocaleString('es-ES')} unidades vendidas` : 'Sin ventas en el período',
             icon: '🏆',
             color: 'linear-gradient(135deg, #ec4899, #f472b6)'
+        },
+        {
+            title: 'Por Cobrar (Fiado)',
+            value: `$ ${formatCurrency(porCobrarUsd, 'USD')}`,
+            subtitle: `Bs. ${formatCurrency(porCobrarVes)} · ${porCobrarCount} venta(s) a crédito, NO cobrada(s)`,
+            icon: '📝',
+            color: 'linear-gradient(135deg, #f59e0b, #d97706)'
+        },
+        {
+            title: 'Consumo Interno',
+            value: consumoInternoCount,
+            subtitle: `NO es venta · $ ${formatCurrency(consumoInternoUsd, 'USD')} en productos`,
+            icon: '🏠',
+            color: 'linear-gradient(135deg, #64748b, #475569)'
         }
     ];
 
@@ -2284,6 +2400,9 @@ function applyFilters() {
         if (sale.currency === 'USD' || (sale.paymentMethod === 'combined' && sale.combinedPayment && sale.combinedPayment.paidUsd > 0)) tags.push({text: 'USD', class: 'foreign'});
         if (sale.paymentMethod === 'combined') tags.push({text: 'Combinado', class: 'combined-payment'}); 
         if (sale.customer && sale.customer.document === 'V12345678') tags.push({text: 'Regular', class: 'regular'});
+        // Formas de pago de dueño: se DISTINGUEN en la lista (no se esconden).
+        if (esConsumoInternoVenta(sale)) tags.push({text: 'Consumo interno (no es venta)', class: 'consumo-interno'});
+        if (esVentaPorCobrar(sale)) tags.push({text: 'Por cobrar (fiado)', class: 'por-cobrar'});
 
         if (sale.ivaApplied === false) {
             tags.push({text: 'Exento (E)', class: 'exempt-iva'});
@@ -2331,6 +2450,9 @@ function applyFilters() {
                             ${tags.length > 0 ? `
                                 <div class="sale-tags">
                                     ${tags.map(tag => `<span class="sale-tag ${tag.class}">${tag.text}</span>`).join('')}
+                                    ${esVentaPorCobrar(sale) ? `<a class="sale-tag por-cobrar"
+                                        href="cuentas.html?q=${encodeURIComponent(sale.id)}"
+                                        title="Abrir esta deuda en Cuentas por Cobrar">Ver la deuda →</a>` : ''}
                                 </div>
                             ` : ''}
                         </div>
@@ -2590,7 +2712,9 @@ function applyFilters() {
                 'ves-mobile': 'Pago Móvil',
                 'usd-cash': 'Efectivo USD',
                 'usd-zelle': 'Zelle',
-                'combined': 'Combinado USD/VES'
+                'combined': 'Combinado USD/VES',
+                'por-cobrar': 'Por Cobrar (fiado)',
+                'consumo-interno': 'Consumo Interno'
             };
             return methods[methodId] || methodId;
         }
@@ -2644,7 +2768,7 @@ function applyFilters() {
     // 1. Recalcula los totales de las tarjetas del dashboard
     let totalVesSales = 0, totalUsdSales = 0, totalVesProfit = 0, totalUsdProfit = 0;
     const productSales = {};
-    filteredSales.forEach(sale => {
+    ventasContablesFiltradas.forEach(sale => {
         const correctTotals = recalculateTotalFromItems(sale);
         const exchangeRate = sale.exchangeRate;
         let saleProfitInUSD = 0;
@@ -2672,7 +2796,7 @@ function applyFilters() {
             totalUsdProfit += saleProfitInUSD;
         }
     });
-    const filteredTransactions = filteredSales.length;
+    const filteredTransactions = ventasContablesFiltradas.length;
     const topProduct = Object.entries(productSales).sort((a, b) => b[1] - a[1])[0];
 
     // 2. Imprime el Resumen General (Tarjetas del Dashboard)
@@ -2691,6 +2815,12 @@ function applyFilters() {
     doc.text(`Total Transacciones: ${filteredTransactions}`, margin, y);
     const topProductName = topProduct ? `${topProduct[0]} (${topProduct[1]} unid.)` : 'N/A';
     doc.text(`Producto Más Vendido: ${topProductName}`, doc.internal.pageSize.width / 2, y);
+    y += 6;
+    // Se dice lo que NO entra en los totales: el consumo interno no es una venta y
+    // el fiado está vendido pero sin cobrar.
+    doc.text(`Consumo interno (NO es venta, fuera de los totales): $ ${formatCurrency(consumoInternoUsd, 'USD')} en ${consumoInternoCount} registro(s)`, margin, y);
+    y += 6;
+    doc.text(`Por cobrar (fiado, venta NO cobrada): $ ${formatCurrency(porCobrarUsd, 'USD')} en ${porCobrarCount} venta(s)`, margin, y);
     y += 10;
 
     // 3. Imprime el resumen por Método de Pago (Gráfico)

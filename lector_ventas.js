@@ -73,7 +73,9 @@
        ================================================================= */
 
     /** Versión del lector (no confundir con la del motor). */
-    var VERSION_LECTOR = 1;
+    /* v2: el resumen separa el consumo interno (fuera de los totales de venta) y
+       el fiado «por cobrar» (dentro de las ventas, informado aparte). */
+    var VERSION_LECTOR = 2;
 
     /** Ventas por página al leer la nube (§6 del diseño: nada cuelga la UI). */
     var TAMANO_PAGINA = 300;
@@ -325,6 +327,40 @@
             return m || 'sin-metodo';
         } catch (e) { return 'sin-metodo'; }
     }
+
+    /* =================================================================
+       Formas de pago de dueño (las dos que solo ve un administrador)
+       ----------------------------------------------------------------
+       CONSUMO INTERNO: el producto sale del inventario, pero NO es una venta y
+       no es ingreso. Queda FUERA de todos los totales de venta.
+       POR COBRAR: es una venta (ingreso), pero NO está cobrada: suma en los
+       totales y ADEMÁS se informa aparte para poder distinguirla.
+       La marca propia (`consumoInterno` / `porCobrar`) manda; el método de pago
+       es la segunda señal, por si el dato viene de un registro viejo. */
+    function esConsumoInterno(v) {
+        try {
+            if (!esObjeto(v)) return false;
+            if (v.consumoInterno === true) return true;
+            return String(v.paymentMethod || '') === 'consumo-interno';
+        } catch (e) { return false; }
+    }
+
+    function esPorCobrar(v) {
+        try {
+            if (!esObjeto(v)) return false;
+            if (v.porCobrar === true) return true;
+            return String(v.paymentMethod || '') === 'por-cobrar';
+        } catch (e) { return false; }
+    }
+
+    /** Suma una venta a un grupo aparte (consumo interno / por cobrar). */
+    function sumarGrupo(grupo, total, totalUSD) {
+        grupo.cantidad++;
+        grupo.total += total;
+        grupo.totalUSD += totalUSD;
+    }
+
+    function grupoVacio() { return { cantidad: 0, total: 0, totalUSD: 0 }; }
 
     /** Orden total: por fecha y, a igualdad, por id (estable y repetible). */
     function compararVentas(a, b) {
@@ -908,6 +944,11 @@
         var res = {
             ok: false, fecha: dia, cantidad: 0, total: 0, totalUSD: 0, porMetodo: {},
             ventas: [], completo: false, indexado: false,
+            /* Grupos APARTE de los totales de venta:
+               · consumoInterno NO es una venta (no entra en total/totalUSD);
+               · porCobrar SÍ es venta (ya está sumada) pero NO está cobrada. */
+            consumoInterno: grupoVacio(),
+            porCobrar: grupoVacio(),
             origen: { locales: 0, ops: 0, historicoCongelado: 0 }, faltantes: [], error: ''
         };
         try {
@@ -963,6 +1004,15 @@
                     var totalUSD = Number(e.totalUSD);
                     if (!isFinite(totalUSD)) totalUSD = total;
                     var metodo = e.metodo ? String(e.metodo) : 'sin-metodo';
+                    /* El índice del motor trae las banderas; el método de pago es la
+                       segunda señal (por si el índice es anterior a esta función). */
+                    if ((e.consumoInterno === true) || metodo === 'consumo-interno') {
+                        sumarGrupo(res.consumoInterno, total, totalUSD);
+                        continue;   // FUERA de los totales de venta
+                    }
+                    if ((e.porCobrar === true) || metodo === 'por-cobrar') {
+                        sumarGrupo(res.porCobrar, total, totalUSD);
+                    }
                     res.cantidad++;
                     res.total += total;
                     res.totalUSD += totalUSD;
@@ -979,6 +1029,11 @@
                     var t = totalDeVenta(venta);
                     var u = totalUsdDeVenta(venta);
                     var m = metodoDeVenta(venta);
+                    if (esConsumoInterno(venta)) {
+                        sumarGrupo(res.consumoInterno, t, u);
+                        continue;   // no es una venta: no entra en los totales
+                    }
+                    if (esPorCobrar(venta)) sumarGrupo(res.porCobrar, t, u);
                     res.cantidad++;
                     res.total += t;
                     res.totalUSD += u;
@@ -992,6 +1047,10 @@
             }
             res.total = Math.round(res.total * 100) / 100;
             res.totalUSD = Math.round(res.totalUSD * 100) / 100;
+            res.consumoInterno.total = Math.round(res.consumoInterno.total * 100) / 100;
+            res.consumoInterno.totalUSD = Math.round(res.consumoInterno.totalUSD * 100) / 100;
+            res.porCobrar.total = Math.round(res.porCobrar.total * 100) / 100;
+            res.porCobrar.totalUSD = Math.round(res.porCobrar.totalUSD * 100) / 100;
             return res;
         } catch (e) {
             res.ok = false;
@@ -1009,6 +1068,10 @@
         var res = {
             ok: false, desde: desde || null, hasta: hasta || null,
             dias: [], cantidad: 0, total: 0, totalUSD: 0, porMetodo: {},
+            /* Ver resumenDelDia: el consumo interno no es venta (queda fuera de los
+               totales) y el fiado es venta, pero se informa aparte por no estar cobrado. */
+            consumoInterno: grupoVacio(),
+            porCobrar: grupoVacio(),
             origen: { locales: 0, ops: 0, historicoCongelado: 0 }, faltantes: [], completo: false, error: ''
         };
         try {
@@ -1030,11 +1093,20 @@
                 var venta = lectura.ventas[i];
                 var dia = diaDe(venta.fechaISO || venta.timestamp);
                 if (!dia) continue;
-                if (!porDia[dia]) porDia[dia] = { fecha: dia, cantidad: 0, total: 0, totalUSD: 0, porMetodo: {} };
+                if (!porDia[dia]) porDia[dia] = { fecha: dia, cantidad: 0, total: 0, totalUSD: 0, porMetodo: {}, consumoInterno: grupoVacio(), porCobrar: grupoVacio() };
                 var d = porDia[dia];
                 var t = totalDeVenta(venta);
                 var u = totalUsdDeVenta(venta);
                 var m = metodoDeVenta(venta);
+                if (esConsumoInterno(venta)) {
+                    sumarGrupo(res.consumoInterno, t, u);
+                    sumarGrupo(d.consumoInterno, t, u);
+                    continue;   // no es una venta: fuera de los totales (rango y día)
+                }
+                if (esPorCobrar(venta)) {
+                    sumarGrupo(res.porCobrar, t, u);
+                    sumarGrupo(d.porCobrar, t, u);
+                }
                 d.cantidad++;
                 d.total += t;
                 d.totalUSD += u;
@@ -1055,7 +1127,7 @@
             // Los días del rango sin ventas salen a cero (si el rango es razonable).
             if (ctx.dias) {
                 for (var j = 0; j < ctx.dias.length; j++) {
-                    if (!porDia[ctx.dias[j]]) porDia[ctx.dias[j]] = { fecha: ctx.dias[j], cantidad: 0, total: 0, totalUSD: 0, porMetodo: {} };
+                    if (!porDia[ctx.dias[j]]) porDia[ctx.dias[j]] = { fecha: ctx.dias[j], cantidad: 0, total: 0, totalUSD: 0, porMetodo: {}, consumoInterno: grupoVacio(), porCobrar: grupoVacio() };
                 }
                 claves = ctx.dias.slice();
             }
@@ -1064,11 +1136,19 @@
                 if (!dd) continue;
                 dd.total = Math.round(dd.total * 100) / 100;
                 dd.totalUSD = Math.round(dd.totalUSD * 100) / 100;
+                dd.consumoInterno.total = Math.round(dd.consumoInterno.total * 100) / 100;
+                dd.consumoInterno.totalUSD = Math.round(dd.consumoInterno.totalUSD * 100) / 100;
+                dd.porCobrar.total = Math.round(dd.porCobrar.total * 100) / 100;
+                dd.porCobrar.totalUSD = Math.round(dd.porCobrar.totalUSD * 100) / 100;
                 dd.completo = !(res.faltantes || []).length || res.faltantes.indexOf(dd.fecha) === -1;
                 res.dias.push(dd);
             }
             res.total = Math.round(res.total * 100) / 100;
             res.totalUSD = Math.round(res.totalUSD * 100) / 100;
+            res.consumoInterno.total = Math.round(res.consumoInterno.total * 100) / 100;
+            res.consumoInterno.totalUSD = Math.round(res.consumoInterno.totalUSD * 100) / 100;
+            res.porCobrar.total = Math.round(res.porCobrar.total * 100) / 100;
+            res.porCobrar.totalUSD = Math.round(res.porCobrar.totalUSD * 100) / 100;
             return res;
         } catch (e) {
             res.ok = false;
@@ -1108,6 +1188,11 @@
             resumenRango: resumenRango,
             estado: estado,
             // Apoyo al diagnóstico y a las pruebas (no los usa la pantalla).
+            esConsumoInterno: esConsumoInterno,
+            esPorCobrar: esPorCobrar,
+            totalDeVenta: totalDeVenta,
+            totalUsdDeVenta: totalUsdDeVenta,
+            metodoDeVenta: metodoDeVenta,
             leerOpsNube: leerOpsNube,
             leerHistoricoNube: leerHistoricoNube,
             leerIndiceDia: leerIndiceDia,

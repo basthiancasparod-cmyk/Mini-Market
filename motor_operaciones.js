@@ -1056,7 +1056,13 @@
                 total: total,
                 totalUSD: Math.round(totalUSD * 100) / 100,
                 items: (p.items && p.items.length) ? p.items.length : 0,
-                metodo: p.paymentMethod ? String(p.paymentMethod) : ''
+                metodo: p.paymentMethod ? String(p.paymentMethod) : '',
+                // Formas de pago de dueño: CONSUMO INTERNO no es una venta (el lector
+                // lo deja fuera de los totales) y POR COBRAR es venta, pero sin cobrar.
+                // Viajan como bandera propia además del método, para que el reporte no
+                // dependa de una sola señal.
+                consumoInterno: p.consumoInterno === true,
+                porCobrar: p.porCobrar === true
             });
             return true;
         } catch (e) {

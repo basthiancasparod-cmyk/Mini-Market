@@ -1872,6 +1872,27 @@
                 </div>
             </div>
 
+            <!-- Sección para «Por Cobrar» (fiado) -->
+            <div class="modal-section" id="porCobrarSection" style="display: none;">
+                <div class="section-title"><i class="fas fa-file-invoice-dollar"></i>Venta a crédito (Por Cobrar)</div>
+                <div class="payment-details-container">
+                    <div class="payment-message info" id="porCobrarInfo"></div>
+                    <p style="margin:8px 0 0;font-size:0.85rem;color:#64748b;">
+                        El <b>nombre del cliente es obligatorio</b>: se escribe arriba, en
+                        «Datos del Cliente», y la deuda se registra a su nombre en el módulo
+                        de <b>Cuentas por Cobrar</b>, donde se le abonan los pagos.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Sección para «Consumo Interno» -->
+            <div class="modal-section" id="consumoInternoSection" style="display: none;">
+                <div class="section-title"><i class="fas fa-house"></i>Consumo Interno (dueños)</div>
+                <div class="payment-details-container">
+                    <div class="payment-message warning" id="consumoInternoInfo"></div>
+                </div>
+            </div>
+
             <!-- Resumen de Totales -->
             <div class="modal-section">
                 <div class="section-title">
@@ -1985,14 +2006,119 @@
                 { id: 'ves-mobile', name: 'Pago Móvil', icon: '📱' },
                 { id: 'ves-biopago', name: 'Biopago', icon: '☝️' },
                 { id: 'ves-cashea', name: 'Cashea', icon: '<svg viewBox="0 0 24 24" width="26" height="26"><circle cx="12" cy="12" r="11" fill="#FFD700"/><text x="12" y="17" text-anchor="middle" font-size="13" font-weight="bold" fill="white" font-family="Arial,sans-serif">C</text></svg>' },
-                { id: 'combined', name: 'Combinado USD/VES', icon: '🔄' }
+                { id: 'combined', name: 'Combinado USD/VES', icon: '🔄' },
+                /* Formas de pago de DUEÑO. `soloAdmin` las saca de la parrilla cuando
+                   esta pestaña no tiene perfil de administrador (ver la puerta de rol
+                   de abajo). No son un método de cobro más: «Por cobrar» es un fiado y
+                   «Consumo interno» no es una venta. */
+                { id: 'por-cobrar', name: 'Por Cobrar', icon: '📝', soloAdmin: true },
+                { id: 'consumo-interno', name: 'Consumo Interno', icon: '🏠', soloAdmin: true }
             ],
             USD: [
                 { id: 'usd-cash', name: 'Efectivo USD', icon: '💸' },
                 { id: 'usd-zelle', name: 'Zelle', icon: '🏛️' },
-                { id: 'combined', name: 'Combinado USD/VES', icon: '🔄' }
+                { id: 'combined', name: 'Combinado USD/VES', icon: '🔄' },
+                { id: 'por-cobrar', name: 'Por Cobrar', icon: '📝', soloAdmin: true },
+                { id: 'consumo-interno', name: 'Consumo Interno', icon: '🏠', soloAdmin: true }
             ]
         };
+
+        /* ===== FORMAS DE PAGO SOLO PARA ADMINISTRADORES ===== 
+
+           «Por cobrar» (fiado) y «Consumo interno» son operaciones de dueño, no de
+           mostrador. La puerta tiene DOS capas: aquí se decide qué botones se pintan y
+           `processSale` vuelve a comprobarlo ANTES de registrar nada. Ocultar el botón
+           nunca es la única defensa.
+
+           El operador vive en sessionStorage['currentUser'] (por pestaña) y su `role`
+           es 'Administrador' o 'Vendedor' (index.html:1756 · gestion_usuario.html).
+           Reglas, de la más específica a la más general:
+             1. Si hay OPERADOR en esta pestaña, MANDA SU ROL: 'Administrador' sí y
+                cualquier otro rol (p. ej. 'Vendedor') no. Un operador vendedor no ve ni
+                usa estos métodos aunque la sesión de Firebase sea la del propietario
+                (el login de operador se hace SOBRE la sesión del propietario, así que
+                Firebase Auth no distingue uno de otro: la marca es `currentUser`).
+             2. Sin operador, el PROPIETARIO cuenta como administrador: index.html:1229
+                deja 'propietarioActual'/'currentOwner' al iniciar sesión como dueño.
+             3. Sin operador y sin marca de propietario se CIERRA POR DEFECTO: tener
+                solo la marca compartida 'sesionActiva' (p. ej. una pestaña nueva en la
+                que se perdió `currentUser`) no concede permisos de dueño. */
+        const METODOS_SOLO_ADMIN = ['por-cobrar', 'consumo-interno'];
+
+        function leerOperadorActual() {
+            try {
+                const bruto = sessionStorage.getItem('currentUser');
+                return bruto ? JSON.parse(bruto) : null;
+            } catch (e) { return null; }
+        }
+
+        function esSesionDePropietario() {
+            try {
+                if (sessionStorage.getItem('propietarioActual')) return true;
+                return !!sessionStorage.getItem('currentOwner');
+            } catch (e) { return false; }
+        }
+
+        /** ¿Esta pestaña tiene perfil de administrador? (ver reglas de arriba). */
+        function esOperadorAdministrador() {
+            const operador = leerOperadorActual();
+            if (operador && operador.role) return operador.role === 'Administrador';
+            return esSesionDePropietario();
+        }
+
+        function metodoSoloAdmin(idMetodo) {
+            return METODOS_SOLO_ADMIN.indexOf(String(idMetodo || '')) !== -1;
+        }
+
+        /** ¿Se puede usar (y mostrar) este método en esta pestaña? */
+        function puedeUsarMetodoPago(idMetodo) {
+            return !metodoSoloAdmin(idMetodo) || esOperadorAdministrador();
+        }
+
+        /* Días de recordatorio de cuentas por cobrar: es un ajuste que YA existe
+           (config.html lo guarda en la clave de negocio 'cta_reminder_days', 7 por
+           defecto, y almacenamiento.js lo respalda). Aquí se reutiliza para la fecha
+           de vencimiento del fiado: no se inventa un ajuste nuevo. */
+        function diasRecordatorioCuentas() {
+            try {
+                const dias = parseInt(localStorage.getItem('cta_reminder_days'), 10);
+                return (isNaN(dias) || dias < 0) ? 7 : dias;
+            } catch (e) { return 7; }
+        }
+
+        function fechaVencimientoFiado(desdeMs) {
+            const base = isFinite(Number(desdeMs)) ? Number(desdeMs) : Date.now();
+            const vence = new Date(base + diasRecordatorioCuentas() * 24 * 60 * 60 * 1000);
+            return vence.toISOString().split('T')[0];
+        }
+
+        /** Texto del cliente del fiado: el de la venta o, si no, el del formulario. */
+        function nombreClienteFiado() {
+            if (customerData && customerData.name) return String(customerData.name).trim();
+            const campo = document.getElementById('customerName');
+            return campo ? String(campo.value || '').trim() : '';
+        }
+
+        /** Aviso vivo dentro del modal: qué deuda se va a crear y cuándo vence. */
+        function mostrarSeccionPorCobrar() {
+            const cont = document.getElementById('porCobrarInfo');
+            if (!cont) return;
+            const totalUsd = calculateFinalTotalInUsd();
+            const falta = nombreClienteFiado() ? '' :
+                '<div class="payment-message error">Falta el nombre del cliente: sin cliente no hay a quién cobrarle.</div>';
+            cont.innerHTML = falta +
+                'Se registrará una deuda de <b>$' + formatCurrency(totalUsd) + '</b>' +
+                ' (Bs. ' + formatCurrency(totalUsd * exchangeRate) + ')' +
+                ' en Cuentas por Cobrar, con vencimiento el <b>' + fechaVencimientoFiado() + '</b>' +
+                ' (' + diasRecordatorioCuentas() + ' días de recordatorio).';
+        }
+
+        function mostrarSeccionConsumoInterno() {
+            const cont = document.getElementById('consumoInternoInfo');
+            if (!cont) return;
+            cont.innerHTML = 'Productos que consumen los dueños: <b>descuenta stock</b> porque el ' +
+                'producto sale físicamente, pero <b>no cuenta como venta ni como ingreso</b> en los reportes.';
+        }
 
         // Helper function to parse numbers (handles comma and dot as decimal separators)
         function parseNumber(value) {
@@ -2298,6 +2424,9 @@ function renderCategoryFilters() {
             // Validaciones de input en tiempo real
             document.getElementById('customerName').addEventListener('input', function(e) {
                 this.value = this.value.replace(/[^A-Za-zñÑáéíóúÁÉÍÓÚ\s]/g, '');
+                // Si el cobro es un fiado, el aviso del modal se actualiza en vivo:
+                // dice el cliente que falta y la deuda que se va a crear.
+                if (selectedPaymentMethod === 'por-cobrar') mostrarSeccionPorCobrar();
             });
             const normalizeDoc = (val) => val.replace(/[^VEJGPvejpg0-9]/g, '');
             document.getElementById('customerDocument').addEventListener('input', function(e) {
@@ -2375,6 +2504,9 @@ function handleClientSearch(documentValue) {
         document.getElementById('customerName').value = foundClient.name || '';
         document.getElementById('customerPhone').value = foundClient.phone || '';
         document.getElementById('customerEmail').value = foundClient.email || '';
+        // El cliente vino del autocompletado por documento: si el cobro es un fiado,
+        // el aviso ya puede decir a nombre de quién queda la deuda.
+        if (selectedPaymentMethod === 'por-cobrar') mostrarSeccionPorCobrar();
     } else {
         // Si no hay coincidencia exacta, limpiar los campos para evitar mezclar datos viejos
         document.getElementById('customerName').value = '';
@@ -4246,6 +4378,12 @@ function filterAndDisplayProducts(searchTerm = '') {
             document.getElementById('paidUsdCombined').value = '';
             document.getElementById('remainingVesCombined').value = '';
             document.getElementById('combinedPaymentMessageContainer').innerHTML = '';
+
+            // Formas de pago de dueño: se ocultan y se limpia su aviso.
+            document.getElementById('porCobrarSection').style.display = 'none';
+            document.getElementById('porCobrarInfo').innerHTML = '';
+            document.getElementById('consumoInternoSection').style.display = 'none';
+            document.getElementById('consumoInternoInfo').innerHTML = '';
             
             // Resetear el objeto paymentDetails
             paymentDetails = {};
@@ -4259,7 +4397,10 @@ function filterAndDisplayProducts(searchTerm = '') {
 
         function loadModalPaymentMethods() {
             const container = document.getElementById('modalPaymentMethods');
-            const methods = paymentMethods[currentCurrency] || [];
+            // Los métodos de dueño (por-cobrar / consumo-interno) SOLO se pintan si
+            // esta pestaña tiene perfil de administrador: eso es la primera capa.
+            const methods = (paymentMethods[currentCurrency] || [])
+                .filter(method => puedeUsarMetodoPago(method.id));
             
             container.innerHTML = methods.map(method => `
                 <div class="payment-method" onclick="selectModalPaymentMethod('${method.id}', event)">
@@ -4273,10 +4414,19 @@ function filterAndDisplayProducts(searchTerm = '') {
             document.getElementById('usdCashSection').style.display = 'none';
             document.getElementById('pagoMovilSection').style.display = 'none';
             document.getElementById('combinedPaymentSection').style.display = 'none';
+            document.getElementById('porCobrarSection').style.display = 'none';
+            document.getElementById('consumoInternoSection').style.display = 'none';
             // Add other payment sections here if they are created
         }
 
         function selectModalPaymentMethod(methodId, event) {
+            // Puerta de administrador en la INTERFAZ: los botones de dueño ni se pintan
+            // sin perfil de administrador y, por si alguien llama a esta función desde
+            // la consola del navegador, aquí también se rechaza.
+            if (!puedeUsarMetodoPago(methodId)) {
+                showToast('Ese método de pago es solo para administradores.');
+                return;
+            }
             selectedPaymentMethod = methodId;
             
             // Actualizar UI
@@ -4300,6 +4450,20 @@ function filterAndDisplayProducts(searchTerm = '') {
                 case 'combined':
                     document.getElementById('combinedPaymentSection').style.display = 'block';
                     handleCombinedPayment(); // Initialize combined payment calculations
+                    break;
+                case 'por-cobrar':
+                    // Fiado: se muestra el resumen de la deuda y se recuerda que el
+                    // cliente es obligatorio (se comprueba otra vez al confirmar).
+                    document.getElementById('porCobrarSection').style.display = 'block';
+                    mostrarSeccionPorCobrar();
+                    document.getElementById('confirmSaleBtn').disabled = false;
+                    paymentDetails = {};
+                    break;
+                case 'consumo-interno':
+                    document.getElementById('consumoInternoSection').style.display = 'block';
+                    mostrarSeccionConsumoInterno();
+                    document.getElementById('confirmSaleBtn').disabled = false;
+                    paymentDetails = {};
                     break;
                 default: // For 'ves-pos', 'ves-cash', 'usd-zelle' and other simple payments
                     document.getElementById('confirmSaleBtn').disabled = false;
@@ -4477,6 +4641,12 @@ function filterAndDisplayProducts(searchTerm = '') {
                     const paidUsdCombined = parseNumber(document.getElementById('paidUsdCombined').value) || 0;
                     btn.disabled = (paidUsdCombined > totalSaleUsdCombined);
                     break;
+                case 'por-cobrar':
+                case 'consumo-interno':
+                    // Métodos de dueño: si esta pestaña no es de administrador el botón
+                    // queda deshabilitado (la puerta de verdad está en processSale).
+                    btn.disabled = !esOperadorAdministrador();
+                    break;
                 case 'ves-mobile':
                 case 'ves-pos':
                 case 'ves-biopago':
@@ -4492,6 +4662,18 @@ function filterAndDisplayProducts(searchTerm = '') {
         }
 
         function confirmSale() {
+            // Puerta de administrador (capa de interfaz): sin perfil de administrador no
+            // se abre ni el modal de confirmación. La puerta que de verdad decide está
+            // en processSale.
+            if (!puedeUsarMetodoPago(selectedPaymentMethod)) {
+                showToast('Ese método de pago es solo para administradores.');
+                return;
+            }
+            // «Por cobrar» es un fiado: sin cliente no hay a quién cobrarle.
+            if (selectedPaymentMethod === 'por-cobrar' && !nombreClienteFiado()) {
+                showToast('«Por Cobrar» exige el nombre del cliente.');
+                return;
+            }
             // Recopilar datos del cliente si están disponibles
             const customerName = document.getElementById('customerName').value.trim();
             const customerDocument = document.getElementById('customerDocument').value.trim();
@@ -4518,6 +4700,24 @@ function filterAndDisplayProducts(searchTerm = '') {
 
         async function processSale() {
             try {
+                // --- 0) PUERTA DE ADMINISTRADOR (la de VERDAD, no la de la interfaz) ---
+                // «Por cobrar» y «Consumo interno» son métodos de dueño. Aquí se RECHAZA
+                // el cobro aunque la llamada llegue por otra vía (consola, un botón
+                // manipulado, un carrito restaurado con el método pegado). No se toca el
+                // stock, no se consume número de venta y no se registra nada.
+                if (!puedeUsarMetodoPago(selectedPaymentMethod)) {
+                    showToast('Ese método de pago es solo para administradores.');
+                    reactivarBotonConfirmar();
+                    return;
+                }
+                // «Por cobrar» sin cliente no se puede registrar: la deuda quedaría a
+                // nombre de nadie y no habría a quién cobrarle.
+                if (selectedPaymentMethod === 'por-cobrar' && !nombreClienteFiado()) {
+                    showToast('«Por Cobrar» exige el nombre del cliente.');
+                    reactivarBotonConfirmar();
+                    return;
+                }
+
                 // --- A) RE-LECTURA DEL STOCK JUSTO ANTES DE REGISTRAR LA VENTA ---
                 // Se vuelve a leer el inventario REAL del almacén compartido (no el de
                 // memoria) y se descuentan las reservas de OTRAS pestañas. Si falta
@@ -4601,6 +4801,13 @@ function filterAndDisplayProducts(searchTerm = '') {
 
                 // A) Constancia auditable: esta venta se hizo por debajo del stock disponible.
                 if (ventaSobrestock) saleData.ventaSobrestock = true;
+
+                // A2) FORMAS DE PAGO DE DUEÑO: marca PROPIA y explícita (no se reutiliza
+                // ningún campo ambiguo). El consumo interno sale del inventario pero NO
+                // es una venta; el fiado es ingreso, pero NO cobrado. Los reportes leen
+                // estas banderas y, además, el método de pago: no dependen de una sola.
+                if (selectedPaymentMethod === 'consumo-interno') saleData.consumoInterno = true;
+                if (selectedPaymentMethod === 'por-cobrar') saleData.porCobrar = true;
                 
                 // Guardar venta
                 ventas.push(saleData);
@@ -4633,6 +4840,19 @@ function filterAndDisplayProducts(searchTerm = '') {
                 // B) La venta ya está registrada: esta pestaña libera sus reservas para
                 // que las demás vean el inventario nuevo cuanto antes.
                 liberarReservasPropias();
+
+                // C) «POR COBRAR» (fiado): la venta ya está registrada y el stock ya se
+                // descontó; ahora se crea la DEUDA en el almacén compartido de cuentas
+                // (ciervo_accounts), que es el modelo de cuentas.html. Va DESPUÉS y sin
+                // await de red: un problema con las cuentas no puede tumbar ni perder la
+                // venta (si fallara, se avisa y la venta queda igual).
+                if (saleData.porCobrar) {
+                    const deuda = agregarCuentaPorCobrar(saleData);
+                    if (!deuda.ok) {
+                        showToast('Venta registrada, pero la cuenta por cobrar falló: ' + deuda.motivo);
+                        console.warn('[cuentas] fiado sin cuenta por cobrar:', deuda.motivo);
+                    }
+                }
 
                 // Fase B (E1): con el interruptor en 'operaciones' la venta se registra
                 // como OPERACIÓN (la cola durable se escribe primero) y la subida y la
@@ -4679,7 +4899,9 @@ function filterAndDisplayProducts(searchTerm = '') {
                 }
                 printReceipt(saleData);
 
-                showToast('¡Venta procesada exitosamente!');
+                if (saleData.consumoInterno) showToast('Consumo interno registrado (no cuenta como venta).');
+                else if (saleData.porCobrar) showToast('Venta a crédito registrada en Cuentas por Cobrar.');
+                else showToast('¡Venta procesada exitosamente!');
                 
                 closeProcessModal();
                 closeConfirmModal();
@@ -4785,6 +5007,251 @@ function filterAndDisplayProducts(searchTerm = '') {
     document.getElementById('searchInput').focus();
     toggleTotalsDetails(true);
 }
+
+        /* ===== CUENTAS POR COBRAR: el POS crea la deuda en el almacén compartido ===== 
+
+           «Por cobrar» es un FIADO: la venta es un ingreso, pero NO está cobrada. El POS
+           no inventa un modelo nuevo: escribe en `ciervo_accounts`, la clave de negocio
+           que ya usa cuentas.html (arreglo de cuentas con type/description/contact/
+           amount/dueDate/category/payments/status). Los campos extra que añade el POS
+           (venta, productos, USD, Bs, fecha) son ADITIVOS: cuentas.html los ignora pero
+           los conserva (al editar hace {...cuenta, ...datos} y los abonos mutan el mismo
+           objeto), así que la deuda sigue cuadrando en su pantalla.
+
+           RIESGO REAL: `ciervo_accounts` se sincroniza como ARREGLO COMPLETO, así que
+           dos escritores a la vez pueden pisarse (el POS y cuentas.html abiertos a la
+           vez, o dos equipos). Mitigaciones:
+             1. Escritura local con LEER-MODIFICAR-ESCRIBIR y UNIÓN POR ID: una cuenta
+                que el otro proceso acabe de añadir no se pierde.
+             2. Marca de pendiente ('cuentas', sincronizacion.js) para que ninguna
+                página descargue la nube encima de este cambio local sin subirlo antes.
+             3. La subida a la nube también UNE POR ID con lo que ya haya allí: una
+                cuenta creada en otro equipo no se borra al subir.
+             4. cuentas.html une por id antes de guardar (mismo criterio, lado contrario).
+           Lo que esto NO resuelve: dos equipos editando LA MISMA cuenta a la vez (gana
+           el último que sube). Es la limitación que ya tenía el arreglo completo.
+
+           La escritura local es SÍNCRONA y ocurre DESPUÉS de registrar la venta: la
+           venta nunca se bloquea ni se pierde por un problema en las cuentas. */
+
+        const CUENTAS_CLAVE = 'ciervo_accounts';
+        /* Mismas claves que cuentas.html (fase 0): lápiz de borrados y contador de ids.
+           Sin esto, el POS podía acuñar un id ya usado (o resucitar una cuenta que el
+           usuario había borrado en la otra página). */
+        const CUENTAS_BORRADAS_CLAVE = 'cuentas_borradas';
+        const CUENTAS_ULTIMO_ID_CLAVE = 'cuentas_ultimo_id';
+
+        /** Normaliza a ARREGLO lo que devuelve el almacén o la nube (Realtime Database
+            entrega los arreglos como objetos con claves '0','1',...). */
+        function normalizarCuentas(datos) {
+            if (Array.isArray(datos)) return datos.filter(c => c && typeof c === 'object');
+            if (datos && typeof datos === 'object') {
+                return Object.keys(datos)
+                    .sort((a, b) => (parseInt(a, 10) || 0) - (parseInt(b, 10) || 0))
+                    .map(k => datos[k])
+                    .filter(c => c && typeof c === 'object');
+            }
+            return [];
+        }
+
+        function leerCuentasLocales() {
+            try { return normalizarCuentas(JSON.parse(localStorage.getItem(CUENTAS_CLAVE) || 'null')); }
+            catch (e) { return []; }
+        }
+
+        function guardarCuentasLocales(cuentas) {
+            const texto = JSON.stringify(cuentas);
+            if (typeof window.guardarLocalSeguro === 'function') window.guardarLocalSeguro(CUENTAS_CLAVE, texto);
+            else localStorage.setItem(CUENTAS_CLAVE, texto);
+        }
+
+        /* Lápidas de cuentas borradas (las escribe cuentas.html). Se leen del almacén
+           compartido; si no hay ninguna, el objeto queda vacío. */
+        function leerCuentasBorradasPos() {
+            try {
+                const bruto = localStorage.getItem(CUENTAS_BORRADAS_CLAVE);
+                if (!bruto) return {};
+                const datos = JSON.parse(bruto);
+                return (datos && typeof datos === 'object' && !Array.isArray(datos)) ? datos : {};
+            } catch (e) { return {}; }
+        }
+
+        function idLapidadoPos(id, lapidas) {
+            const clave = String(id);
+            return !!(lapidas && Object.prototype.hasOwnProperty.call(lapidas, clave));
+        }
+
+        function leerUltimoIdCuentasPos() {
+            const n = parseInt(localStorage.getItem(CUENTAS_ULTIMO_ID_CLAVE), 10);
+            return (isNaN(n) || n < 0) ? 0 : n;
+        }
+
+        /** Reserva el id de una cuenta nueva con el contador COMPARTIDO y persistido. */
+        function reservarIdCuentaPos(cuentas) {
+            const id = Math.max(leerUltimoIdCuentasPos(), siguienteIdCuenta(cuentas));
+            try { localStorage.setItem(CUENTAS_ULTIMO_ID_CLAVE, String(id)); } catch (e) { /* nada */ }
+            return id;
+        }
+
+        /** Une dos listas de cuentas POR ID: `base` manda y lo que solo esté en `otras`
+            se añade al final. Nunca devuelve una cuenta LAPIDADA (borrada en la otra
+            página) ni repite ids. No modifica las entradas: arma una lista nueva. */
+        function unirCuentasPorId(base, otras, lapidas) {
+            const lista = [];
+            const vistos = {};
+            (Array.isArray(base) ? base : []).forEach(c => {
+                if (!c || typeof c !== 'object') return;
+                const clave = (c.id === undefined || c.id === null) ? '' : String(c.id);
+                if (clave && idLapidadoPos(clave, lapidas)) return;
+                if (clave) vistos[clave] = true;
+                lista.push(c);
+            });
+            (Array.isArray(otras) ? otras : []).forEach(c => {
+                if (!c || typeof c !== 'object') return;
+                const clave = (c.id === undefined || c.id === null) ? '' : String(c.id);
+                if (clave && vistos[clave]) return;
+                if (clave && idLapidadoPos(clave, lapidas)) return;
+                if (clave) vistos[clave] = true;
+                lista.push(c);
+            });
+            return lista;
+        }
+
+        function siguienteIdCuenta(cuentas) {
+            let max = 0;
+            (Array.isArray(cuentas) ? cuentas : []).forEach(c => {
+                const n = parseInt(c && c.id, 10);
+                if (!isNaN(n) && n > max) max = n;
+            });
+            return max + 1;
+        }
+
+        function nombreVendedorActual() {
+            const u = leerOperadorActual();
+            if (!u) return 'Propietario';
+            const nombre = ((u.firstName || '') + ' ' + (u.lastName || '')).trim();
+            return nombre || u.name || u.username || 'Operador';
+        }
+
+        /** Detalle de los productos de la venta, tal como quedaron en el ticket. */
+        function detalleProductosVenta(saleData) {
+            return ((saleData && saleData.items) || []).map(it => {
+                const p = (it && it.product) || {};
+                const cantidad = Number(it.quantity) || 0;
+                const unitario = Number(it.unitPrice) || 0;
+                return {
+                    name: p.name || 'Producto',
+                    code: p.code || '',
+                    quantity: cantidad,
+                    unit: it.unit || p.unit || 'unidades',
+                    unitPrice: unitario,
+                    subtotal: Number(it.subtotal) || (unitario * cantidad)
+                };
+            });
+        }
+
+        /** Crea la cuenta por cobrar (fiado) de una venta. Devuelve {ok, id, motivo}. */
+        function agregarCuentaPorCobrar(saleData) {
+            try {
+                const venta = saleData || {};
+                const referencia = String(venta.id || '');
+                const cuentas = leerCuentasLocales();
+
+                // Idempotente: la MISMA venta no puede generar dos deudas (si el cobro se
+                // repitiera por cualquier vía, la segunda vez no duplica nada).
+                if (referencia) {
+                    const ya = cuentas.find(c => c && String(c.saleId || '') === referencia);
+                    if (ya) return { ok: true, id: ya.id, yaExistia: true };
+                }
+
+                const totalUsd = Number(venta.totals && venta.totals.total) || 0;
+                const tasa = Number(venta.exchangeRate) || 0;
+                const fechaISO = String(venta.timestamp || new Date().toISOString());
+                const dias = diasRecordatorioCuentas();
+
+                const cuenta = {
+                    /* --- Campos del modelo de cuentas.html (los que pinta su pantalla) --- */
+                    type: 'cobrar',
+                    description: 'Venta a crédito (fiado) ' + (referencia || 'sin Nº'),
+                    contact: nombreClienteFiado() || 'Cliente sin nombre',
+                    amount: Math.round(totalUsd * 100) / 100,      // el modelo guarda USD
+                    dueDate: fechaVencimientoFiado(Date.parse(fechaISO)),
+                    category: 'Ventas',
+                    notes: 'Creada por el POS al cobrar con «Por Cobrar».',
+                    payments: [],
+                    status: 'pending',
+                    /* --- Campos ADITIVOS: de dónde salió la deuda y en qué monedas --- */
+                    origen: 'pos',
+                    saleId: referencia,
+                    fecha: fechaISO,
+                    diasRecordatorio: dias,
+                    totalUsd: Math.round(totalUsd * 100) / 100,
+                    totalBs: Math.round(totalUsd * tasa * 100) / 100,
+                    exchangeRate: tasa,
+                    rateSource: String(venta.rateSource || ''),
+                    monedaVenta: String(venta.currency || 'USD'),
+                    productos: detalleProductosVenta(venta),
+                    vendedor: nombreVendedorActual()
+                };
+
+                // LEER-MODIFICAR-ESCRIBIR + UNIÓN POR ID: se vuelve a leer el almacén justo
+                // antes de escribir y el id se calcula sobre la lista YA unida, así ni se
+                // pierde lo que otro haya añadido ni se repiten ids.
+                // Se respetan las lápidas y el id sale del contador COMPARTIDO con
+                // cuentas.html (nunca se reutiliza el de una cuenta borrada).
+                const union = unirCuentasPorId(cuentas, leerCuentasLocales(), leerCuentasBorradasPos());
+                cuenta.id = reservarIdCuentaPos(union);
+                union.push(cuenta);
+                guardarCuentasLocales(union);
+
+                marcarPendienteSync('cuentas');
+                sincronizarCuentasConNube();   // sin await: nunca frena el cobro
+                return { ok: true, id: cuenta.id };
+            } catch (e) {
+                console.warn('[cuentas] no se pudo crear la cuenta por cobrar:', e.message);
+                return { ok: false, motivo: e.message };
+            }
+        }
+
+        /** Sube `ciervo_accounts` a la nube uniendo por id con lo que ya hay allí. El POS
+            ya tiene initFirebase/checkCloudAccess, así que no se duplica la lógica de
+            nube de cuentas.html: se reutiliza la marca de pendiente común. */
+        async function sincronizarCuentasConNube() {
+            try {
+                if (typeof checkCloudAccess !== 'function' || !(await checkCloudAccess())) return false;
+                const db = await initFirebase();
+                const email = getCurrentUserEmail();
+                if (!db || !email) return false;
+                const ruta = 'BBDD/' + sanitizeEmailForDb(email) + '/cuentas';
+
+                const locales = leerCuentasLocales();
+                let enNube = [];
+                try {
+                    const snap = await db.ref(ruta).once('value');
+                    const val = (snap && typeof snap.val === 'function') ? snap.val() : null;
+                    enNube = normalizarCuentas(val);
+                } catch (e) { enNube = []; }   // sin poder leer, se sube lo local igual
+
+                // Lo local manda para los ids que ya conoce; lo que solo está en la nube
+                // se añade (una cuenta creada en otro equipo no se borra al subir).
+                // Ni lo local ni la nube pueden devolver a la vida una cuenta borrada.
+                const lapidas = leerCuentasBorradasPos();
+                const union = unirCuentasPorId(locales, enNube, lapidas);
+                if (union.length !== locales.length) guardarCuentasLocales(union);
+
+                const subir = async function () { await db.ref(ruta).set(union); };
+                if (typeof window.subirConMarcaSync === 'function') {
+                    return await window.subirConMarcaSync('cuentas', subir);
+                }
+                marcarPendienteSync('cuentas');
+                await subir();
+                limpiarPendienteSync('cuentas');
+                return true;
+            } catch (e) {
+                marcarPendienteSync('cuentas');
+                return false;
+            }
+        }
 
         // ===== MODAL DE CONFIRMACIÓN =====
         function showConfirmModal(title, message, callback) {
@@ -5155,10 +5622,32 @@ async function printReceipt(saleData) {
                 html += `Su Cambio: $${fmt(change)}`;
             }
 
+            else if (saleData.paymentMethod === 'por-cobrar') {
+                // Fiado: se dice a quién y desde cuándo se debe (el ticket NO es un recibo
+                // de cobro: la venta queda pendiente).
+                html += `POR COBRAR (FIADO)<br>`;
+                if (saleData.customer && saleData.customer.name) html += `Cliente: ${esc(saleData.customer.name)}<br>`;
+                html += `Pendiente: ${symbol} ${fmt(totalFinal)}`;
+                if (rate > 0) html += `<br>Bs. ${fmt((saleData.totals.total || 0) * rate)} (tasa ${fmt(rate)})`;
+            }
+
+            else if (saleData.paymentMethod === 'consumo-interno') {
+                html += `CONSUMO INTERNO<br>`;
+                html += `No es una venta: no genera ingreso.`;
+            }
+
             else {
                 html += `${payMethod}: ${symbol} ${fmt(totalFinal)}`;
             }
             html += `</div>`;
+        }
+
+        // Marca de agua del ticket: aunque la configuración del recibo oculte el detalle
+        // del pago, el papel no puede parecer un cobro normal.
+        if (saleData.consumoInterno) {
+            html += `<div class="c b" style="margin-top:6px">*** CONSUMO INTERNO — NO ES UNA VENTA ***</div>`;
+        } else if (saleData.porCobrar) {
+            html += `<div class="c b" style="margin-top:6px">*** PENDIENTE DE PAGO (FIADO) ***</div>`;
         }
 
         html += `<div class="c small" style="margin-top:8px">${esc(config.footerMessage)}<br>${esc(config.policyText)}</div></body></html>`;
