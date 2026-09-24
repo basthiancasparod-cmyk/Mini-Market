@@ -332,19 +332,25 @@
             box-shadow: 0 0 0 2px rgba(255,255,255,0.5);
         }
 
+        /* La campana y su panel comparten contenedor: el panel cuelga de la campana y NO
+           vive dentro del botón (dentro, cualquier clic lo dispararía). */
+        .notification-wrap { position: relative; }
+
         .notification-panel {
             position: absolute;
-            top: 60px; /* Adjust based on top bar height */
+            top: calc(100% + 0.5rem);
             right: 0;
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
-            width: 300px;
-            max-height: 400px;
-            overflow-y: auto;
-            display: none;
             z-index: 100;
-            padding: 1rem;
+            width: min(380px, 92vw);
+            max-height: min(70vh, 540px);
+            display: flex;
+            flex-direction: column;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.18);
+            overflow: hidden;
+            text-align: left;
         }
 
         body.dark-mode .notification-panel {
@@ -352,16 +358,73 @@
             box-shadow: 0 10px 20px rgba(0,0,0,0.3);
         }
 
-        .notification-panel.show {
-            display: block;
-        }
+        /* Un solo mecanismo de apertura: el atributo `hidden` (igual que el panel de
+           usuario). Los `display` de autor ganan a `[hidden]`, así que se fuerza. */
+        .notification-panel[hidden] { display: none !important; }
 
         .notification-panel h4 {
             font-size: 1rem;
             font-weight: bold;
-            margin-bottom: 1rem;
             color: #1e293b;
+            margin: 0;
         }
+
+        .aviso-cabecera {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.5rem;
+            padding: 0.85rem 1rem;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        body.dark-mode .aviso-cabecera { border-bottom-color: #4a5568; }
+
+        .aviso-cerrar {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            font: inherit;
+            font-size: 0.9rem;
+            color: #64748b;
+            background: none;
+            border: 0;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .aviso-cerrar:hover { background: #f1f5f9; color: #1e293b; }
+        body.dark-mode .aviso-cerrar:hover { background: #334155; color: #e2e8f0; }
+
+        /* La lista es lo único que hace scroll: cabecera y pie quedan fijos. */
+        .aviso-lista { overflow-y: auto; padding: 0 1rem 0.5rem; }
+
+        .aviso-grupo {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 0.5rem;
+            margin-top: 0.85rem;
+        }
+
+        .aviso-grupo-titulo { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: #64748b; }
+        .aviso-grupo-accion {
+            padding: 0;
+            font: inherit;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #4338ca;
+            background: none;
+            border: 0;
+            text-decoration: underline;
+            text-underline-offset: 3px;
+            cursor: pointer;
+            min-height: 44px;
+        }
+
+        body.dark-mode .aviso-grupo-accion { color: #a5b4fc; }
 
         body.dark-mode .notification-panel h4 {
             color: #e2e8f0;
@@ -382,13 +445,27 @@
             border-bottom: 1px solid #4a5568;
         }
 
+        /* Los avisos son BOTONES: cada uno lleva a la pantalla que lo resuelve. Antes eran
+           div de solo lectura. */
         .notification-item {
-            padding: 0.75rem 0;
+            display: block;
+            width: 100%;
+            padding: 0.6rem 0.25rem;
+            border: 0;
             border-bottom: 1px solid #e2e8f0;
+            border-radius: 8px;
+            background: none;
+            font: inherit;
             font-size: 0.875rem;
             color: #334155;
-            cursor: default; /* Item no longer clickable */
+            text-align: left;
+            cursor: pointer;
+            min-height: 44px;
         }
+
+        .notification-item:focus-visible { outline: 2px solid #6366f1; outline-offset: 2px; }
+        .notification-item .aviso-accion { display: block; margin-top: 0.25rem; font-size: 0.75rem; font-weight: 600; color: #4338ca; }
+        body.dark-mode .notification-item .aviso-accion { color: #a5b4fc; }
 
         body.dark-mode .notification-item {
             border-bottom: 1px solid #4a5568;
@@ -468,7 +545,9 @@
         .notification-empty {
             text-align: center;
             color: #64748b;
-            padding: 1rem;
+            padding: 1.25rem 1rem;
+            font-size: 0.875rem;
+            line-height: 1.5;
         }
 
         body.dark-mode .notification-empty {
@@ -525,8 +604,12 @@
             min-height: 100%;
             opacity: 0;
             visibility: hidden;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            transform: translateX(20px);
+            transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            /* SIN desplazamiento lateral. Una vista OCULTA sigue ocupando maqueta, así
+               que el `transform: translateX(20px)` de antes la sacaba 20 px del ancho de
+               la pantalla y ensanchaba el documento entero: medido, scrollWidth 1460 con
+               ventana de 1440 y 410 con 390 en móvil. El cambio de vista se ve por
+               opacidad y visibilidad, que no ensanchan nada. */
         }
 
         .module-view.active {
@@ -543,7 +626,10 @@
            DASHBOARD STYLES
            ================================ */
         .dashboard-content {
-            padding: 2rem 0;
+            /* El relleno lateral NO puede ser 0: esta regla pisa el `padding: 0 1.5rem` de
+               `.container` y dejaba el contenido desalineado con la cabecera (24 px a 1440) y
+               pegado al borde de la pantalla a 768 y 390 (x=0). Medido en navegador. */
+            padding: 2rem 1.5rem;
         }
 
         .welcome-section {
@@ -601,6 +687,8 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 0.75rem;
             margin-bottom: 1.5rem;
         }
 
@@ -617,6 +705,7 @@
         .section-meta {
             display: flex;
             align-items: center;
+            flex-wrap: wrap;          /* sin esto, los botones desbordaban a 390 px (medido: 417) */
             gap: 0.5rem;
             font-size: 0.875rem;
             color: #64748b;
@@ -1599,6 +1688,211 @@
         /* ================================
            SYNC STATUS INDICATOR
            ================================ */
+        /* ================================
+           ATENCIÓN HOY (franja de datos reales)
+           ================================ */
+        .atencion-hoy {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+            gap: 0.75rem;
+            margin-bottom: 1.25rem;
+        }
+
+        .atencion-ficha {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.85rem 1rem;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            cursor: pointer;
+            text-align: left;
+            font: inherit;
+            color: inherit;
+            min-width: 0;
+            transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+        }
+
+        .atencion-ficha:hover {
+            border-color: #cbd5e1;
+            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+            transform: translateY(-1px);
+        }
+
+        .atencion-numero {
+            font-size: 1.5rem;
+            font-weight: 700;
+            line-height: 1;
+            min-width: 1.6rem;
+        }
+
+        .atencion-texto { display: flex; flex-direction: column; min-width: 0; }
+        .atencion-etiqueta { font-size: 0.8125rem; font-weight: 600; }
+        .atencion-monto { font-size: 0.75rem; color: #64748b; }
+        .atencion-ficha[data-alerta="si"] .atencion-numero { color: #dc2626; }
+        .atencion-ficha[data-alerta="no"] { opacity: 0.72; }
+        .atencion-ficha[data-alerta="no"] .atencion-numero { color: #64748b; }
+        .atencion-ficha:focus-visible { outline: 2px solid #6366f1; outline-offset: 2px; }
+
+        /* Línea de datos reales dentro de cada tarjeta de módulo. */
+        .module-datos {
+            font-size: 0.8125rem;
+            color: #475569;
+            margin: 0.25rem 0 0.5rem;
+            min-height: 1.15rem;
+        }
+
+        body.dark-mode .atencion-ficha { background: #2d3748; border-color: #4a5568; color: #e2e8f0; }
+        body.dark-mode .atencion-ficha:hover { border-color: #64748b; }
+        body.dark-mode .atencion-etiqueta { color: #e2e8f0; }
+        body.dark-mode .atencion-monto { color: #a0aec0; }
+        body.dark-mode .module-datos { color: #a0aec0; }
+
+        /* ================================
+           TECLADO Y PERSONALIZACIÓN DE ACCESOS
+           ================================ */
+        /* Quien navega con el teclado tiene que VER dónde está. */
+        .module-card:focus-visible,
+        .secondary-item:focus-visible,
+        .brand-icon:focus-visible,
+        .atencion-ficha:focus-visible {
+            outline: 2px solid #6366f1;
+            outline-offset: 2px;
+        }
+
+        /* El aviso de "hacer clic" no puede depender del ratón: en táctil no existe el hover. */
+        @media (hover: none) {
+            .module-card .hover-text,
+            .secondary-item .hover-text { opacity: 1; }
+        }
+
+        /* Acción con aspecto de ENLACE subrayado (sin recuadro). Sigue siendo un <button>
+           de verdad: así funciona con el teclado y lo anuncia un lector de pantalla. */
+        .btn-personalizar {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.35rem 0.1rem;
+            font: inherit;
+            font-size: 0.8125rem;
+            font-weight: 600;
+            color: #4338ca;
+            background: none;
+            border: 0;
+            border-radius: 4px;
+            text-decoration: underline;
+            text-underline-offset: 3px;
+            cursor: pointer;
+            min-height: 44px;          /* cómodo de pulsar aunque se vea como texto */
+        }
+
+        .btn-personalizar:hover { color: #312e81; }
+        .btn-personalizar:focus-visible { outline: 2px solid #6366f1; outline-offset: 2px; }
+        .btn-personalizar[aria-pressed="true"] { color: #312e81; font-weight: 700; }
+        body.dark-mode .btn-personalizar { color: #a5b4fc; }
+        body.dark-mode .btn-personalizar:hover,
+        body.dark-mode .btn-personalizar[aria-pressed="true"] { color: #e0e7ff; }
+
+        /* `hidden` tiene que GANAR a los `display` de autor. Sin esto, un acceso oculto
+           seguía ocupando su sitio (medido: 624×82 con hidden=true) y «Restablecer»
+           (hidden) medía 80 px de ancho. */
+        [data-acceso][hidden],
+        .btn-personalizar[hidden] { display: none !important; }
+
+        /* Los controles de edición solo existen en modo personalizar. */
+        .editar-acceso { display: none; }
+
+        body.modo-personalizar .editar-acceso {
+            display: flex;
+            gap: 0.25rem;
+            align-items: center;
+            margin-top: 0.5rem;
+        }
+
+        .editar-acceso button {
+            width: 44px;
+            height: 44px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font: inherit;
+            font-size: 1rem;
+            line-height: 1;
+            color: #334155;
+            background: #f1f5f9;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .editar-acceso button:hover { background: #e2e8f0; }
+        .editar-acceso button[data-accion="ocultar"]:hover { background: #fee2e2; border-color: #fca5a5; color: #b91c1c; }
+        body.dark-mode .editar-acceso button { background: #334155; color: #e2e8f0; border-color: #475569; }
+
+        /* Un acceso oculto sigue a la vista mientras se personaliza, para poder recuperarlo. */
+        body.modo-personalizar [data-acceso][hidden] {
+            display: block !important;
+            opacity: 0.45;
+        }
+
+        /* ================================
+           PANEL DEL USUARIO (desplegable)
+           ================================ */
+        /* El bloque de usuario es el disparador: NO cambia el ancho del header, el correo
+           cuelga debajo en un panel que solo aparece cuando se pide. */
+        .user-info { position: relative; cursor: pointer; }
+        .user-info .chevron-usuario { transition: transform 0.2s; }
+        .user-info[aria-expanded="true"] .chevron-usuario { transform: rotate(180deg); }
+
+        .user-panel {
+            position: absolute;
+            top: calc(100% + 0.5rem);
+            right: 0;
+            z-index: 60;
+            min-width: 210px;
+            max-width: min(320px, 80vw);
+            padding: 0.75rem;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.18);
+            text-align: left;
+            cursor: default;
+        }
+
+        .user-panel[hidden] { display: none !important; }
+        .user-panel-etiqueta { font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.04em; color: #94a3b8; margin-bottom: 0.15rem; }
+        .user-panel-correo { font-size: 0.8125rem; font-weight: 600; color: #1e293b; overflow-wrap: anywhere; }
+        .user-panel-accion {
+            margin-top: 0.6rem;
+            padding: 0;
+            font: inherit;
+            font-size: 0.8125rem;
+            font-weight: 600;
+            color: #4338ca;
+            background: none;
+            border: 0;
+            text-decoration: underline;
+            text-underline-offset: 3px;
+            cursor: pointer;
+            min-height: 44px;
+        }
+        .user-panel-accion[hidden] { display: none !important; }
+
+        body.dark-mode .user-panel { background: #2d3748; border-color: #4a5568; }
+        body.dark-mode .user-panel-correo { color: #e2e8f0; }
+        body.dark-mode .user-panel-accion { color: #a5b4fc; }
+
+        .pista-personalizar {
+            display: none;
+            font-size: 0.8125rem;
+            color: #475569;
+            margin: 0 0 0.75rem;
+        }
+
+        body.modo-personalizar .pista-personalizar { display: block; }
+        body.dark-mode .pista-personalizar { color: #a0aec0; }
+
         .sync-indicator {
             position: fixed;
             bottom: 1rem;
@@ -2108,7 +2402,8 @@
 
                 <!-- User Controls -->
                 <div class="user-controls">
-                    <div class="user-info">
+                    <div class="user-info" id="userInfo" onclick="alternarPanelUsuario()"
+                        aria-expanded="false" aria-controls="userPanel" title="Ver la cuenta del dueño">
                         <div class="user-avatar">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
@@ -2118,22 +2413,43 @@
                         <div class="user-text">
                             <h3 id="user-name">Administrador</h3>
                             <p id="user-role">Sesión activa</p>
+                            <!-- Correo del DUEÑO del equipo (la cuenta que se administra): lo llena updateGlobalUI(). -->
+                        </div>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="chevron-usuario" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="m6 9 6 6 6-6"/>
+                        </svg>
+                        <div class="user-panel" id="userPanel" hidden>
+                            <p class="user-panel-etiqueta">Cuenta del dueño</p>
+                            <p class="user-panel-correo" id="user-email">—</p>
+                            <button type="button" class="user-panel-accion" id="copiarCorreoDueno" onclick="copiarCorreoDelDueno(event)">Copiar correo</button>
                         </div>
                     </div>
-                    <button class="icon-button notification" onclick="toggleNotifications()" aria-label="Notificaciones">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/>
-                            <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>
-                        </svg>
-                        <span class="notification-badge" id="notificationBadge" style="display: none;">0</span>
-                        <div class="notification-panel" id="notificationPanel" aria-live="polite">
-                            <h4>Notificaciones</h4>
-                            <div id="notificationList">
-                                <!-- Notifications will be loaded here -->
+<div class="notification-wrap" id="notificationWrap">
+                        <button type="button" class="icon-button notification" id="botonNotificaciones"
+                            onclick="toggleNotifications()" aria-label="Notificaciones"
+                            aria-expanded="false" aria-controls="notificationPanel" aria-haspopup="true">
+                            <!-- La campana (el icono) -->
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/>
+                                <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>
+                            </svg>
+                            <span class="notification-badge" id="notificationBadge" hidden>0</span>
+                        </button>
+
+                        <!-- El panel va FUERA del botón: si estuviera dentro, cada clic en un aviso
+                             dispararía también el botón y cerraría el panel. -->
+                        <div class="notification-panel" id="notificationPanel" role="region"
+                            aria-label="Centro de notificaciones" hidden>
+                            <div class="aviso-cabecera">
+                                <h4 id="tituloNotificaciones">Notificaciones</h4>
+                                <button type="button" class="aviso-cerrar" onclick="cerrarNotificaciones()" aria-label="Cerrar notificaciones">✕</button>
                             </div>
-                            <p class="notification-empty" id="notificationEmpty">No hay notificaciones pendientes.</p>
+                            <div class="aviso-lista" id="notificationList">
+                                <!-- Los avisos se pintan aquí -->
+                            </div>
+                            <p class="notification-empty" id="notificationEmpty">Todo al día: no hay nada pendiente.</p>
                         </div>
-                    </button>
+</div>
                     <button class="icon-button theme-toggle" onclick="toggleDarkMode()" aria-label="Cambiar modo oscuro">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sun-icon">
                             <circle cx="12" cy="12" r="4"/>
@@ -2274,6 +2590,7 @@
                     </p>
                 </div>
 
+
                 <!-- Main Modules -->
                 <div class="main-modules">
                     <div class="section-header">
@@ -2283,8 +2600,16 @@
                                 <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
                             </svg>
                             <span>Acceso rápido</span>
+                            <button type="button" class="btn-personalizar" id="botonPersonalizar"
+                                    aria-pressed="false" onclick="alternarModoPersonalizar()">Personalizar</button>
+                            <button type="button" class="btn-personalizar" id="botonRestablecer"
+                                    hidden onclick="restablecerDisposicionMenu()">Restablecer</button>
                         </div>
                     </div>
+                    <p class="pista-personalizar" id="pistaPersonalizar">
+                        Modo personalizar: cambia el orden con ↑ ↓ y oculta lo que no uses.
+                        Lo que ocultes se puede recuperar desde aquí mismo.
+                    </p>
                     <div class="modules-grid">
 
                         <!-- Operaciones Module -->
@@ -2308,10 +2633,11 @@
                                 <p class="module-description">
                                     Gestión de ventas y transacciones diarias
                                 </p>
+                                <p class="module-datos" id="datosOperaciones">Leyendo…</p>
                                 <div class="module-status">
                                     <div class="status-indicator">
-                                        <div class="status-dot"></div>
-                                        <span class="status-text">Disponible</span>
+                                        <div class="status-dot" id="puntoOperaciones"></div>
+                                        <span class="status-text" id="estadoOperaciones">Leyendo…</span>
                                     </div>
                                     <span class="hover-text">Hacer clic para abrir</span>
                                 </div>
@@ -2339,10 +2665,11 @@
                                 <p class="module-description">
                                     Control inteligente de stock y almacén
                                 </p>
+                                <p class="module-datos" id="datosInventario">Leyendo…</p>
                                 <div class="module-status">
                                     <div class="status-indicator">
-                                        <div class="status-dot"></div>
-                                        <span class="status-text">Disponible</span>
+                                        <div class="status-dot" id="puntoInventario"></div>
+                                        <span class="status-text" id="estadoInventario">Leyendo…</span>
                                     </div>
                                     <span class="hover-text">Hacer clic para abrir</span>
                                 </div>
@@ -2371,10 +2698,11 @@
                                 <p class="module-description">
                                     Métricas avanzadas y análisis de datos
                                 </p>
+                                <p class="module-datos" id="datosResumen">Leyendo…</p>
                                 <div class="module-status">
                                     <div class="status-indicator">
-                                        <div class="status-dot"></div>
-                                        <span class="status-text">Disponible</span>
+                                        <div class="status-dot" id="puntoResumen"></div>
+                                        <span class="status-text" id="estadoResumen">Leyendo…</span>
                                     </div>
                                     <span class="hover-text">Hacer clic para abrir</span>
                                 </div>
@@ -2382,6 +2710,47 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Atención hoy: lo que hay que mirar AHORA. Cada ficha es un clic que
+                     lleva a la pantalla con el filtro ya puesto, y cada número sale del
+                     almacén del equipo. Si no hay nada que atender, lo dice. -->
+                <section class="atencion-hoy" id="atencionHoy" aria-label="Atención hoy">
+                    <button type="button" class="atencion-ficha" id="fichaVencidas" data-alerta="si"
+                            onclick="abrirFichaAtencion('cuentas.html?estado=overdue')">
+                        <span class="atencion-numero" id="atencionVencidas">—</span>
+                        <span class="atencion-texto">
+                            <span class="atencion-etiqueta">Cuentas vencidas</span>
+                            <span class="atencion-monto" id="atencionVencidasMonto">Leyendo…</span>
+                        </span>
+                    </button>
+
+                    <button type="button" class="atencion-ficha" id="fichaVencenHoy" data-alerta="no"
+                            onclick="abrirFichaAtencion('cuentas.html?estado=pending&amp;orden=vencimiento')">
+                        <span class="atencion-numero" id="atencionVencenHoy">—</span>
+                        <span class="atencion-texto">
+                            <span class="atencion-etiqueta">Vencen hoy</span>
+                            <span class="atencion-monto" id="atencionVencenHoyMonto">Leyendo…</span>
+                        </span>
+                    </button>
+
+                    <button type="button" class="atencion-ficha" id="fichaSinStock" data-alerta="no"
+                            onclick="abrirFichaAtencion('inventario.html')">
+                        <span class="atencion-numero" id="atencionSinStock">—</span>
+                        <span class="atencion-texto">
+                            <span class="atencion-etiqueta">Sin stock / bajo mínimo</span>
+                            <span class="atencion-monto" id="atencionSinStockDetalle">Leyendo…</span>
+                        </span>
+                    </button>
+
+                    <button type="button" class="atencion-ficha" id="fichaFiados" data-alerta="no"
+                            onclick="abrirFichaAtencion('cuentas.html?origen=pos')">
+                        <span class="atencion-numero" id="atencionFiados">—</span>
+                        <span class="atencion-texto">
+                            <span class="atencion-etiqueta">Fiados de hoy</span>
+                            <span class="atencion-monto" id="atencionFiadosMonto">Leyendo…</span>
+                        </span>
+                    </button>
+                </section>
 
                 <!-- Secondary Modules -->
                 <div class="secondary-modules">
@@ -2687,9 +3056,9 @@
     </div>
 
     <!-- Sync Status Indicator -->
-    <div class="sync-indicator" id="syncIndicator">
-        <div class="sync-dot"></div>
-        <span>Datos sincronizados</span>
+    <div class="sync-indicator" id="syncIndicator" role="status" data-estado="sin-comprobar" title="Estado de la nube: sin comprobar" aria-label="Estado de la nube: sin comprobar">
+        <div class="sync-dot" id="syncDot"></div>
+        <span id="syncText">Estado de la nube: sin comprobar</span>
     </div>
 
     <!-- Product Modal -->
@@ -3005,6 +3374,7 @@
                 // Update notifications if accounts or inventory data changed
                 if (store === 'accounts' || store === 'inventory') {
                     this.updateNotifications();
+                    this.actualizarAtencionHoy();
                 }
             }
 
@@ -3167,11 +3537,26 @@
                     console.warn('Error loading user data from sessionStorage:', e);
                 }
 
+                // Correo del DUEÑO del equipo en el header (la cuenta que se administra).
+                const correoElemento = document.getElementById('user-email');
+                if (correoElemento) {
+                    const correo = correoDelDueno();
+                    correoElemento.textContent = correo || 'Sin correo de dueño';
+                    correoElemento.title = correo || 'No se pudo leer la sesión del propietario';
+                    correoElemento.hidden = !correo;
+                    // El correo vive en el panel: sin correo no se ofrece copiar.
+                    const accionCopiar = document.getElementById('copiarCorreoDueno');
+                    if (accionCopiar) accionCopiar.hidden = !correo;
+                }
+
                 // Apply role-based access control
                 this.applyRoleBasedAccess();
 
                 // Update notifications on UI load
                 this.updateNotifications();
+
+                // Y los datos reales del dashboard (franja de atención y tarjetas).
+                this.actualizarAtencionHoy();
             }
 
             applyRoleBasedAccess() {
@@ -3213,8 +3598,18 @@
                         if (item) {
                             item.classList.add('disabled');
                             item.onclick = null; // Remove click event
+                            // Un elemento deshabilitado tampoco debe poder enfocarse con el teclado.
+                            item.removeAttribute('tabindex');
+                            item.setAttribute('aria-disabled', 'true');
                         }
                     });
+
+                    // Personalizar el menú es cosa de administradores.
+                    const botonPersonalizarVendedor = document.getElementById('botonPersonalizar');
+                    if (botonPersonalizarVendedor) botonPersonalizarVendedor.hidden = true;
+                    const botonRestablecerVendedor = document.getElementById('botonRestablecer');
+                    if (botonRestablecerVendedor) botonRestablecerVendedor.hidden = true;
+                    document.body.classList.remove('modo-personalizar');
 
                     // In the operations modal, disable 'Realizar Nueva Compra'
                     if (document.getElementById('newPurchaseCard')) {
@@ -3259,6 +3654,7 @@
                     allSecondaryItems.forEach(item => {
                         if (item) {
                             item.classList.remove('disabled');
+                            item.removeAttribute('aria-disabled');
                             // Re-assign original click handlers
                             if (item.id === 'catalogItem') item.onclick = () => executeAction('openCatalog');
                             else if (item.id === 'userManagementItem') item.onclick = () => { window.location.href='gestion_usuario.html'; };
@@ -3278,164 +3674,122 @@
                             else if (card.id === 'newSaleCard') card.onclick = () => { window.location.href='mini_market_pos.html'; };
                         }
                     });
+
+                    // El administrador sí puede personalizar sus accesos.
+                    const botonPersonalizarAdmin = document.getElementById('botonPersonalizar');
+                    if (botonPersonalizarAdmin) botonPersonalizarAdmin.hidden = false;
                 }
             }
 
+
+            /** El estado del negocio, en UN solo sitio: lo usan la campana y la franja. */
+            estadoDelNegocio() {
+                return {
+                    cuentas: cuentasEnAlertaLocal(this.getData('accounts') || [], fechaHoyIsoLocal()),
+                    inventario: inventarioEnAlertaLocal(this.getData('inventory') || []),
+                    ventas: resumenVentasDeHoyLocal(this.leerListaLocal('pos_sales')),
+                    mantenimiento: mantenimientoDelEquipoLocal()
+                };
+            }
 
             updateNotifications() {
-                const accounts = this.getData('accounts') || [];
-                const inventory = this.getData('inventory') || [];
-                const notificationList = document.getElementById('notificationList');
-                const notificationBadge = document.getElementById('notificationBadge');
-                const notificationEmpty = document.getElementById('notificationEmpty');
-                const today = new Date();
-                today.setHours(0, 0, 0, 0); // Normalize today's date
+                const estado = this.estadoDelNegocio();
+                this.estadoActualDelNegocio = estado;   // lo reaprovecha la franja de atención
+                return pintarCentroDeNotificaciones(avisosDelNegocioLocal(estado));
+            }
 
-                let totalNotificationCount = 0;
-                let notificationsHtml = '';
+            /* El estado de conexión NO se inventa aquí: lo calcula `conexion.js` (la única
+               autoridad, ya cargada en esta página) y este cartel solo lo PINTA. Antes
+               decía "Datos sincronizados" con el punto verde SIEMPRE: medido en el
+               navegador, con internet y sin internet el cartel no cambiaba, mientras el
+               módulo ya sabía que no había red ("sin-red"). Un cartel que nunca cambia es
+               peor que ninguno: afirma que los datos están a salvo cuando no lo están. */
+            updateSyncIndicator() {
+                pintarEstadoConexionMenu();
+            }
 
-                // --- Accounts Notifications ---
-                let overdueAccounts = [];
-                let dueTodayAccounts = [];
-
-                accounts.forEach(account => {
-                    const dueDate = new Date(account.dueDate);
-                    dueDate.setHours(0, 0, 0, 0); // Normalize due date
-
-                    if (account.status !== 'paid') {
-                        if (dueDate < today) {
-                            // Mark as overdue if not already
-                            if (account.status !== 'overdue') {
-                                account.status = 'overdue';
-                                this.saveData('accounts'); // Save updated status
-                            }
-                            overdueAccounts.push(account);
-                        } else if (dueDate.getTime() === today.getTime()) {
-                            dueTodayAccounts.push(account);
-                        }
-                    }
-                });
-
-                if (overdueAccounts.length > 0) {
-                    notificationsHtml += `<h5 class="notification-section-title">Cuentas Vencidas</h5>`;
-                    overdueAccounts.forEach(account => {
-                        totalNotificationCount++;
-                        const typeText = account.type === 'cobrar' ? 'por Cobrar' : 'por Pagar';
-                        notificationsHtml += `
-                            <div class="notification-item overdue">
-                                <strong>${account.description}</strong> (${typeText})
-                                <br>
-                                <span class="date">Vencida el: ${new Date(account.dueDate).toLocaleDateString('es-ES')}</span>
-                                <br>
-                                <span class="date">Monto: $${account.amount.toFixed(2)}</span>
-                                <br>
-                                <span class="date">Contacto: ${account.contact}</span>
-                            </div>
-                        `;
-                    });
-                }
-
-                if (dueTodayAccounts.length > 0) {
-                    notificationsHtml += `<h5 class="notification-section-title">Cuentas por Vencer Hoy</h5>`;
-                    dueTodayAccounts.forEach(account => {
-                        totalNotificationCount++;
-                        const typeText = account.type === 'cobrar' ? 'por Cobrar' : 'por Pagar';
-                        notificationsHtml += `
-                            <div class="notification-item pending">
-                                <strong>${account.description}</strong> (${typeText})
-                                <br>
-                                <span class="date">Vence hoy: ${new Date(account.dueDate).toLocaleDateString('es-ES')}</span>
-                                <br>
-                                <span class="date">Monto: $${account.amount.toFixed(2)}</span>
-                                <br>
-                                <span class="date">Contacto: ${account.contact}</span>
-                            </div>
-                        `;
-                    });
-                }
-
-                // --- Inventory Notifications ---
-                let lowStockProducts = [];
-                let outOfStockProducts = [];
-
-                inventory.forEach(product => {
-                    if (product.stock <= 0) {
-                        outOfStockProducts.push(product);
-                    } else if (product.stock <= product.minStock) {
-                        lowStockProducts.push(product);
-                    }
-                });
-
-                if (outOfStockProducts.length > 0) {
-                    notificationsHtml += `<h5 class="notification-section-title">Productos Agotados</h5>`;
-                    outOfStockProducts.forEach(product => {
-                        totalNotificationCount++;
-                        notificationsHtml += `
-                            <div class="notification-item inventory-empty">
-                                <strong>${product.name}</strong>
-                                <br>
-                                <span class="date">Stock: Agotado</span>
-                                <br>
-                                <span class="date">Código: ${product.code || 'N/A'}</span>
-                            </div>
-                        `;
-                    });
-                }
-
-                if (lowStockProducts.length > 0) {
-                    notificationsHtml += `<h5 class="notification-section-title">Stock Bajo</h5>`;
-                    lowStockProducts.forEach(product => {
-                        totalNotificationCount++;
-                        notificationsHtml += `
-                            <div class="notification-item inventory-low">
-                                <strong>${product.name}</strong>
-                                <br>
-                                <span class="date">Stock actual: ${product.stock} (Mínimo: ${product.minStock})</span>
-                                <br>
-                                <span class="date">Código: ${product.code || 'N/A'}</span>
-                            </div>
-                        `;
-                    });
-                }
-
-
-                if (notificationList) {
-                    notificationList.innerHTML = notificationsHtml;
-                }
-
-                if (totalNotificationCount > 0) {
-                    if (notificationBadge) {
-                        notificationBadge.textContent = totalNotificationCount;
-                        notificationBadge.style.display = 'block';
-                    }
-                    if (notificationEmpty) notificationEmpty.style.display = 'none';
-                } else {
-                    if (notificationBadge) notificationBadge.style.display = 'none';
-                    if (notificationEmpty) notificationEmpty.style.display = 'block';
+            /* ==================================================================
+               ATENCIÓN HOY · los datos reales del dashboard
+               ------------------------------------------------------------------
+               Cada número sale del almacén del equipo y cada ficha lleva a la pantalla
+               con el filtro puesto. Si no hay nada que atender, se dice: nunca ceros
+               disfrazados de información.
+               ================================================================== */
+            leerListaLocal(clave) {
+                try {
+                    const bruto = localStorage.getItem(clave);
+                    if (!bruto) return [];
+                    const datos = JSON.parse(bruto);
+                    return Array.isArray(datos) ? datos : [];
+                } catch (e) {
+                    console.warn('menu.html: ' + clave + ' ilegible, se ignora');
+                    return [];
                 }
             }
 
-            updateSyncIndicator(status) {
-                const indicator = document.getElementById('syncIndicator');
-                if (!indicator) return;
+            /** Pinta "N" y su detalle en una ficha, marcando si hay algo que atender. */
+            pintarFichaAtencion(idFicha, idNumero, idDetalle, cuantos, detalle, alerta) {
+                const ficha = document.getElementById(idFicha);
+                const numero = document.getElementById(idNumero);
+                const texto = document.getElementById(idDetalle);
+                if (numero) numero.textContent = String(cuantos);
+                if (texto) texto.textContent = detalle;
+                if (ficha) ficha.setAttribute('data-alerta', (alerta && cuantos > 0) ? 'si' : 'no');
+            }
 
-                const dot = indicator.querySelector('.sync-dot');
-                const text = indicator.querySelector('span');
+            /** Texto de estado de una tarjeta de módulo (con su punto de color). */
+            pintarTarjetaModulo(idEstado, idPunto, idDatos, estado, datos, activo) {
+                const texto = document.getElementById(idEstado);
+                const punto = document.getElementById(idPunto);
+                const linea = document.getElementById(idDatos);
+                if (texto) texto.textContent = estado;
+                if (linea) linea.textContent = datos;
+                if (punto) punto.style.background = activo ? '#10b981' : '#94a3b8';
+            }
 
-                switch (status) {
-                    case 'syncing':
-                        if (dot) dot.style.background = '#f59e0b';
-                        if (text) text.textContent = 'Sincronizando...';
-                        break;
-                    case 'synced':
-                        if (dot) dot.style.background = '#10b981';
-                        if (text) text.textContent = 'Datos sincronizados';
-                        break;
-                    case 'error':
-                        if (dot) dot.style.background = '#ef4444';
-                        if (text) text.textContent = 'Error de sincronización';
-                        break;
-                }
+            actualizarAtencionHoy() {
+                const estado = this.estadoActualDelNegocio || this.estadoDelNegocio();
+                this.estadoActualDelNegocio = estado;
+                const cuentas = estado.cuentas;
+                const inventario = estado.inventario;
+                const ventas = estado.ventas;
+
+                const vencidasMonto = cuentas.saldoVencido;
+                const vencenHoyMonto = cuentas.saldoVenceHoy;
+                const sinStock = inventario.agotados.length + inventario.bajos.length;
+
+                this.pintarFichaAtencion('fichaVencidas', 'atencionVencidas', 'atencionVencidasMonto',
+                    cuentas.vencidas.length, cuentas.vencidas.length ? formatoMonedaLocal(vencidasMonto) + ' por cobrar/pagar' : 'Ninguna', true);
+                this.pintarFichaAtencion('fichaVencenHoy', 'atencionVencenHoy', 'atencionVencenHoyMonto',
+                    cuentas.vencenHoy.length, cuentas.vencenHoy.length ? formatoMonedaLocal(vencenHoyMonto) + ' con vencimiento hoy' : 'Ninguna para hoy', true);
+                this.pintarFichaAtencion('fichaSinStock', 'atencionSinStock', 'atencionSinStockDetalle',
+                    sinStock, sinStock ? inventario.agotados.length + ' agotado(s) · ' + inventario.bajos.length + ' bajo mínimo' : 'Todo por encima del mínimo', true);
+                this.pintarFichaAtencion('fichaFiados', 'atencionFiados', 'atencionFiadosMonto',
+                    ventas.fiados,
+                    ventas.fiados ? formatoMonedaLocal(ventas.fiadosUSD) + ' fiado hoy · este equipo'
+                                  : 'Sin fiados hoy en este equipo',
+                    true);
+
+                this.pintarTarjetaModulo('estadoOperaciones', 'puntoOperaciones', 'datosOperaciones',
+                    ventas.cantidad ? 'Hoy · ' + ventas.cantidad + ' venta(s)' : 'Sin ventas hoy',
+                    ventas.cantidad
+                        ? formatoMonedaLocal(ventas.totalUSD) + ' USD en ventas de este equipo · ' + ventas.fiados + ' fiado(s)'
+                        : 'Nada registrado hoy en este equipo',
+                    ventas.cantidad > 0);
+
+                this.pintarTarjetaModulo('estadoInventario', 'puntoInventario', 'datosInventario',
+                    inventario.total ? inventario.total + ' producto(s)' : 'Sin productos cargados',
+                    inventario.total
+                        ? inventario.agotados.length + ' agotado(s) · ' + inventario.bajos.length + ' bajo mínimo · valor ' + formatoMonedaLocal(inventario.valor)
+                        : 'Carga tu inventario para ver el stock',
+                    inventario.total > 0 && inventario.agotados.length === 0);
+
+                this.pintarTarjetaModulo('estadoResumen', 'puntoResumen', 'datosResumen',
+                    ventas.cantidad ? 'Hoy · ' + formatoMonedaLocal(ventas.totalUSD) : 'Sin ventas hoy',
+                    ventas.cantidad
+                        ? ventas.cantidad + ' ticket(s) de este equipo · ticket medio ' + formatoMonedaLocal(ventas.ticketMedio)
+                        : 'Abre el POS para registrar la primera venta de este equipo',
+                    ventas.cantidad > 0);
             }
 
             showLoadingOverlay(show) {
@@ -3567,14 +3921,14 @@
                                 </span>
                             </td>
                             <td class="price-cell">
-                                <div class="price-main">${product.cost.toFixed(2)}</div>
+                                <div class="price-main">${numeroSeguroLocal(product.cost, 0).toFixed(2)}</div>
                             </td>
                             <td class="margin-cell">
-                                <div class="margin-value">${product.margin}%</div>
+                                <div class="margin-value">${numeroSeguroLocal(product.margin, 0)}%</div>
                             </td>
                             <td class="price-cell">
-                                <div class="price-main">${product.price.toFixed(2)}</div>
-                                <div class="price-cost">+${product.profit.toFixed(2)}</div>
+                                <div class="price-main">${numeroSeguroLocal(product.price, 0).toFixed(2)}</div>
+                                <div class="price-cost">+${numeroSeguroLocal(product.profit, 0).toFixed(2)}</div>
                             </td>
                             <td>
                                 <span style="font-weight: 500;">${product.brand || 'Sin marca'}</span>
@@ -3681,8 +4035,8 @@
                     productMinStock: product.minStock,
                     productCost: product.cost,
                     productMargin: product.margin,
-                    productPrice: product.price.toFixed(2),
-                    productProfit: product.profit.toFixed(2)
+                    productPrice: numeroSeguroLocal(product.price, 0).toFixed(2),
+                    productProfit: numeroSeguroLocal(product.profit, 0).toFixed(2)
                 };
 
                 Object.entries(fields).forEach(([fieldId, value]) => {
@@ -3808,6 +4162,13 @@
                 if (elements.totalStock) elements.totalStock.textContent = totalStock.toLocaleString();
                 if (elements.totalValue) elements.totalValue.textContent = `${totalValue.toLocaleString()}`;
                 if (elements.lowStock) elements.lowStock.textContent = lowStock;
+            }
+
+            /* Aviso simple: esta clase no tenía `showNotification` y `exportInventory()` la
+               llamaba (exportar con 0 productos lanzaba excepción). Se apoya en el aviso
+               que ya usa el resto del menú. */
+            showNotification(mensaje, tipo) {
+                if (typeof window.showToast === 'function') window.showToast(mensaje, tipo || 'info');
             }
 
             exportInventory() {
@@ -4037,15 +4398,592 @@
             }
         }
 
-        // User Management
-        function toggleNotifications() {
-            const notificationPanel = document.getElementById('notificationPanel');
-            if (notificationPanel) {
-                notificationPanel.classList.toggle('show');
-                // Update notifications every time the panel is opened
-                systemManager.updateNotifications();
+        /* ==================================================================
+           ESTADO DE CONEXIÓN DEL MENÚ (lo pinta, no lo decide)
+           ------------------------------------------------------------------
+           `conexion.js` ya está cargado en esta página y es la ÚNICA autoridad del
+           estado. Aquí solo se lee su cálculo (una función pura: no toca la red) y se
+           pinta. Las etiquetas son CORTAS para que quepan en el cartel; el texto
+           canónico completo, el mismo que usan las demás páginas, va en el title.
+           ================================================================== */
+        var ETIQUETAS_CONEXION = {
+            'sin-red': 'Sin internet',
+            'sin-nube': 'Sin nube',
+            'pendientes': 'Sin subir',
+            'al-dia': 'Al día',
+            'sin-comprobar': 'Sin comprobar'
+        };
+
+        function pintarEstadoConexionMenu() {
+            var indicador = document.getElementById('syncIndicator');
+            if (!indicador) return null;
+            if (!window.conexion || typeof window.conexion.estado !== 'function') return null;
+
+            var estado = window.conexion.estado();
+            var punto = document.getElementById('syncDot');
+            var texto = document.getElementById('syncText');
+
+            if (punto) punto.style.background = estado.color;
+            if (texto) texto.textContent = ETIQUETAS_CONEXION[estado.clave] || 'Estado';
+            indicador.setAttribute('data-estado', estado.clave);
+            indicador.setAttribute('title', estado.titulo);
+            indicador.setAttribute('aria-label', estado.titulo);
+            return estado;
+        }
+
+        /* ==================================================================
+           AVISOS DEL NEGOCIO · un solo cálculo para la campana y la franja
+           ================================================================== */
+        /** Escapa el texto que se inyecta en HTML (antes iba crudo). */
+        function escaparTextoLocal(valor) {
+            var texto = String(valor === null || valor === undefined ? '' : valor);
+            var salida = '';
+            for (var i = 0; i < texto.length; i++) {
+                var c = texto.charAt(i);
+                if (c === '&') salida += '&amp;';
+                else if (c === '<') salida += '&lt;';
+                else if (c === '>') salida += '&gt;';
+                else if (c === '"') salida += '&quot;';
+                else if (c === "'") salida += '&#39;';
+                else salida += c;
+            }
+            return salida;
+        }
+
+        /** Cuentas que piden atención: vencidas y por vencer hoy. El estado se DERIVA. */
+        function cuentasEnAlertaLocal(cuentas, hoyIso) {
+            var hoy = String(hoyIso || fechaHoyIsoLocal());
+            var res = { vencidas: [], vencenHoy: [], saldoVencido: 0, saldoVenceHoy: 0 };
+            (Array.isArray(cuentas) ? cuentas : []).forEach(function (cuenta) {
+                if (estadoDeCuentaLocal(cuenta, hoy) === 'paid') return;      // saldada: no es deuda
+                var vence = String((cuenta && cuenta.dueDate) || '').slice(0, 10);
+                var saldo = saldoDeCuentaLocal(cuenta);
+                if (vence && vence < hoy) { res.vencidas.push(cuenta); res.saldoVencido += saldo; }
+                else if (vence && vence === hoy) { res.vencenHoy.push(cuenta); res.saldoVenceHoy += saldo; }
+            });
+            res.saldoVencido = Math.round(res.saldoVencido * 100) / 100;
+            res.saldoVenceHoy = Math.round(res.saldoVenceHoy * 100) / 100;
+            var porFecha = function (a, b) { return String(a.dueDate || '').localeCompare(String(b.dueDate || '')); };
+            res.vencidas.sort(porFecha);
+            res.vencenHoy.sort(porFecha);
+            return res;
+        }
+
+        /** Agotados y bajo mínimo, con el valor del stock. */
+        function inventarioEnAlertaLocal(inventario) {
+            var res = { agotados: [], bajos: [], total: 0, valor: 0 };
+            var lista = Array.isArray(inventario) ? inventario : [];
+            res.total = lista.length;
+            lista.forEach(function (p) {
+                var stock = numeroSeguroLocal(p && p.stock, 0);
+                var minimo = numeroSeguroLocal(p && p.minStock, 0);
+                if (stock <= 0) res.agotados.push(p);
+                else if (stock <= minimo) res.bajos.push(p);
+                res.valor += numeroSeguroLocal(p && p.price, 0) * stock;
+            });
+            res.valor = Math.round(res.valor * 100) / 100;
+            return res;
+        }
+
+        /** Etiquetas de fuente de tasa: las mismas que usa el POS. */
+        function etiquetaFuenteTasaLocal(fuente) {
+            var etiquetas = {
+                bcv: 'Dólar (BCV Oficial)',
+                euro: 'Euro (BCV Oficial)',
+                binance: 'Binance USDT (P2P Referencial)',
+                promedio: 'Promedio (Oficial - Paralelo)'
+            };
+            return etiquetas[fuente] || (fuente ? String(fuente) : 'Tasa');
+        }
+
+        /** Número de tasa con dos decimales, en formato español (como el POS). */
+        function formatoTasaLocal(valor) {
+            var n = Number(valor);
+            if (!isFinite(n)) return '—';
+            try {
+                return n.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            } catch (e) { return n.toFixed(2); }
+        }
+
+        /** Fecha y hora cortas de una marca de tiempo. */
+        function fechaHoraLocal(ms) {
+            try {
+                return new Date(Number(ms)).toLocaleString('es-ES',
+                    { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+            } catch (e) { return ''; }
+        }
+
+        var _mantenimientoCache = { cuando: 0, datos: null };
+
+        /** Copia, almacenamiento y tasa del día. Se cachea 60 s porque leerlo cuesta. */
+        function mantenimientoDelEquipoLocal(ahoraMs) {
+            var ahora = isFinite(Number(ahoraMs)) ? Number(ahoraMs) : Date.now();
+            if (_mantenimientoCache.datos && (ahora - _mantenimientoCache.cuando) < 60000) return _mantenimientoCache.datos;
+
+            var datos = { ultimaCopia: '', diasSinCopia: null, almacenamiento: null, tasaAlDia: null, tasaUltima: '' };
+            try {
+                if (typeof window.fechaUltimaCopia === 'function') {
+                    datos.ultimaCopia = String(window.fechaUltimaCopia() || '');
+                    var m = /^hace (\d+) d/.exec(datos.ultimaCopia);
+                    if (datos.ultimaCopia === 'nunca') datos.diasSinCopia = Infinity;
+                    else if (datos.ultimaCopia === 'hoy') datos.diasSinCopia = 0;
+                    else if (datos.ultimaCopia === 'ayer') datos.diasSinCopia = 1;
+                    else if (m) datos.diasSinCopia = Number(m[1]);
+                    else if (datos.ultimaCopia) datos.diasSinCopia = 31;   // una fecha suelta ya es vieja
+                }
+            } catch (e) { /* sin dato de copia: no se avisa */ }
+            try {
+                if (typeof window.estadoAlmacenamientoSimple === 'function') {
+                    datos.almacenamiento = window.estadoAlmacenamientoSimple();
+                }
+            } catch (e) { /* sin medida: no se avisa */ }
+            try {
+                var fuenteActiva = String(localStorage.getItem('pos_rate_source') || '');
+                var crudo = localStorage.getItem('pos_rate_history');
+                if (crudo) {
+                    var historial = JSON.parse(crudo);
+                    var hoy = new Date(ahora).toISOString().slice(0, 10);
+
+                    /* Solo las muestras SIN `serie`: son las que grabó el POS al actualizar
+                       la tasa automáticamente. Las que traen `serie` vienen sembradas de la
+                       API (seedRateHistoryFromApi) y no son un cambio de ahora. */
+                    var candidatas = [];
+                    Object.keys(historial || {}).forEach(function (fuente) {
+                        var lista = Array.isArray(historial[fuente]) ? historial[fuente] : [];
+                        var vivas = lista.filter(function (s) {
+                            return s && isFinite(Number(s.t)) && isFinite(Number(s.v)) && !s.serie;
+                        });
+                        if (vivas.length) candidatas.push({ fuente: fuente, vivas: vivas });
+                    });
+
+                    // Se informa de la fuente que el POS está usando; si no tiene datos, la más reciente.
+                    var elegida = candidatas.filter(function (c) { return c.fuente === fuenteActiva; })[0] || null;
+                    if (!elegida && candidatas.length) {
+                        elegida = candidatas.slice().sort(function (a, b) {
+                            return Number(b.vivas[b.vivas.length - 1].t) - Number(a.vivas[a.vivas.length - 1].t);
+                        })[0];
+                    }
+
+                    if (elegida) {
+                        var ultimaMuestra = elegida.vivas[elegida.vivas.length - 1];
+                        var penultima = elegida.vivas.length > 1 ? elegida.vivas[elegida.vivas.length - 2] : null;
+                        var ms = Number(ultimaMuestra.t);
+                        datos.tasaFuente = elegida.fuente;
+                        datos.tasaActual = Number(ultimaMuestra.v);
+                        datos.tasaAnterior = penultima ? Number(penultima.v) : null;
+                        datos.tasaCuando = ms;
+                        datos.tasaUltima = new Date(ms).toISOString().slice(0, 10);
+                        datos.tasaAlDia = (new Date(ms).toISOString().slice(0, 10) === hoy);
+                        // Un cambio de hace más de dos días ya no es noticia.
+                        datos.tasaCambioReciente = !!(penultima &&
+                            Number(penultima.v) !== Number(ultimaMuestra.v) &&
+                            ((ahora - ms) / 86400000) <= 2);
+                    }
+                }
+            } catch (e) { /* historial ilegible: no se avisa */ }
+
+            _mantenimientoCache = { cuando: ahora, datos: datos };
+            return datos;
+        }
+
+        /** Destino del aviso de un producto: al PRODUCTO, no a la lista entera. */
+        function destinoProductoLocal(producto) {
+            var id = (producto && producto.id !== undefined && producto.id !== null) ? String(producto.id) : '';
+            if (!id || id === '') return 'inventario.html';   // sin id no se inventa el enlace
+            return 'inventario.html?id=' + encodeURIComponent(id);
+        }
+
+        /** Avisos accionables: cada uno dice a qué pantalla lleva y qué se hace allí. */
+        function avisosDelNegocioLocal(estado) {
+            var e = estado || {};
+            var c = e.cuentas || { vencidas: [], vencenHoy: [] };
+            var i = e.inventario || { agotados: [], bajos: [] };
+            var m = e.mantenimiento || {};
+            var avisos = [];
+
+            (c.vencidas || []).forEach(function (cuenta) {
+                avisos.push({
+                    grupo: 'Cobros y pagos', severidad: 'alta',
+                    titulo: String((cuenta && cuenta.description) || 'Cuenta sin descripción'),
+                    detalle: 'Vencida el ' + String((cuenta && cuenta.dueDate) || '').slice(0, 10) +
+                        ' · saldo ' + formatoMonedaLocal(saldoDeCuentaLocal(cuenta)) +
+                        ' · ' + String((cuenta && cuenta.contact) || 'sin contacto'),
+                    destino: 'cuentas.html?id=' + encodeURIComponent(String((cuenta && cuenta.id) === undefined ? '' : cuenta.id)) +
+                        '&tipo=' + ((cuenta && cuenta.type === 'pagar') ? 'pagar' : 'cobrar'),
+                    accion: 'Ver la cuenta'
+                });
+            });
+
+            (c.vencenHoy || []).forEach(function (cuenta) {
+                avisos.push({
+                    grupo: 'Cobros y pagos', severidad: 'media',
+                    titulo: String((cuenta && cuenta.description) || 'Cuenta sin descripción'),
+                    detalle: 'Vence hoy · saldo ' + formatoMonedaLocal(saldoDeCuentaLocal(cuenta)) +
+                        ' · ' + String((cuenta && cuenta.contact) || 'sin contacto'),
+                    destino: 'cuentas.html?id=' + encodeURIComponent(String((cuenta && cuenta.id) === undefined ? '' : cuenta.id)) +
+                        '&tipo=' + ((cuenta && cuenta.type === 'pagar') ? 'pagar' : 'cobrar'),
+                    accion: 'Registrar el abono'
+                });
+            });
+
+            (i.agotados || []).forEach(function (p) {
+                avisos.push({
+                    grupo: 'Inventario', severidad: 'alta',
+                    titulo: String((p && p.name) || 'Producto sin nombre'),
+                    detalle: 'Agotado · código ' + String((p && p.code) || 'N/A'),
+                    destino: destinoProductoLocal(p), accion: 'Ver el producto'
+                });
+            });
+
+            (i.bajos || []).forEach(function (p) {
+                avisos.push({
+                    grupo: 'Inventario', severidad: 'media',
+                    titulo: String((p && p.name) || 'Producto sin nombre'),
+                    detalle: 'Quedan ' + numeroSeguroLocal(p && p.stock, 0) +
+                        ' (mínimo ' + numeroSeguroLocal(p && p.minStock, 0) + ') · código ' + String((p && p.code) || 'N/A'),
+                    destino: destinoProductoLocal(p), accion: 'Ver el producto'
+                });
+            });
+
+            if (m.diasSinCopia !== null && m.diasSinCopia !== undefined &&
+                (m.diasSinCopia === Infinity || m.diasSinCopia >= 7)) {
+                avisos.push({
+                    grupo: 'Mantenimiento', severidad: m.diasSinCopia === Infinity ? 'alta' : 'media',
+                    titulo: 'Copia de seguridad: ' + String(m.ultimaCopia || 'nunca'),
+                    detalle: m.diasSinCopia === Infinity
+                        ? 'Nunca se ha descargado una copia y los datos viven en este equipo'
+                        : 'Hace ' + m.diasSinCopia + ' días de la última copia',
+                    destino: 'config.html', accion: 'Descargar copia'
+                });
+            }
+
+            if (m.almacenamiento && m.almacenamiento.estado && m.almacenamiento.estado !== 'ok') {
+                avisos.push({
+                    grupo: 'Mantenimiento', severidad: m.almacenamiento.estado === 'lleno' ? 'alta' : 'media',
+                    titulo: 'Almacenamiento ' + (m.almacenamiento.estado === 'lleno' ? 'lleno' : 'casi lleno'),
+                    detalle: String(m.almacenamiento.texto || ''),
+                    destino: 'config.html', accion: 'Gestionar el almacenamiento'
+                });
+            }
+
+            /* La tasa: primero el CAMBIO (es la noticia), y si no lo hay, el aviso de que
+               lleva un día sin actualizarse. Nunca los dos a la vez. */
+            if (m.tasaCambioReciente) {
+                var subio = Number(m.tasaActual) > Number(m.tasaAnterior);
+                var variacion = Number(m.tasaAnterior)
+                    ? ((Number(m.tasaActual) - Number(m.tasaAnterior)) / Number(m.tasaAnterior) * 100) : 0;
+                avisos.push({
+                    grupo: 'Tasa del día', severidad: 'media',
+                    titulo: 'La tasa ' + (subio ? 'subió' : 'bajó') + ': ' +
+                        formatoTasaLocal(m.tasaAnterior) + ' → ' + formatoTasaLocal(m.tasaActual),
+                    detalle: etiquetaFuenteTasaLocal(m.tasaFuente) + ' · ' +
+                        (subio ? '+' : '') + formatoTasaLocal(variacion) + '% · actualizada automáticamente el ' +
+                        fechaHoraLocal(m.tasaCuando),
+                    destino: 'mini_market_pos.html', accion: 'Ver la tasa en el POS'
+                });
+            } else if (m.tasaAlDia === false) {
+                avisos.push({
+                    grupo: 'Tasa del día', severidad: 'media',
+                    titulo: 'La tasa no se ha actualizado hoy',
+                    detalle: m.tasaUltima
+                        ? ('Última actualización automática: ' + m.tasaUltima +
+                           (m.tasaFuente ? ' (' + etiquetaFuenteTasaLocal(m.tasaFuente) + ')' : ''))
+                        : 'No hay ninguna muestra de tasa guardada',
+                    destino: 'mini_market_pos.html', accion: 'Actualizar la tasa'
+                });
+            }
+
+            return avisos;
+        }
+
+        /** Pinta el centro: grupos con contador, avisos botón y estado vacío honesto. */
+        function pintarCentroDeNotificaciones(avisos) {
+            var lista = document.getElementById('notificationList');
+            var badge = document.getElementById('notificationBadge');
+            var vacio = document.getElementById('notificationEmpty');
+            var titulo = document.getElementById('tituloNotificaciones');
+            var boton = document.getElementById('botonNotificaciones');
+            var total = (avisos || []).length;
+
+            var orden = [], porGrupo = {};
+            (avisos || []).forEach(function (a) {
+                var g = a.grupo || 'Otros';
+                if (!porGrupo[g]) { porGrupo[g] = []; orden.push(g); }
+                porGrupo[g].push(a);
+            });
+
+            var html = '';
+            orden.forEach(function (g) {
+                html += '<div class="aviso-grupo"><span class="aviso-grupo-titulo">' + escaparTextoLocal(g) +
+                    ' (' + porGrupo[g].length + ')</span></div>';
+                porGrupo[g].forEach(function (a) {
+                    // El destino va entre comillas dobles escapadas: así no puede romper el onclick.
+                    var destino = String(a.destino || '').replace(/[^A-Za-z0-9_.?=&%\/\-]/g, '').replace(/&/g, '&amp;');
+                    html += '<button type="button" class="notification-item ' +
+                        (a.severidad === 'alta' ? 'overdue' : 'pending') + '" ' +
+                        'onclick="abrirDesdeNotificacion(&quot;' + destino + '&quot;)">' +
+                        '<strong>' + escaparTextoLocal(a.titulo) + '</strong>' +
+                        '<span class="date">' + escaparTextoLocal(a.detalle || '') + '</span>' +
+                        '<span class="aviso-accion">' + escaparTextoLocal(a.accion || 'Abrir') + ' →</span>' +
+                        '</button>';
+                });
+            });
+
+            if (lista) lista.innerHTML = html;
+            if (titulo) titulo.textContent = total ? ('Notificaciones (' + total + ')') : 'Notificaciones';
+            if (badge) {
+                badge.textContent = String(total);
+                badge.hidden = total === 0;
+            }
+            if (boton) {
+                boton.setAttribute('aria-label', total
+                    ? ('Notificaciones: ' + total + ' pendiente' + (total === 1 ? '' : 's'))
+                    : 'Notificaciones: nada pendiente');
+            }
+            if (vacio) {
+                vacio.hidden = total > 0;
+                vacio.innerHTML = total ? '' :
+                    'Todo al día.<br>Se vigilan las cuentas vencidas y por vencer, el stock agotado y bajo mínimo, la tasa del día y la copia de seguridad.';
+            }
+            return total;
+        }
+
+        /** Abre la pantalla que resuelve el aviso (y cierra el panel). */
+        function abrirDesdeNotificacion(destino) {
+            if (!destino) return;
+            cerrarNotificaciones();
+            window.location.href = destino;
+        }
+
+        /* ==================================================================
+           PANEL DEL USUARIO · se abre a petición, no ocupa sitio en el header
+           ================================================================== */
+        function panelUsuarioAbierto() {
+            var panel = document.getElementById('userPanel');
+            return !!panel && !panel.hidden;
+        }
+
+        function pintarPanelUsuario(abierto) {
+            var panel = document.getElementById('userPanel');
+            var disparador = document.getElementById('userInfo');
+            if (panel) panel.hidden = !abierto;
+            if (disparador) disparador.setAttribute('aria-expanded', abierto ? 'true' : 'false');
+        }
+
+        function alternarPanelUsuario() {
+            pintarPanelUsuario(!panelUsuarioAbierto());
+        }
+
+        function copiarCorreoDelDueno(ev) {
+            if (ev && ev.stopPropagation) ev.stopPropagation();
+            var correo = correoDelDueno();
+            if (!correo) return;
+            var aviso = function (texto, tipo) {
+                if (typeof window.showToast === 'function') window.showToast(texto, tipo || 'info');
+            };
+            try {
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(correo).then(function () { aviso('Correo copiado', 'info'); },
+                        function () { aviso('No se pudo copiar (el navegador lo bloqueó)', 'error'); });
+                } else {
+                    aviso('No se pudo copiar (el navegador lo bloqueó)', 'error');
+                }
+            } catch (e) {
+                aviso('No se pudo copiar (el navegador lo bloqueó)', 'error');
             }
         }
+
+        // Cerrar al pulsar fuera o con Escape (como los otros modales del menú).
+        document.addEventListener('click', function (ev) {
+            if (!panelUsuarioAbierto()) return;
+            var disparador = document.getElementById('userInfo');
+            if (disparador && !disparador.contains(ev.target)) pintarPanelUsuario(false);
+        });
+        document.addEventListener('keydown', function (ev) {
+            if (ev.key === 'Escape') pintarPanelUsuario(false);
+        });
+
+        /* ==================================================================
+           CORREO DEL DUEÑO DEL EQUIPO
+           ------------------------------------------------------------------
+           El menú NO carga el SDK de Firebase, así que no puede preguntar la sesión: lee
+           las marcas que ya escribió el login. La buena es sesionActiva (localStorage),
+           que la escribe el login del PROPIETARIO; propietarioActual y currentOwner
+           (sessionStorage) son el respaldo. El operador puede no tener correo, y por eso
+           se muestra el del dueño: es la cuenta que se está administrando.
+           ================================================================== */
+        function correoDelDueno() {
+            try {
+                var sesion = JSON.parse(localStorage.getItem('sesionActiva') || 'null');
+                if (sesion && sesion.email) return String(sesion.email);
+            } catch (e) { /* marca ilegible: se prueba el respaldo */ }
+            try {
+                var directo = sessionStorage.getItem('propietarioActual');
+                if (directo) return String(directo);
+                var dueno = JSON.parse(sessionStorage.getItem('currentOwner') || 'null');
+                if (dueno && dueno.email) return String(dueno.email);
+            } catch (e) { /* sin marcas: no hay correo que mostrar */ }
+            return '';
+        }
+
+        /* ==================================================================
+           DINERO Y ESTADO DE UNA CUENTA (mismo criterio que cuentas.html)
+           ------------------------------------------------------------------
+           El menú NO puede fiarse del `status` guardado: cuentas.html deriva el estado
+           del SALDO (importe menos abonos). Una cuenta saldada con abonos seguía
+           apareciendo aquí como vencida porque su `status` se quedó en 'pending'.
+           Estas funciones replican el criterio del normalizador de cuentas.html
+           (`saldoPendiente` / `estadoDeCuenta`, día UTC incluido) sin escribir nada.
+           ================================================================== */
+        function numeroSeguroLocal(valor, porDefecto) {
+            var n = Number(valor);
+            return isFinite(n) ? n : (porDefecto || 0);
+        }
+
+        function abonadoDeCuentaLocal(cuenta) {
+            var pagos = (cuenta && Array.isArray(cuenta.payments)) ? cuenta.payments : [];
+            return pagos.reduce(function (suma, p) {
+                return suma + numeroSeguroLocal(p && p.amount, 0);
+            }, 0);
+        }
+
+        function saldoDeCuentaLocal(cuenta) {
+            var total = numeroSeguroLocal(cuenta && cuenta.amount, 0);
+            return Math.round((total - abonadoDeCuentaLocal(cuenta)) * 100) / 100;
+        }
+
+        /** Día de hoy en UTC, igual que `fechaHoyIso()` de cuentas.html. */
+        function fechaHoyIsoLocal() {
+            return new Date().toISOString().split('T')[0];
+        }
+
+        /** 'paid' | 'overdue' | 'pending' — DERIVADO, nunca leído del almacén. */
+        function estadoDeCuentaLocal(cuenta, hoyIso) {
+            if (saldoDeCuentaLocal(cuenta) <= 0) return 'paid';
+            var vence = String((cuenta && cuenta.dueDate) || '').slice(0, 10);
+            return (vence && vence < String(hoyIso || fechaHoyIsoLocal())) ? 'overdue' : 'pending';
+        }
+
+        /** Importe con dos decimales y sin reventar si el dato viene sucio. */
+        function formatoMonedaLocal(valor) {
+            return '$' + numeroSeguroLocal(valor, 0).toFixed(2);
+        }
+
+        /* ==================================================================
+           VENTAS DEL DÍA LEÍDAS DEL EQUIPO (`pos_sales`)
+           ------------------------------------------------------------------
+           Mismo criterio que lector_ventas.js, que es quien manda en los reportes:
+             · el día es el UTC ('AAAA-MM-DD'), la misma clave que usa el índice;
+             · el CONSUMO INTERNO no es una venta: queda fuera de los totales;
+             · el FIADO (por cobrar) SÍ es venta, y se informa aparte;
+             · el equivalente en USD usa la tasa de la propia venta.
+           Solo mira lo que hay EN ESTE EQUIPO: es lo único que el menú puede saber sin
+           cargar el SDK de Firebase, y el texto de la tarjeta lo dice.
+           ================================================================== */
+        function totalDeVentaLocal(venta) {
+            if (!venta || typeof venta !== 'object') return 0;
+            if (venta.totals && isFinite(Number(venta.totals.total))) return Number(venta.totals.total);
+            if (isFinite(Number(venta.total))) return Number(venta.total);
+            return 0;
+        }
+
+        function totalUsdDeVentaLocal(venta) {
+            var total = totalDeVentaLocal(venta);
+            var moneda = (venta && venta.currency) ? String(venta.currency) : 'USD';
+            var tasa = numeroSeguroLocal(venta && venta.exchangeRate, 0);
+            var usd = (moneda === 'VES' && tasa > 0) ? (total / tasa) : total;
+            return Math.round(usd * 100) / 100;
+        }
+
+        function esConsumoInternoLocal(venta) {
+            if (!venta || typeof venta !== 'object') return false;
+            if (venta.consumoInterno === true) return true;
+            return String(venta.paymentMethod || '') === 'consumo-interno';
+        }
+
+        function esPorCobrarLocal(venta) {
+            if (!venta || typeof venta !== 'object') return false;
+            if (venta.porCobrar === true) return true;
+            return String(venta.paymentMethod || '') === 'por-cobrar';
+        }
+
+        function diaDeVentaLocal(venta) {
+            var valor = venta && (venta.fechaISO || venta.timestamp || venta.fecha);
+            var ms = Date.parse(String(valor || ''));
+            if (!isFinite(ms)) return '';
+            return new Date(ms).toISOString().slice(0, 10);
+        }
+
+        /** Resumen de las ventas de HOY del equipo (consumo interno excluido). */
+        function resumenVentasDeHoyLocal(ventas, ahoraMs) {
+            var ms = isFinite(Number(ahoraMs)) ? Number(ahoraMs) : Date.now();
+            var hoy = new Date(ms).toISOString().slice(0, 10);
+            var lista = Array.isArray(ventas) ? ventas : [];
+            var resumen = { dia: hoy, cantidad: 0, totalUSD: 0, fiados: 0, fiadosUSD: 0, ticketMedio: 0 };
+
+            lista.forEach(function (venta) {
+                if (diaDeVentaLocal(venta) !== hoy) return;
+                if (esConsumoInternoLocal(venta)) return;          // no es venta
+                var usd = totalUsdDeVentaLocal(venta);
+                resumen.cantidad++;
+                resumen.totalUSD += usd;
+                if (esPorCobrarLocal(venta)) { resumen.fiados++; resumen.fiadosUSD += usd; }
+            });
+
+            resumen.totalUSD = Math.round(resumen.totalUSD * 100) / 100;
+            resumen.fiadosUSD = Math.round(resumen.fiadosUSD * 100) / 100;
+            resumen.ticketMedio = resumen.cantidad
+                ? Math.round((resumen.totalUSD / resumen.cantidad) * 100) / 100 : 0;
+            return resumen;
+        }
+
+        /** Abre la pantalla de una ficha de atención (con su filtro en la URL). */
+        function abrirFichaAtencion(destino) {
+            if (!destino) return;
+            window.location.href = destino;
+        }
+
+        // User Management
+        function panelNotificacionesAbierto() {
+            const panel = document.getElementById('notificationPanel');
+            return !!panel && !panel.hidden;
+        }
+
+        function abrirNotificaciones() {
+            const panel = document.getElementById('notificationPanel');
+            const boton = document.getElementById('botonNotificaciones');
+            if (!panel) return;
+            // Se refresca al abrir: los números pueden haber cambiado desde el arranque.
+            if (window.systemManager && typeof window.systemManager.updateNotifications === 'function') {
+                window.systemManager.updateNotifications();
+            }
+            panel.hidden = false;
+            if (boton) boton.setAttribute('aria-expanded', 'true');
+            const primero = panel.querySelector('.notification-item, .aviso-cerrar');
+            if (primero) primero.focus();
+        }
+
+        function cerrarNotificaciones() {
+            const panel = document.getElementById('notificationPanel');
+            const boton = document.getElementById('botonNotificaciones');
+            if (panel) panel.hidden = true;
+            if (boton) boton.setAttribute('aria-expanded', 'false');
+        }
+
+        function toggleNotifications() {
+            if (panelNotificacionesAbierto()) cerrarNotificaciones();
+            else abrirNotificaciones();
+        }
+
+        // Cerrar al pulsar fuera o con Escape (igual que el panel de usuario).
+        document.addEventListener('click', function (ev) {
+            if (!panelNotificacionesAbierto()) return;
+            const contenedor = document.getElementById('notificationWrap');
+            if (contenedor && !contenedor.contains(ev.target)) cerrarNotificaciones();
+        });
+        document.addEventListener('keydown', function (ev) {
+            if (ev.key === 'Escape') cerrarNotificaciones();
+        });
 
         // Función para mostrar el modal de cierre de sesión
         function handleLogout() {
@@ -4134,6 +5072,202 @@
             if (sunIcon) sunIcon.style.display = isDark ? 'none' : 'inline-block';
             if (moonIcon) moonIcon.style.display = isDark ? 'inline-block' : 'none';
         });
+        window.addEventListener('online', pintarEstadoConexionMenu);
+        window.addEventListener('offline', pintarEstadoConexionMenu);
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', pintarEstadoConexionMenu);
+        }
+        // `conexion.js` recalcula por su cuenta cada 5 s; esto solo vuelve a LEER su
+        // estado (función pura, sin red) para que el cartel no se quede atrás.
+        setInterval(pintarEstadoConexionMenu, 2000);
+        /* ==================================================================
+           ACCESOS DEL MENÚ · teclado y personalización
+           ------------------------------------------------------------------
+           Los módulos y los accesos son `<div onclick>`: sin tabindex no se puede llegar a
+           ellos con el teclado (medido: 12 elementos inalcanzables). Aquí se les da el
+           comportamiento de un botón de verdad.
+           ================================================================== */
+        var IDS_ACCESOS_MENU = [
+            'operacionesModuleCard', 'inventarioModuleCard', 'salesSummaryModuleCard',
+            'catalogItem', 'userManagementItem', 'providersItem', 'accountsItem',
+            'companyItem', 'priceCalculatorItem', 'clientsItem', 'configItem'
+        ];
+        var CLAVE_DISPOSICION = 'ciervo_menu_disposicion';
+        var _ordenOriginal = [];
+        var _disposicion = { orden: [], ocultos: [] };
+
+        /** Convierte los div con onclick en algo que el teclado puede usar. */
+        function hacerAccesosPulsablesConTeclado() {
+            document.querySelectorAll('[onclick]').forEach(function (el) {
+                if (el.tagName === 'BUTTON' || el.tagName === 'A' || el.hasAttribute('tabindex')) return;
+                el.setAttribute('role', 'button');
+                el.setAttribute('tabindex', '0');
+                el.addEventListener('keydown', function (ev) {
+                    if (ev.key === 'Enter' || ev.key === ' ' || ev.key === 'Spacebar') {
+                        ev.preventDefault();
+                        el.click();
+                    }
+                });
+            });
+        }
+
+        function elementosDeAcceso() {
+            return IDS_ACCESOS_MENU
+                .map(function (id) { return document.getElementById(id); })
+                .filter(function (el) { return !!el; });
+        }
+
+        /** Lee la disposición guardada (por cuenta: la clave la prefija el aislamiento). */
+        function leerDisposicionMenu() {
+            var crudo = null;
+            try { crudo = localStorage.getItem(CLAVE_DISPOSICION); } catch (e) { return { orden: [], ocultos: [] }; }
+            if (!crudo) return { orden: [], ocultos: [] };
+            try {
+                var datos = JSON.parse(crudo);
+                var orden = (datos && Array.isArray(datos.orden)) ? datos.orden.filter(function (id) {
+                    return IDS_ACCESOS_MENU.indexOf(id) !== -1;
+                }) : [];
+                var ocultos = (datos && Array.isArray(datos.ocultos)) ? datos.ocultos.filter(function (id) {
+                    return IDS_ACCESOS_MENU.indexOf(id) !== -1;
+                }) : [];
+                return { orden: orden, ocultos: ocultos };
+            } catch (e) {
+                console.warn('menu.html: disposición ilegible, se ignora');
+                return { orden: [], ocultos: [] };
+            }
+        }
+
+        function guardarDisposicionMenu() {
+            var serializado = JSON.stringify(_disposicion);
+            // Guardián de cuota (almacenamiento.js), igual que el resto de escrituras del menú.
+            if (typeof window.guardarLocalSeguro === 'function') window.guardarLocalSeguro(CLAVE_DISPOSICION, serializado);
+            else localStorage.setItem(CLAVE_DISPOSICION, serializado);
+        }
+
+        /** Pinta el orden y las ocultaciones guardadas (nunca toca los onclick). */
+        function aplicarDisposicionMenu() {
+            var elementos = elementosDeAcceso();
+            elementos.forEach(function (el) {
+                el.setAttribute('data-acceso', '1');
+                el.hidden = _disposicion.ocultos.indexOf(el.id) !== -1;
+                if (!document.querySelector('.editar-acceso[data-para="' + el.id + '"]')) {
+                    el.appendChild(crearControlesDeAcceso(el.id));
+                }
+            });
+
+            // Reordenar DENTRO de cada contenedor (hay dos listas de accesos).
+            _disposicion.orden.forEach(function (id) {
+                var el = document.getElementById(id);
+                if (el && el.parentElement) el.parentElement.appendChild(el);
+            });
+
+            var hayCambios = _disposicion.orden.length > 0 || _disposicion.ocultos.length > 0;
+            var boton = document.getElementById('botonRestablecer');
+            if (boton) boton.hidden = !hayCambios;
+        }
+
+        /** ↑ ↓ y ✕ de cada acceso. La propagación se corta para no abrir el módulo. */
+        function crearControlesDeAcceso(id) {
+            var caja = document.createElement('span');
+            caja.className = 'editar-acceso';
+            caja.setAttribute('data-para', id);
+
+            [['subir', '↑', 'Subir '], ['bajar', '↓', 'Bajar '], ['ocultar', '✕', 'Ocultar ']].forEach(function (par) {
+                var b = document.createElement('button');
+                b.type = 'button';
+                b.setAttribute('data-accion', par[0]);
+                b.setAttribute('data-objetivo', id);
+                b.setAttribute('aria-label', par[2] + id);
+                b.textContent = par[1];
+                b.addEventListener('click', function (ev) {
+                    ev.preventDefault();
+                    ev.stopPropagation();
+                    accionDeAcceso(par[0], id);
+                });
+                caja.appendChild(b);
+            });
+            return caja;
+        }
+
+        function accionDeAcceso(accion, id) {
+            if (accion === 'ocultar') { alternarAccesoOculto(id); return; }
+            moverAccesoMenu(id, accion === 'subir' ? -1 : 1);
+        }
+
+        /** Intercambia el acceso con su vecino visible del MISMO contenedor. */
+        function moverAccesoMenu(id, salto) {
+            var el = document.getElementById(id);
+            if (!el || !el.parentElement) return false;
+            var hermanos = Array.prototype.slice.call(el.parentElement.children).filter(function (n) {
+                return n.hasAttribute && n.hasAttribute('data-acceso');
+            });
+            var i = hermanos.indexOf(el);
+            var j = i + salto;
+            if (i === -1 || j < 0 || j >= hermanos.length) return false;
+            var vecino = hermanos[j];
+            if (salto < 0) el.parentElement.insertBefore(el, vecino);
+            else el.parentElement.insertBefore(vecino, el);
+
+            _disposicion.orden = ordenActualDeAccesos();
+            guardarDisposicionMenu();
+            aplicarDisposicionMenu();
+            return true;
+        }
+
+        function alternarAccesoOculto(id) {
+            var i = _disposicion.ocultos.indexOf(id);
+            if (i === -1) _disposicion.ocultos.push(id); else _disposicion.ocultos.splice(i, 1);
+            _disposicion.orden = ordenActualDeAccesos();
+            guardarDisposicionMenu();
+            aplicarDisposicionMenu();
+        }
+
+        /** Orden real actual, contenedor por contenedor. */
+        function ordenActualDeAccesos() {
+            var orden = [];
+            var vistos = {};
+            ['.modules-grid', '.secondary-list'].forEach(function (sel) {
+                document.querySelectorAll(sel).forEach(function (cont) {
+                    Array.prototype.slice.call(cont.children).forEach(function (n) {
+                        if (n.id && IDS_ACCESOS_MENU.indexOf(n.id) !== -1 && !vistos[n.id]) {
+                            vistos[n.id] = true;
+                            orden.push(n.id);
+                        }
+                    });
+                });
+            });
+            // Los que no estén en el DOM en ese momento se conservan al final.
+            IDS_ACCESOS_MENU.forEach(function (id) { if (!vistos[id]) orden.push(id); });
+            return orden;
+        }
+
+        function alternarModoPersonalizar() {
+            var activo = document.body.classList.toggle('modo-personalizar');
+            var boton = document.getElementById('botonPersonalizar');
+            if (boton) {
+                boton.setAttribute('aria-pressed', activo ? 'true' : 'false');
+                boton.textContent = activo ? 'Listo' : 'Personalizar';
+            }
+            if (!activo) aplicarDisposicionMenu();
+        }
+
+        function restablecerDisposicionMenu() {
+            _disposicion = { orden: [], ocultos: [] };
+            try { localStorage.removeItem(CLAVE_DISPOSICION); } catch (e) { }
+            // Volver al orden original del archivo, contenedor por contenedor.
+            _ordenOriginal.forEach(function (id) {
+                var el = document.getElementById(id);
+                if (el && el.parentElement) el.parentElement.appendChild(el);
+            });
+            aplicarDisposicionMenu();
+            if (typeof window.showToast === 'function') window.showToast('Accesos restablecidos', 'info');
+        }
+
+        /** Arranque: teclado + disposición guardada. El marcado ya existe (script al final). */
+        _ordenOriginal = elementosDeAcceso().map(function (el) { return el.id; });
+        _disposicion = leerDisposicionMenu();
+        hacerAccesosPulsablesConTeclado();
+        aplicarDisposicionMenu();
     </script>
     <!-- Control de sesión de las páginas internas: exige la marca COMPARTIDA
          'sesionActiva' (localStorage) y, cuando la página tiene el SDK de Firebase, una

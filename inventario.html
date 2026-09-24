@@ -170,6 +170,18 @@
             background: #f8fafc;
         }
 
+        /* Fila del producto al que apunta un enlace profundo (?id=): tiene que VERSE
+           cuál es, porque la lista puede traer más de un resultado parecido. */
+        .inventory-table tbody tr.fila-destacada {
+            background: #eef2ff;
+            box-shadow: inset 3px 0 0 0 #4338ca;
+        }
+
+        body.dark-mode .inventory-table tbody tr.fila-destacada {
+            background: #3730a3;
+            box-shadow: inset 3px 0 0 0 #a5b4fc;
+        }
+
 /* Estilos para la imagen en la tabla con efecto ZOOM */
 .product-image {
     position: relative; /* Necesario para el efecto zoom */
@@ -2178,6 +2190,8 @@ body.dark-mode .dropdown-divider {
         let currentSortColumn = 'name';
         let currentSortDirection = 'asc';
         let selectedCategoryFilter = '';
+        /* Producto al que apunta un enlace profundo (?id=). Se marca en la tabla. */
+        let productoDestacado = '';
         let selectedProductIds = new Set();
         let bulkEditActionDetails = {}; // To store details for bulk edit confirmation
         let formHasChanges = false; // Flag for unsaved changes
@@ -2500,6 +2514,7 @@ body.dark-mode .dropdown-divider {
             applySavedTheme();
             populateCategories(false);
             populateCategoryFilter();
+            aplicarParametrosInventario();   // enlace profundo (?id=, ?q=, ?categoria=)
             renderProducts();
             document.getElementById('searchInput').focus(); // Auto-focus search bar
 
@@ -3034,6 +3049,60 @@ function handleStockKeydown(event) {
             return Number.isFinite(Number(p.margin));
         }
 
+        /* Enlace profundo: ?id=<id> (el producto), ?q=<texto> y ?categoria=<categoría>.
+           Es lo que hace que un aviso de stock lleve AL producto y no a la lista entera.
+           Devuelve true si había algo que aplicar. */
+        function aplicarParametrosInventario() {
+            try {
+                const params = new URLSearchParams(location.search);
+                const buscador = document.getElementById('searchInput');
+                const categoria = params.get('categoria') || params.get('category') || '';
+                const buscado = params.get('q') || params.get('buscar') || '';
+                const id = String(params.get('id') || params.get('destacar') || '').replace(/[^a-zA-Z0-9_-]/g, '');
+
+                if (id) {
+                    productoDestacado = id;
+                    // Si no se pidió texto, se rellena el buscador con el código (o el nombre)
+                    // del producto, para que se vea POR QUÉ la lista sale filtrada.
+                    if (!buscado && Array.isArray(products)) {
+                        const objetivo = products.filter(p => String(p.id) === id)[0];
+                        if (objetivo) {
+                            if (buscador) buscador.value = objetivo.code || objetivo.name || '';
+                        }
+                    }
+                }
+                if (buscado && buscador) buscador.value = buscado;
+
+                if (categoria) {
+                    const selector = document.getElementById('categoryFilter');
+                    if (selector) {
+                        const existe = Array.prototype.some.call(selector.options, o => o.value === categoria);
+                        if (existe) {
+                            selector.value = categoria;
+                            selectedCategoryFilter = categoria;
+                        }
+                    }
+                }
+
+                currentPage = 1;
+                return !!(id || buscado || categoria);
+            } catch (e) {
+                return false;
+            }
+        }
+
+        /** Marca y trae a la vista el producto del enlace profundo. */
+        function destacarProductoDelEnlace() {
+            if (!productoDestacado) return false;
+            const fila = document.querySelector('#inventoryTableBody tr[data-product-id="' + productoDestacado + '"]');
+            if (!fila) return false;
+            fila.classList.add('fila-destacada');
+            try {
+                if (fila.scrollIntoView) fila.scrollIntoView({ block: 'center', behavior: 'smooth' });
+            } catch (e) { /* sin scroll suave: la fila ya está marcada */ }
+            return true;
+        }
+
         function renderProducts() {
             const tbody = document.getElementById('inventoryTableBody');
             const emptyState = document.getElementById('emptyState');
@@ -3254,6 +3323,7 @@ function handleStockKeydown(event) {
             updatePagination(totalPages, filteredProducts.length);
             updateBulkEditButtonState();
             updateSelectAllCheckbox();
+            destacarProductoDelEnlace();   // el producto del aviso, marcado y a la vista
 
             document.querySelectorAll('.product-checkbox').forEach(checkbox => {
                 checkbox.addEventListener('change', (event) => {

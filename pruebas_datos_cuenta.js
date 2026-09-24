@@ -954,8 +954,16 @@ try {
         !/^\s*this\.saveData\('inventory'\);/m.test(menu) && sembradoresApagados === 2,
         'sembradores apagados=' + sembradoresApagados);
     check('menu.html · los guardados legítimos del usuario siguen intactos',
-        /this\.saveData\(store\)/.test(menu) &&
-        /this\.saveData\('accounts'\); \/\/ Save updated status/.test(menu));
+        /this\.saveData\(store\)/.test(menu));
+    /* Fase 0 del menú: DEJÓ de escribir ciervo_accounts. Guardaba el arreglo ENTERO desde
+       el snapshot de su carga solo para persistir un `status` derivado, y con eso podía
+       resucitar una cuenta borrada en otra pestaña. La comprobación NO se relaja: antes
+       exigía esa escritura, ahora exige que NO exista. */
+    check('menu.html · el menú ya NO escribe ciervo_accounts (un solo escritor: cuentas.html)',
+        !/^\s*this\.saveData\('accounts'\);$/m.test(menu),
+        'sigue habiendo una escritura de accounts en menu.html');
+    check('menu.html · el estado de la cuenta se DERIVA del saldo por abonos',
+        /function saldoDeCuentaLocal\(/.test(menu) && /function estadoDeCuentaLocal\(/.test(menu));
     check('menu.html · activa la cuenta del equipo sin depender de getCurrentUserEmail',
         /datosCuenta\.activarYMigrar\(localStorage\.getItem\('datosDeCuenta'\)/.test(menu));
 } catch (e) {
