@@ -1,0 +1,1 @@
+{"description":"POS and store management system (Ciervo Administrativo) — vanilla JS + Firebase","devDependencies":{"@playwright/test":"^1.65.0","typescript":"^5.9.3"},"name":"mini-market","private":true,"scripts":{"start":"node _servidor_pruebas.js","test:e2e":"playwright test"},"version":"1.0.0"}

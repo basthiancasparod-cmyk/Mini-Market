@@ -25,3 +25,9 @@ capturas_navegador/
 # Capturas de pantalla del equipo y pegotes de imágenes. La app no usa
 # ningún .png propio (el icono es icono.ico), así que se ignoran todos.
 *.png
+
+# --- Playwright E2E (tests-e2e/) -------------------------------------------
+node_modules/
+test-results/
+playwright-report/
+playwright/.cache/
