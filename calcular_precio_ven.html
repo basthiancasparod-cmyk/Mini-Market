@@ -1099,9 +1099,16 @@
                                     <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/>
                                     <path d="M21 21v-5h-5"/>
                                 </svg>
-                                Mark-up sobre costo (%)
+                                Porcentaje de ganancia
                             </label>
+                            <!-- La misma cifra significa cosas distintas según la base:
+                                 50 % sobre el costo da 150; 50 % sobre la venta da 200. -->
+                            <select id="basisPrecio" class="form-select" style="margin-bottom: .5rem;" onchange="calculatePrice()">
+                                <option value="markup" selected>Mark-up sobre el costo</option>
+                                <option value="margin">Margen sobre la venta</option>
+                            </select>
                             <input type="number" id="profitMargin" class="form-input" value="50" step="5" min="0" max="200">
+                            <small class="form-text text-muted" id="basisHint" style="display:block;margin-top:.35rem;"></small>
                         </div>
 
                         <div class="form-group advanced-only">
@@ -1272,7 +1279,7 @@
                             <th>Producto</th>
                             <th>Costo Total (BS/$)</th>
                             <th>Precio Sugerido (BS)</th>
-                            <th>Mark-up (%)</th>
+                            <th>Base (%)</th>
                             <th>Fecha</th>
                         </tr>
                     </thead>
@@ -1626,7 +1633,21 @@
             const costCurrency = document.getElementById('costCurrency').value;
             const profitMarginInput = document.getElementById('profitMargin');
             const profitMargin = parseFloat(profitMarginInput.value);
-            if (isNaN(profitMargin) || profitMargin < 0) {
+            /* La persona ELIGE la base: mark-up sobre el costo o margen sobre la
+               venta. Es la misma cifra con dos significados distintos. */
+            const selectorBase = document.getElementById('basisPrecio');
+            const basePrecio = (selectorBase && selectorBase.value) ? selectorBase.value : 'markup';
+
+            if (typeof precios !== 'undefined' && precios) {
+                const revision = precios.validarObjetivo(basePrecio, profitMargin, null);
+                if (!revision.ok) {
+                    profitMarginInput.style.borderColor = '#ef4444';
+                    const pistaError = document.getElementById('basisHint');
+                    if (pistaError) pistaError.textContent = revision.motivo;
+                    document.getElementById('resultsContainer').style.display = 'none';
+                    return;
+                }
+            } else if (isNaN(profitMargin) || profitMargin < 0 || (basePrecio === 'margin' && profitMargin >= 100)) {
                 profitMarginInput.style.borderColor = '#ef4444';
                 document.getElementById('resultsContainer').style.display = 'none';
                 return;
@@ -1669,8 +1690,10 @@
 
             // El resto del cálculo utiliza la base 'totalCostInBs' que ahora es correcta
             const sugerido = (typeof precios !== 'undefined' && precios)
-                ? precios.precioDesde({ basis: 'markup', cost: totalCostInBs, percent: profitMargin })
-                : totalCostInBs * (1 + profitMargin / 100);
+                ? precios.precioDesde({ basis: basePrecio, cost: totalCostInBs, percent: profitMargin })
+                : (basePrecio === 'margin'
+                    ? totalCostInBs / (1 - profitMargin / 100)
+                    : totalCostInBs * (1 + profitMargin / 100));
             if (sugerido === null) {
                 profitMarginInput.style.borderColor = '#ef4444';
                 document.getElementById('resultsContainer').style.display = 'none';
@@ -1678,12 +1701,21 @@
             }
             const suggestedPriceInBs = sugerido;
             const profitPerUnitInBs = suggestedPriceInBs - totalCostInBs;
+
+            /* Pista: el equivalente en la otra base, para que se vea que 50 % de
+               mark-up y 50 % de margen no son el mismo precio. */
+            const pista = document.getElementById('basisHint');
+            if (pista) {
+                pista.textContent = (typeof precios !== 'undefined' && precios)
+                    ? precios.textoEquivalente(basePrecio, profitMargin)
+                    : '';
+            }
             
             const displayRateValue = isAdvancedMode ? 
                 exchangeRates[document.getElementById('displayRateType').value] : 
                 exchangeRates.parallel;
             
-            updateResults(suggestedPriceInBs, profitPerUnitInBs, totalCostInBs, profitMargin, displayRateValue);
+            updateResults(suggestedPriceInBs, profitPerUnitInBs, totalCostInBs, profitMargin, displayRateValue, basePrecio);
             
             if (isAdvancedMode) {
                 calculateProjections(suggestedPriceInBs);
@@ -1693,7 +1725,7 @@
         }
 
         // Actualizar resultados en la interfaz
-        function updateResults(suggestedPrice, profit, totalCost, margin, displayRate) {
+        function updateResults(suggestedPrice, profit, totalCost, margin, displayRate, base) {
             document.getElementById('suggested-price').textContent = `${formatCurrency(suggestedPrice)} BS`;
             document.getElementById('suggested-price-usd').textContent = `≈ ${formatCurrency(suggestedPrice / displayRate)} $`;
             
@@ -1710,7 +1742,9 @@
             document.getElementById('real-margin').textContent = `${margenReal.toFixed(2).replace('.', ',')}%`;
             const notaMargen = document.getElementById('real-margin-note');
             if (notaMargen) {
-                notaMargen.textContent = `Mark-up ${String(margin).replace('.', ',')}% sobre el costo · realizado sobre el precio sugerido`;
+                const etiqueta = (base === 'margin') ? 'Margen' : 'Mark-up';
+                const donde = (base === 'margin') ? 'sobre la venta' : 'sobre el costo';
+                notaMargen.textContent = `${etiqueta} ${String(margin).replace('.', ',')}% ${donde} · realizado sobre el precio sugerido`;
             }
         }
 
@@ -1759,6 +1793,8 @@
                (el margen sobre venta): leerlo aquí envenenaría el historial. */
             const campoMarkUp = document.getElementById('profitMargin');
             const marginRaw = campoMarkUp ? (parseFloat(campoMarkUp.value) || 0) : 0;
+            const selectorBaseGuardar = document.getElementById('basisPrecio');
+            const baseGuardar = (selectorBaseGuardar && selectorBaseGuardar.value) ? selectorBaseGuardar.value : 'markup';
 
             const calculation = {
                 id: Date.now(),
@@ -1767,6 +1803,7 @@
                 totalCost: totalCostBsRaw,
                 price: suggestedPriceRaw,
                 margin: marginRaw,
+                basis: baseGuardar,
                 date: new Date().toLocaleString('es-VE', { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
                 category: document.getElementById('productCategory').value
             };
@@ -1841,7 +1878,7 @@
                     <td>${escapeHtml(calc.product)}</td>
                     <td>${escapeHtml(formatCurrency(calc.totalCost))} BS</td>
                     <td>${escapeHtml(formatCurrency(calc.price))} BS</td>
-                    <td>${escapeHtml(calc.margin.toFixed(0))}%</td>
+                    <td>${escapeHtml(calc.margin.toFixed(0))}% ${calc.basis === 'margin' ? 'venta' : 'costo'}</td>
                     <td>${escapeHtml(calc.date)}</td>
                 `;
                 historyBody.appendChild(row);

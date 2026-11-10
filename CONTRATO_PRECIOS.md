@@ -99,7 +99,7 @@ Consecuencias:
 | Archivo | Cambio |
 |---|---|
 | `precios.js` (nuevo) | Conversión, precio por base, `derivar`, validación, nodo hermano. |
-| `pruebas_precios.js` (nuevo) | 191 comprobaciones: conversión, 4 ejemplos, formulario real, ventas y resumen. |
+| `pruebas_precios.js` (nuevo) | 225 comprobaciones: conversión, 4 ejemplos, formulario real, cambio de base, ventas y resumen. |
 | `inventario.html` | Etiqueta "Mark-up sobre costo (%)"; margen equivalente en vivo; lectura y escritura de `pricingByProduct`; columnas `Base`, `Mark-up (%)`, `Margen s/ venta (%)`; el PDF muestra los dos porcentajes. |
 | `compras.html` | Etiqueta y cálculo por el módulo. |
 | `menu.html` | Etiqueta, encabezado de tabla y exportación. |
@@ -147,11 +147,39 @@ tanto en la venta nueva como al reconstruir una vieja.
 
 Nunca se reescribe una venta guardada: la calidad se calcula al leer.
 
+### 4.4 Elegir la base (F2): mark-up o margen sobre venta
+
+El formulario de inventario y la calculadora dejan elegir la base. La regla que
+hace que esto no rompa nada:
+
+**`margin` sigue siendo SIEMPRE mark-up.** Es el campo que leen el POS, compras,
+menú y cualquier equipo con la versión anterior; si cambiara de significado, un
+cliente viejo recalcularía precios mal. El objetivo en margen vive aparte:
+
+| Campo | Significado |
+|---|---|
+| `margin` | mark-up sobre el costo (equivalente al objetivo). Nunca cambia de significado |
+| `marginTarget` | el % de margen sobre venta elegido (solo si `pricingBasis: "margin"`) |
+| `pricingBasis` | base elegida: `markup`, `margin` o `profit` (espejo local del nodo) |
+
+Al cambiar de base se **convierte el número**, no se reinterpreta: 50 % de mark-up
+pasa a 33,33 % de margen y el precio sigue en 150 (puede moverse un céntimo por el
+redondeo del porcentaje; la línea bajo el precio enseña el margen real).
+
+Coherencia: si el precio y el mark-up guardados contradicen el `marginTarget`
+—porque un cliente viejo reescribió el producto—, `derivar()` vuelve a mark-up y
+marca `needsReview: true`. Un producto incoherente nunca se reporta como margen.
+
+La edición masiva pide un mark-up (así lo dice la opción), así que al aplicarla
+sobre un producto en base margen se cambia la base y se suelta `marginTarget`.
+
 ---
 
 ## 5. Lo que falta
 
-- **F2** Selector mark-up / margen con conversión del número y vista previa.
+- **F2** hecho: selector mark-up / margen sobre venta en inventario y calculadora,
+  conversión del número al cambiar de base, `marginTarget` + `pricingBasis` y
+  detección de productos incoherentes.
 - **F3** Edición masiva y compras con vista previa y `priceHistory`; quitar el
   30 % silencioso de `compras.html` cuando el producto no tiene margen.
 - **F5** JSON versionado `products[]` / `sales[]` / `meta{}`, y XLSX con columnas

@@ -1813,13 +1813,16 @@ body.dark-mode .dropdown-divider {
                         <div class="form-group">
                             <div class="margin-profit-toggle">
                                 <label>
-                                    <input type="radio" name="profitType" value="margin" id="radioMargin" checked onchange="toggleProfitInput(); calculatePrice()"> Mark-up sobre costo (%)
+                                    <input type="radio" name="profitType" value="markup" id="radioMargin" checked onchange="cambiarBasePrecio('markup')"> Mark-up sobre costo (%)
                                 </label>
                                 <label>
-                                    <input type="radio" name="profitType" value="profit" id="radioProfit" onchange="toggleProfitInput(); calculatePrice()"> Ganancia por Unidad ($)
+                                    <input type="radio" name="profitType" value="venta" id="radioVenta" onchange="cambiarBasePrecio('margin')"> Margen sobre venta (%)
+                                </label>
+                                <label>
+                                    <input type="radio" name="profitType" value="profit" id="radioProfit" onchange="cambiarBasePrecio('profit')"> Ganancia por Unidad ($)
                                 </label>
                             </div>
-                            <input type="number" step="0.01" class="form-input" id="productMargin" min="-100" max="1000" value="30" oninput="calculatePrice()" title="Porcentaje de ganancia sobre el costo.">
+                            <input type="number" step="0.01" class="form-input" id="productMargin" min="-100" max="1000" value="30" oninput="calculatePrice()" title="Porcentaje sobre el COSTO si eliges Mark-up, o sobre la VENTA si eliges Margen. Al cambiar de opción, el número se convierte para que el precio no se mueva.">
                             <input type="number" step="0.01" class="form-input" id="productProfitInput" min="0" style="display: none;" oninput="calculatePrice()" title="Monto fijo de ganancia por cada unidad vendida.">
                         </div>
 
@@ -3283,9 +3286,7 @@ function handleStockKeydown(event) {
                 updatePagination(totalPages, filteredProducts.length);
                 return;
             }
-            
             emptyState.style.display = 'none';
-            
             tbody.innerHTML = paginatedProducts.map(product => {
                 const stockLevel = getStockLevel(product);
                 const stockBadgeClass = `stock-${stockLevel}`;
@@ -3383,7 +3384,6 @@ function handleStockKeydown(event) {
                     </tr>
                 `;
             }).join('');
-            
             if (typeof lucide !== 'undefined') {
                 lucide.createIcons();
             }
@@ -3714,6 +3714,12 @@ function handleStockKeydown(event) {
                             break;
                         case 'adjustMargin':
                             newMargin = value;
+                            /* La edición masiva pide un MARK-UP (así lo dice la
+                               opción). Si el producto estaba en base margen, se
+                               cambia de base: el objetivo en margen deja de ser
+                               válido y hay que soltarlo, no dejarlo mintiendo. */
+                            product.marginTarget = null;
+                            product.pricingBasis = 'markup';
                             break;
                         case 'adjustProfitFixed':
                             newProfit = value;
@@ -3803,7 +3809,6 @@ function handleStockKeydown(event) {
             const saveButton = document.getElementById('saveButton');
             const productStockInput = document.getElementById('productStock');
             const isBulkProductCheckbox = document.getElementById('isBulkProduct');
-            
             formHasChanges = false; // Reset flag when opening modal
 
             if (mode === 'add') {
@@ -3825,7 +3830,6 @@ function handleStockKeydown(event) {
                 isBulkProductCheckbox.disabled = true; // Disable for existing product
                 fillForm(product);
             }
-            
             modal.classList.add('show');
             document.getElementById('productName').focus();
         }
@@ -3850,11 +3854,9 @@ function handleStockKeydown(event) {
             document.getElementById('isBulkProduct').checked = false;
             document.getElementById('radioMargin').checked = true;
             document.getElementById('isIvaExempt').checked = false; // Reset IVA exempt checkbox
-            
             populateCategories(false);
             toggleBulkFields();
             toggleProfitInput();
-            
             const formInputs = document.querySelectorAll('#productForm .form-input, #productForm .form-select, #productForm .form-textarea');
             formInputs.forEach(input => {
                 input.classList.remove('invalid');
@@ -3869,7 +3871,6 @@ function handleStockKeydown(event) {
             document.getElementById('productCode').value = product.code || '';
             document.getElementById('productDescription').value = product.description || '';
             document.getElementById('productBrand').value = product.brand || '';
-            
             document.getElementById('isBulkProduct').checked = product.isBulk;
             populateCategories(product.isBulk);
             document.getElementById('productCategory').value = product.category || '';
@@ -3879,18 +3880,31 @@ function handleStockKeydown(event) {
             document.getElementById('productStock').value = product.stock ?? 0;
             document.getElementById('productMinStock').value = product.minStock ?? 5;
             document.getElementById('productCost').value = product.isBulk ? (product.costPerUnit ?? 0) : (product.cost ?? 0);
-            
             if (product.isBulk) {
                 document.getElementById('productUnit').value = product.unit || 'kg';
             }
 
-            if (margenDeclarado(product)) {
-                document.getElementById('radioMargin').checked = true;
-                document.getElementById('productMargin').value = margenNumerico(product);
-            } else {
+            /* Se abre el formulario en la BASE con la que se guardó el producto.
+               Si es margen, el campo muestra el objetivo en margen, no el
+               mark-up equivalente que vive en `margin`. */
+            const baseGuardada = (typeof precios !== 'undefined' && precios)
+                ? precios.baseDe(product, precios.overlayDe(pricingOverlay, product))
+                : (margenDeclarado(product) ? 'markup' : 'profit');
+
+            if (baseGuardada === 'margin') {
+                document.getElementById('radioVenta').checked = true;
+                const objetivo = Number(product.marginTarget);
+                document.getElementById('productMargin').value = isFinite(objetivo)
+                    ? objetivo
+                    : Number((precios.margenDesdeMarkupPct(Number(product.margin)) || 0).toFixed(2));
+            } else if (baseGuardada === 'profit' || !margenDeclarado(product)) {
                 document.getElementById('radioProfit').checked = true;
                 document.getElementById('productProfitInput').value = product.profitPerUnit || product.profit;
+            } else {
+                document.getElementById('radioMargin').checked = true;
+                document.getElementById('productMargin').value = margenNumerico(product);
             }
+            basePrecioFormulario = baseGuardada;
             document.getElementById('isIvaExempt').checked = product.isIvaExempt; // Set IVA exempt checkbox
 
             toggleProfitInput();
@@ -3943,7 +3957,6 @@ function handleStockKeydown(event) {
             const productPriceLabel = document.querySelector('label[for="productPrice"]');
             const productCalculatedProfitLabel = document.querySelector('label[for="productCalculatedProfit"]');
             const productUnitSelect = document.getElementById('productUnit');
-            
             populateCategories(isBulk);
 
             if (isBulk) {
@@ -3975,16 +3988,62 @@ function handleStockKeydown(event) {
             calculatePrice();
         }
 
+        /* Base con la que se está editando el porcentaje. `margin` sigue siendo
+           el mark-up guardado (lo leen las demás páginas); el objetivo en margen
+           se guarda aparte, en `marginTarget`. */
+        let basePrecioFormulario = 'markup';
+
+        function baseElegida() {
+            const venta = document.getElementById('radioVenta');
+            const profit = document.getElementById('radioProfit');
+            if (venta && venta.checked) return 'margin';
+            if (profit && profit.checked) return 'profit';
+            return 'markup';
+        }
+
+        /* Al cambiar de base se CONVIERTE el número, no se reinterpreta: 50 % de
+           mark-up pasa a 33,33 % de margen y el precio sigue siendo 150. Puede
+           moverse un céntimo por el redondeo del porcentaje; la línea de abajo
+           enseña el margen real sobre el precio resultante. */
+        function cambiarBasePrecio(nuevaBase) {
+            const input = document.getElementById('productMargin');
+            const valor = parseNumber(input ? input.value : '');
+            const motor = (typeof precios !== 'undefined' && precios) ? precios : null;
+
+            if (motor && input && nuevaBase !== 'profit' && basePrecioFormulario !== 'profit'
+                && basePrecioFormulario !== nuevaBase && isFinite(valor)) {
+                const convertido = (nuevaBase === 'margin')
+                    ? motor.margenDesdeMarkupPct(valor)
+                    : motor.markupDesdeMargenPct(valor);
+                if (convertido !== null && isFinite(convertido)) {
+                    input.value = String(Number(convertido.toFixed(2)));
+                    if (typeof showNotification === 'function') {
+                        showNotification('Convertido para que el precio no cambie: ' +
+                            (nuevaBase === 'margin' ? 'margen sobre venta ' : 'mark-up ') +
+                            convertido.toFixed(2).replace('.', ',') + ' %.', 'info');
+                    }
+                }
+            }
+            basePrecioFormulario = nuevaBase;
+            toggleProfitInput();
+            calculatePrice();
+        }
+
         function toggleProfitInput() {
-            const radioMargin = document.getElementById('radioMargin');
             const productMargin = document.getElementById('productMargin');
             const productProfitInput = document.getElementById('productProfitInput');
+            const usaPorcentaje = !document.getElementById('radioProfit').checked;
 
-            if (radioMargin.checked) {
+            if (usaPorcentaje) {
                 productMargin.style.display = 'block';
                 productProfitInput.style.display = 'none';
                 productMargin.setAttribute('required', 'true');
                 productProfitInput.removeAttribute('required');
+                /* Los límites dependen de la base: el margen no llega a 100 %
+                   (el precio sería infinito) y el mark-up admite negativos. */
+                const esMargen = baseElegida() === 'margin';
+                productMargin.min = esMargen ? '0' : '-99';
+                productMargin.max = esMargen ? '95' : '1000';
             } else {
                 productMargin.style.display = 'none';
                 productProfitInput.style.display = 'block';
@@ -4002,7 +4061,6 @@ function handleStockKeydown(event) {
             const productCalculatedProfitOutput = document.getElementById('productCalculatedProfit');
             const radioMargin = document.getElementById('radioMargin');
             // const isIvaExempt = document.getElementById('isIvaExempt').checked; // Removed as per requirement 4
-            
             const cost = parseNumber(costInput.value);
             let price = 0;
             let profit = 0;
@@ -4018,28 +4076,31 @@ function handleStockKeydown(event) {
                 return;
             }
 
-            if (radioMargin.checked) {
-                const margin = parseNumber(marginInput.value);
-                if (isNaN(margin)) {
+            const baseDelPrecio = baseElegida();
+            if (baseDelPrecio !== 'profit') {
+                const porcentaje = parseNumber(marginInput.value);
+                if (isNaN(porcentaje)) {
                     marginInput.classList.add('invalid');
                     productPriceOutput.value = '';
                     productCalculatedProfitOutput.value = '';
-                    actualizarMargenEquivalente(0, 0, null);
+                    actualizarMargenEquivalente(0, 0, null, baseDelPrecio);
                     return;
                 }
-                // Mark-up sobre el costo: el MISMO número de siempre (precio =
-                // costo × (1 + m/100)), ahora con su nombre correcto y con el
-                // margen sobre venta a la vista. No se reinterpreta nada.
+                /* El usuario elige la base: mark-up sobre el costo o margen
+                   sobre la venta. El número es el mismo campo, pero significa
+                   una cosa u otra según el selector, y se convierte al cambiar. */
                 const motor = (typeof precios !== 'undefined' && precios) ? precios : null;
                 price = motor
-                    ? motor.precioDesde({ basis: 'markup', cost: cost, percent: margin })
-                    : cost * (1 + margin / 100);
+                    ? motor.precioDesde({ basis: baseDelPrecio, cost: cost, percent: porcentaje })
+                    : (baseDelPrecio === 'margin'
+                        ? cost / (1 - porcentaje / 100)
+                        : cost * (1 + porcentaje / 100));
                 if (price === null) {
-                    // -100 % o menos: el precio sería cero y el margen no existe.
+                    // Margen ≥ 100 % o mark-up ≤ -100 %: el precio no existe.
                     marginInput.classList.add('invalid');
                     productPriceOutput.value = '';
                     productCalculatedProfitOutput.value = '';
-                    actualizarMargenEquivalente(0, 0, null);
+                    actualizarMargenEquivalente(0, 0, null, baseDelPrecio);
                     return;
                 }
                 profit = price - cost;
@@ -4050,7 +4111,7 @@ function handleStockKeydown(event) {
                     profitInputDirect.classList.add('invalid');
                     productPriceOutput.value = '';
                     productCalculatedProfitOutput.value = '';
-                    actualizarMargenEquivalente(0, 0, null);
+                    actualizarMargenEquivalente(0, 0, null, 'profit');
                     return;
                 }
                 profit = directProfit;
@@ -4058,17 +4119,16 @@ function handleStockKeydown(event) {
                 price = cost + profit;
                 // price = isIvaExempt ? priceBeforeIva : priceBeforeIva * (1 + IVA_RATE); // Removed IVA calculation
             }
-            
             productPriceOutput.value = price.toFixed(2);
             productCalculatedProfitOutput.value = profit.toFixed(2);
-            actualizarMargenEquivalente(cost, price, radioMargin.checked ? parseNumber(marginInput.value) : null);
+            actualizarMargenEquivalente(cost, price,
+                baseDelPrecio === 'profit' ? null : parseNumber(marginInput.value), baseDelPrecio);
         }
 
-        /* Muestra, sin cambiar el precio, cuánto de lo que se cobra es ganancia.
-           El campo de arriba es un porcentaje sobre el COSTO (mark-up); la
-           lectura natural del dueño ("quiero que el 35 % de lo que cobro sea
-           ganancia") es el MARGEN SOBRE VENTA, que es otro número. */
-        function actualizarMargenEquivalente(cost, price, markupPct) {
+        /* Muestra, sin cambiar el precio, los dos porcentajes a la vez:
+           "Mark-up 50 % → margen sobre venta 33,33 %" o al revés, según la base
+           elegida. Y siempre el margen REAL sobre el precio ya redondeado. */
+        function actualizarMargenEquivalente(cost, price, porcentaje, base) {
             const salida = document.getElementById('productMarginEquivalent');
             if (!salida) return;
             const costo = Number(cost);
@@ -4078,19 +4138,29 @@ function handleStockKeydown(event) {
                 return;
             }
             const fmt = function (v) { return v.toFixed(2).replace('.', ','); };
-            const margen = (precio - costo) / precio * 100;
+            const margenReal = (precio - costo) / precio * 100;
             let texto;
-            if (markupPct !== null && isFinite(markupPct)) {
-                texto = 'Mark-up ' + fmt(markupPct) + ' % sobre el costo';
-            } else {
+            if (base === 'profit') {
                 texto = 'Ganancia fija';
+            } else if (typeof precios !== 'undefined' && precios) {
+                texto = precios.textoEquivalente(base || 'markup', porcentaje);
+            } else {
+                texto = (base === 'margin' ? 'Margen sobre venta ' : 'Mark-up ') + fmt(porcentaje) + ' %';
             }
-            salida.textContent = texto + ' → margen sobre venta ' + fmt(margen) + ' %';
+            /* Si el redondeo del precio separa el margen real del teórico, se
+               dice: es la diferencia entre el objetivo y lo que de verdad queda. */
+            const motor = (typeof precios !== 'undefined' && precios) ? precios : null;
+            let teorico = null;
+            if (base === 'margin') teorico = Number(porcentaje);
+            else if (base === 'markup' && motor) teorico = motor.margenDesdeMarkupPct(porcentaje);
+            if (teorico !== null && isFinite(teorico) && Math.abs(margenReal - teorico) > 0.01) {
+                texto += ' · real sobre este precio: ' + fmt(margenReal) + ' %';
+            }
+            salida.textContent = texto;
         }
 
         function saveProduct(event) {
             if (event) event.preventDefault();
-            
             const form = document.getElementById('productForm');
             const formInputs = form.querySelectorAll('.form-input, .form-select, .form-textarea');
             let isValid = true;
@@ -4115,14 +4185,13 @@ function handleStockKeydown(event) {
                 showNotification('Por favor, completa todos los campos obligatorios y corrige los errores.', 'error');
                 return;
             }
-            
             calculatePrice();
 
             const isBulk = document.getElementById('isBulkProduct').checked;
             const cost = parseNumber(document.getElementById('productCost').value);
-            const margin = parseNumber(document.getElementById('productMargin').value);
+            const porcentaje = parseNumber(document.getElementById('productMargin').value);
             const directProfit = parseNumber(document.getElementById('productProfitInput').value);
-            const radioMargin = document.getElementById('radioMargin');
+            const baseDelPrecio = baseElegida();
             const isIvaExempt = document.getElementById('isIvaExempt').checked;
 
             let productData = {
@@ -4164,11 +4233,24 @@ function handleStockKeydown(event) {
                 productData.profitPerUnit = null;
             }
 
-            if (radioMargin.checked) {
-                productData.margin = margin;
-            } else {
+            /* `margin` se guarda SIEMPRE como mark-up: es el campo que leen el
+               POS, compras y las páginas con la versión anterior, así que no
+               puede cambiar de significado. El objetivo en margen va aparte
+               (`marginTarget`) y la base elegida, en `pricingBasis`. */
+            if (baseDelPrecio === 'profit') {
                 productData.margin = null;
+                productData.marginTarget = null;
+            } else if (baseDelPrecio === 'margin') {
+                const equivalente = (typeof precios !== 'undefined' && precios)
+                    ? precios.markupDesdeMargenPct(porcentaje)
+                    : null;
+                productData.margin = equivalente === null ? null : Number(equivalente.toFixed(2));
+                productData.marginTarget = porcentaje;
+            } else {
+                productData.margin = porcentaje;
+                productData.marginTarget = null;
             }
+            productData.pricingBasis = baseDelPrecio;
 
             if (isNaN(productData.stock) || productData.stock < 0) {
                 showNotification('El stock actual no es válido.', 'error');
@@ -4185,12 +4267,17 @@ function handleStockKeydown(event) {
                 document.getElementById('productCost').classList.add('invalid');
                 return;
             }
-            if (radioMargin.checked && (isNaN(margin) || margin <= -100)) {
-                showNotification('El mark-up sobre el costo no es válido.', 'error');
-                document.getElementById('productMargin').classList.add('invalid');
-                return;
+            if (baseDelPrecio !== 'profit') {
+                const motor = (typeof precios !== 'undefined' && precios) ? precios : null;
+                const revision = motor ? motor.validarObjetivo(baseDelPrecio, porcentaje, null) : null;
+                if (!revision || !revision.ok) {
+                    showNotification(revision ? revision.motivo
+                        : (baseDelPrecio === 'margin' ? 'El margen sobre venta no es válido.' : 'El mark-up sobre el costo no es válido.'), 'error');
+                    document.getElementById('productMargin').classList.add('invalid');
+                    return;
+                }
             }
-            if (!radioMargin.checked && (isNaN(directProfit) || directProfit < 0)) {
+            if (baseDelPrecio === 'profit' && (isNaN(directProfit) || directProfit < 0)) {
                 showNotification('La ganancia por unidad no es válida.', 'error');
                 document.getElementById('productProfitInput').classList.add('invalid');
                 return;
@@ -4202,7 +4289,6 @@ function handleStockKeydown(event) {
                     return;
                 }
             }
-            
             if (editingProductId) {
                 const index = products.findIndex(p => String(p.id) === String(editingProductId));
                 if (index !== -1) {
@@ -4262,7 +4348,16 @@ function handleStockKeydown(event) {
                 products.push(productData);
                 showNotification('Producto agregado exitosamente', 'success');
             }
-            
+            /* La base del producto se refleja YA en el overlay en memoria: la
+               próxima subida del catálogo reescribe `pricingByProduct` con
+               `mapaPricing`, y sin esto volvería a mandar la base anterior. */
+            if (typeof precios !== 'undefined' && precios) {
+                const guardado = (editingProductId && products.find(p => String(p.id) === String(editingProductId)))
+                    || productData;
+                if (guardado && guardado.id !== null && guardado.id !== undefined) {
+                    pricingOverlay[String(guardado.id)] = precios.derivar(guardado, null, { ahora: new Date().toISOString() });
+                }
+            }
             saveProducts();
             renderProducts();
             updateDashboard();
@@ -4551,7 +4646,6 @@ function handleStockKeydown(event) {
                     lowStockCount++;
                 }
             });
-            
             document.getElementById('totalProducts').textContent = totalProducts;
             document.getElementById('totalUnitsStock').textContent = totalStockUnits.toLocaleString('es-ES', { maximumFractionDigits: 0 }); 
             document.getElementById('totalBulkStock').textContent = `${totalStockWeight.toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 3 })} kg`;
@@ -4787,7 +4881,6 @@ function handleStockKeydown(event) {
             const notificationContainer = document.createElement('div');
             notificationContainer.classList.add('notification', type);
             notificationContainer.textContent = message;
-            
             Object.assign(notificationContainer.style, {
                 position: 'fixed',
                 bottom: '20px',

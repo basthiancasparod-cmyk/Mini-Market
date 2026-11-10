@@ -170,6 +170,11 @@
         var p = producto || {};
         var declarada = overlay && overlay.target ? overlay.target.basis : null;
         if (declarada && BASES[declarada]) return declarada;
+        /* Espejo local de la base (F2). Va en el producto para que las páginas
+           que no leen el nodo hermano —compras, menú— sepan cómo interpretarlo.
+           Si el nodo dice otra cosa, manda el nodo: es el único que un cliente
+           con la versión anterior no puede borrar. */
+        if (p.pricingBasis && BASES[p.pricingBasis]) return p.pricingBasis;
         if (numero(p.margin) !== null) return 'markup';
         /* La ganancia puede estar solo en `profitPerUnit` (producto a granel
            guardado por una versión anterior): se mira con magnitudes(). */
@@ -192,8 +197,39 @@
 
         var percent = null;
         var amount = null;
-        if (base === 'markup' || base === 'margin') percent = numero(p.margin);
-        if (base === 'profit') amount = m.profit;
+        var revisar = false;
+
+        if (base === 'markup') {
+            percent = numero(p.margin);
+        } else if (base === 'margin') {
+            /* El objetivo en MARGEN vive en `marginTarget`. `margin` sigue siendo
+               el mark-up equivalente: es lo que leen el POS, compras y las
+               páginas antiguas, y así ninguna de ellas se equivoca. */
+            percent = numero(p.marginTarget);
+            if (percent === null && numero(p.margin) !== null) {
+                percent = margenDesdeMarkupPct(numero(p.margin));
+            }
+            /* Coherencia: si el mark-up o el precio guardados no corresponden al
+               objetivo, alguien reescribió el producto con una versión anterior.
+               Entonces manda el dato viejo (mark-up) y se marca para revisar. */
+            if (percent !== null) {
+                var markUpEquivalente = markupDesdeMargenPct(percent);
+                var precioObjetivo = precioDesde({ basis: 'margin', cost: m.cost, percent: percent, paso: o.paso });
+                var markUpCoincide = (numero(p.margin) === null || markUpEquivalente === null)
+                    ? true
+                    : Math.abs(numero(p.margin) - markUpEquivalente) <= 0.5;
+                var precioCoincide = (m.price === null || precioObjetivo === null)
+                    ? true
+                    : Math.abs(m.price - precioObjetivo) <= Math.max(TOLERANCIA, 0.01);
+                if (!markUpCoincide && !precioCoincide) {
+                    base = 'markup';
+                    percent = numero(p.margin);
+                    revisar = true;
+                }
+            }
+        } else if (base === 'profit') {
+            amount = m.profit;
+        }
 
         var esperado = precioDesde({ basis: base, cost: m.cost, percent: percent, amount: amount, paso: o.paso });
         var sugerido = esperado === null ? null : redondear(esperado, o.paso);
@@ -232,9 +268,12 @@
                 markup: markupPct,
                 quality: 'estimated'
             },
-            /* Necesita revisión si no hay base, o si la base es porcentual y no
-               hay porcentaje con el que calcularla (par contradictorio). */
-            needsReview: base === 'legacy' || ((base === 'margin' || base === 'markup') && percent === null),            pricingVersion: VERSION,
+            /* Necesita revisión si no hay base, si la base es porcentual y no hay
+               porcentaje con el que calcularla, o si el objetivo en margen quedó
+               contradicho por el precio y el mark-up guardados. */
+            needsReview: base === 'legacy' || revisar ||
+                ((base === 'margin' || base === 'markup') && percent === null),
+            pricingVersion: VERSION,
             updatedAt: String(o.ahora || new Date().toISOString())
         };
     }

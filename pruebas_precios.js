@@ -248,12 +248,12 @@ titulo('9. Las páginas cargan el módulo y ya no dicen "Margen de Ganancia"');
 }
 
 /* ------------------------------------------------------------------ */
-titulo('10. El formulario de inventario sigue dando el mismo precio');
+titulo('10. El formulario de inventario: mismo precio y dos bases');
 {
     /* Se ejecutan las funciones REALES de inventario.html sobre un DOM falso.
-       Lo que se fija: el precio con coste 100 y mark-up 35 sigue siendo 135,00
-       (la etiqueta cambió, la aritmética no) y al lado aparece el margen sobre
-       venta, que es el número que antes se confundía con el 35. */
+       Lo que se fija: con base mark-up el precio no cambió (100 + 35 % = 135,00),
+       con base margen el mismo objetivo da 150,00, y al cambiar de base el
+       número se CONVIERTE (50 → 33,33) sin que el precio se mueva. */
     const html = leer('inventario.html');
     const extraer = function (nombre) {
         const re = new RegExp('function ' + nombre + '\\([^)]*\\) \\{[\\s\\S]*?\\r?\\n {8}\\}');
@@ -262,50 +262,137 @@ titulo('10. El formulario de inventario sigue dando el mismo precio');
     };
 
     const fuenteParse = extraer('parseNumber');
+    const fuenteBase = extraer('baseElegida');
     const fuenteCalc = extraer('calculatePrice');
     const fuenteEquiv = extraer('actualizarMargenEquivalente');
+    const fuenteCambio = extraer('cambiarBasePrecio');
     check('se pudo extraer parseNumber', !!fuenteParse);
+    check('se pudo extraer baseElegida', !!fuenteBase);
     check('se pudo extraer calculatePrice', !!fuenteCalc);
     check('se pudo extraer actualizarMargenEquivalente', !!fuenteEquiv);
+    check('se pudo extraer cambiarBasePrecio', !!fuenteCambio);
 
-    function montarFormulario(cost, margin, profitFijo, usarMargen) {
+    function montarFormulario(cost, porcentaje, profitFijo, base) {
         const nodos = {
             productCost: { value: String(cost), classList: { add() { }, remove() { } } },
-            productMargin: { value: margin === null ? '' : String(margin), style: {}, classList: { add() { }, remove() { } }, setAttribute() { }, removeAttribute() { } },
+            productMargin: { value: porcentaje === null ? '' : String(porcentaje), style: {}, classList: { add() { }, remove() { } }, setAttribute() { }, removeAttribute() { } },
             productProfitInput: { value: profitFijo === null ? '' : String(profitFijo), style: {}, classList: { add() { }, remove() { } }, setAttribute() { }, removeAttribute() { } },
             productPrice: { value: '' },
             productCalculatedProfit: { value: '' },
-            radioMargin: { checked: !!usarMargen },
+            radioMargin: { checked: base === 'markup' },
+            radioVenta: { checked: base === 'margin' },
+            radioProfit: { checked: base === 'profit' },
             productMarginEquivalent: { textContent: '' }
         };
         const document = { getElementById: (id) => nodos[id] || null };
-        const contextoForm = { document: document, precios: P, isFinite: isFinite, Number: Number, parseFloat: parseFloat, Math: Math };
+        const contextoForm = {
+            document: document, precios: P, isFinite: isFinite, Number: Number,
+            parseFloat: parseFloat, Math: Math, String: String,
+            toggleProfitInput: function () { }, showNotification: function () { }
+        };
         vm.createContext(contextoForm);
-        vm.runInContext(fuenteParse, contextoForm, { filename: 'inventario#parseNumber' });
-        vm.runInContext(fuenteCalc, contextoForm, { filename: 'inventario#calculatePrice' });
-        vm.runInContext(fuenteEquiv, contextoForm, { filename: 'inventario#actualizarMargenEquivalente' });
-        contextoForm.calculatePrice();
-        return nodos;
+        vm.runInContext('let basePrecioFormulario = "markup";', contextoForm);
+        [fuenteParse, fuenteBase, fuenteCalc, fuenteEquiv, fuenteCambio].forEach(function (f, i) {
+            if (f) vm.runInContext(f, contextoForm, { filename: 'inventario#f' + i });
+        });
+        return { nodos: nodos, ctx: contextoForm };
     }
 
-    const a = montarFormulario(100, 35, null, true);
-    check('costo 100 + mark-up 35 % sigue dando 135.00', a.productPrice.value === '135.00', a.productPrice.value);
-    check('la ganancia sigue siendo 35.00', a.productCalculatedProfit.value === '35.00', a.productCalculatedProfit.value);
-    check('al lado dice Mark-up 35,00 %', a.productMarginEquivalent.textContent.indexOf('Mark-up 35,00 %') > -1, a.productMarginEquivalent.textContent);
-    check('y muestra el margen sobre venta 25,93 %', a.productMarginEquivalent.textContent.indexOf('25,93 %') > -1, a.productMarginEquivalent.textContent);
-    check('ya no llama margen al 35', a.productMarginEquivalent.textContent.indexOf('margen sobre venta 25,93') > -1);
+    const a = montarFormulario(100, 35, null, 'markup');
+    a.ctx.calculatePrice();
+    check('costo 100 + mark-up 35 % sigue dando 135.00', a.nodos.productPrice.value === '135.00', a.nodos.productPrice.value);
+    check('la ganancia sigue siendo 35.00', a.nodos.productCalculatedProfit.value === '35.00', a.nodos.productCalculatedProfit.value);
+    check('al lado dice Mark-up 35,00 %', a.nodos.productMarginEquivalent.textContent.indexOf('Mark-up 35,00 %') > -1, a.nodos.productMarginEquivalent.textContent);
+    check('y muestra el margen sobre venta 25,93 %', a.nodos.productMarginEquivalent.textContent.indexOf('25,93 %') > -1, a.nodos.productMarginEquivalent.textContent);
+    check('ya no llama margen al 35', a.nodos.productMarginEquivalent.textContent.indexOf('margen sobre venta 25,93') > -1);
 
-    const b = montarFormulario(100, null, 15, false);
-    check('ganancia fija 15 sigue dando 115.00', b.productPrice.value === '115.00', b.productPrice.value);
-    check('con ganancia fija no se inventa un porcentaje', b.productMarginEquivalent.textContent.indexOf('Ganancia fija') > -1, b.productMarginEquivalent.textContent);
+    const b = montarFormulario(100, null, 15, 'profit');
+    b.ctx.calculatePrice();
+    check('ganancia fija 15 sigue dando 115.00', b.nodos.productPrice.value === '115.00', b.nodos.productPrice.value);
+    check('con ganancia fija no se inventa un porcentaje', b.nodos.productMarginEquivalent.textContent.indexOf('Ganancia fija') > -1, b.nodos.productMarginEquivalent.textContent);
 
-    const c = montarFormulario(100, -100, null, true);
-    check('mark-up -100 % se bloquea (no da precio 0)', c.productPrice.value === '', c.productPrice.value);
-    check('y no deja texto de margen colgado', c.productMarginEquivalent.textContent === '', c.productMarginEquivalent.textContent);
+    const c = montarFormulario(100, -100, null, 'markup');
+    c.ctx.calculatePrice();
+    check('mark-up -100 % se bloquea (no da precio 0)', c.nodos.productPrice.value === '', c.nodos.productPrice.value);
+    check('y no deja texto de margen colgado', c.nodos.productMarginEquivalent.textContent === '', c.nodos.productMarginEquivalent.textContent);
 
-    const d = montarFormulario(1.1, 35, null, true);
-    check('costo 1,10 + mark-up 35 % da 1.49', d.productPrice.value === '1.49', d.productPrice.value);
-    check('y el margen sobre venta del precio redondeado es 26,17 %', d.productMarginEquivalent.textContent.indexOf('26,17 %') > -1, d.productMarginEquivalent.textContent);
+    const d = montarFormulario(1.1, 35, null, 'markup');
+    d.ctx.calculatePrice();
+    check('costo 1,10 + mark-up 35 % da 1.49', d.nodos.productPrice.value === '1.49', d.nodos.productPrice.value);
+    check('y el margen real sobre el precio redondeado es 26,17 %', d.nodos.productMarginEquivalent.textContent.indexOf('26,17 %') > -1, d.nodos.productMarginEquivalent.textContent);
+
+    /* --- base MARGEN: 34,00 % sobre la venta de un costo 100 → 151,52 --- */
+    const e = montarFormulario(100, 34, null, 'margin');
+    e.ctx.calculatePrice();
+    check('base margen: 34 % sobre venta da 151.52', e.nodos.productPrice.value === '151.52', e.nodos.productPrice.value);
+    check('base margen: el texto dice margen y su mark-up', e.nodos.productMarginEquivalent.textContent.indexOf('Margen sobre venta 34,00 %') > -1, e.nodos.productMarginEquivalent.textContent);
+
+    /* --- cambiar de base CONVIERTE el número y el precio no se mueve --- */
+    const f = montarFormulario(100, 50, null, 'markup');
+    f.ctx.calculatePrice();
+    const precioAntes = f.nodos.productPrice.value;
+    check('antes del cambio: 50 % de mark-up = 150,00', precioAntes === '150.00', precioAntes);
+
+    f.nodos.radioMargin.checked = false;
+    f.nodos.radioVenta.checked = true;
+    f.ctx.cambiarBasePrecio('margin');
+    const convertido = Number(f.nodos.productMargin.value);
+    check('el número se convierte a 33,33 (no sigue 50)', Math.abs(convertido - 33.33) < 0.01, f.nodos.productMargin.value);
+    const precioDespues = Number(f.nodos.productPrice.value);
+    check('el precio no se mueve al cambiar de base', Math.abs(precioDespues - Number(precioAntes)) <= 0.01, precioAntes + ' → ' + f.nodos.productPrice.value);
+    check('el texto ahora explica el mark-up equivalente',
+        f.nodos.productMarginEquivalent.textContent.indexOf('mark-up equivalente') > -1, f.nodos.productMarginEquivalent.textContent);
+
+    /* --- y de vuelta a mark-up: 33,33 → 50 --- */
+    f.nodos.radioVenta.checked = false;
+    f.nodos.radioMargin.checked = true;
+    f.ctx.cambiarBasePrecio('markup');
+    check('la vuelta convierte 33,33 → 50', Math.abs(Number(f.nodos.productMargin.value) - 50) < 0.02, f.nodos.productMargin.value);
+    check('y el precio sigue en 150', Math.abs(Number(f.nodos.productPrice.value) - 150) <= 0.01, f.nodos.productPrice.value);
+}
+
+/* ------------------------------------------------------------------ */
+titulo('10b. El producto guarda la base sin cambiar el significado de margin');
+{
+    const html = leer('inventario.html');
+    check('el producto guarda pricingBasis', html.indexOf('productData.pricingBasis = baseDelPrecio') > -1);
+    check('el objetivo en margen va a marginTarget', html.indexOf('productData.marginTarget = porcentaje') > -1);
+    check('margin se guarda convertido a mark-up', html.indexOf('precios.markupDesdeMargenPct(porcentaje)') > -1);
+    check('el formulario reabre en la base guardada', html.indexOf('precios.baseDe(product, precios.overlayDe(pricingOverlay, product))') > -1);
+    check('el overlay se actualiza al guardar', html.indexOf('pricingOverlay[String(guardado.id)] = precios.derivar') > -1);
+    check('los límites del campo dependen de la base', html.indexOf("productMargin.max = esMargen ? '95' : '1000'") > -1);
+    check('el margen no admite 100 %', P.validarObjetivo('margin', 100).ok === false);
+    check('el mark-up sí admite valores altos', P.validarObjetivo('markup', 300).ok === true);
+    check('hay un radio de margen sobre venta', html.indexOf('id="radioVenta"') > -1);
+
+    /* derivar: un producto en base margen conserva su objetivo y su precio. */
+    const p = P.derivar({ id: 1, cost: 100, price: 150, profit: 50, margin: 50, marginTarget: 33.33, pricingBasis: 'margin' }, null, { ahora: '2026-11-10T18:00:00.000Z' });
+    check('base margin declarada en el producto', p.target.basis === 'margin');
+    check('el porcentaje es el de margen (33,33), no el mark-up (50)', Math.abs(p.target.percent - 33.33) < 0.001, p.target.percent);
+    check('el precio sugerido sigue siendo ~150', Math.abs(p.suggestedPrice - 150) <= 0.01, p.suggestedPrice);
+    check('no requiere revisión si todo cuadra', p.needsReview === false);
+
+    /* Un cliente viejo reescribe price/margin como mark-up: se detecta. */
+    const roto = P.derivar({ id: 1, cost: 100, price: 120, profit: 20, margin: 20, marginTarget: 33.33, pricingBasis: 'margin' }, null, { ahora: '2026-11-10T18:00:00.000Z' });
+    check('si el precio contradice el objetivo, manda el mark-up', roto.target.basis === 'markup', roto.target.basis);
+    check('y el producto queda marcado para revisar', roto.needsReview === true);
+}
+
+/* ------------------------------------------------------------------ */
+titulo('10c. La calculadora deja elegir la base');
+{
+    const calc = leer('calcular_precio_ven.html');
+    check('la calculadora ofrece la base de mark-up', calc.indexOf('<option value="markup" selected>Mark-up sobre el costo</option>') > -1);
+    check('y la de margen sobre venta', calc.indexOf('<option value="margin">Margen sobre la venta</option>') > -1);
+    check('el cálculo usa la base elegida', calc.indexOf('precios.precioDesde({ basis: basePrecio,') > -1);
+    check('la pista muestra el equivalente', calc.indexOf('precios.textoEquivalente(basePrecio, profitMargin)') > -1);
+    check('el historial guarda la base', calc.indexOf('basis: baseGuardar') > -1);
+    check('el historial la muestra', calc.indexOf("calc.basis === 'margin' ? 'venta' : 'costo'") > -1);
+
+    /* La cifra de la discordia: 10 al 50 %. */
+    check('costo 10, mark-up 50 % → 15', P.precioDesde({ basis: 'markup', cost: 10, percent: 50 }) === 15);
+    check('costo 10, margen 50 % → 20', P.precioDesde({ basis: 'margin', cost: 10, percent: 50 }) === 20);
+    check('margen 100 % se rechaza en la calculadora', P.precioDesde({ basis: 'margin', cost: 10, percent: 100 }) === null);
 }
 
 /* ------------------------------------------------------------------ */
