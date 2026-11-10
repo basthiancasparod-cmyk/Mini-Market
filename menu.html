@@ -10,6 +10,8 @@
          localStorage. Va primero, antes que el resto de scripts de la página. -->
     <script src="datos_cuenta.js"></script>
     <script src="tema.js"></script>
+    <!-- Contrato de precios (pricing/2): mark-up vs margen sobre venta. -->
+    <script src="precios.js"></script>
     <!-- Guardián de "UNA CUENTA POR EQUIPO" (fase 1). Faltaba aquí: menu.html era la
          única página interna de datos que NO lo cargaba, así que abría con los datos
          de otra cuenta ya migrados en el equipo. El aislamiento de la fase 2 separa
@@ -3021,7 +3023,7 @@
                                     <th>Producto</th>
                                     <th>Stock</th>
                                     <th>Costo</th>
-                                    <th>Margen</th>
+                                    <th>Mark-up</th>
                                     <th>Precio Venta</th>
                                     <th>Categoría/Marca</th>
                                     <th>Acciones</th>
@@ -3109,7 +3111,7 @@
                             <input type="number" id="productCost" class="form-input" step="0.01" min="0" required>
                         </div>
                         <div class="form-group">
-                            <label for="productMargin" class="form-label">Margen de Ganancia (%)</label>
+                            <label for="productMargin" class="form-label">Mark-up sobre costo (%)</label>
                             <input type="number" id="productMargin" class="form-input" step="0.01" min="0" required>
                         </div>
                         <div class="form-group">
@@ -4056,7 +4058,10 @@
                 const cost = parseFloat(costInput.value) || 0;
                 const margin = parseFloat(marginInput.value) || 0;
 
-                const price = cost * (1 + margin / 100);
+                // Mark-up sobre el costo (mismo número de siempre).
+                const price = (typeof precios !== 'undefined' && precios)
+                    ? (precios.precioDesde({ basis: 'markup', cost: cost, percent: margin }) || 0)
+                    : cost * (1 + margin / 100);
                 const profit = price - cost;
 
                 priceInput.value = price.toFixed(2);
@@ -4186,7 +4191,7 @@
                     Stock: p.stock,
                     'Stock Mínimo': p.minStock,
                     'Precio Costo': p.cost,
-                    'Margen (%)': p.margin,
+                    'Mark-up (%)': p.margin,
                     'Precio Venta': p.price,
                     'Ganancia': p.profit
                 }));

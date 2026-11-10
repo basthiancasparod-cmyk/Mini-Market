@@ -9,6 +9,8 @@
          localStorage. Va primero, antes que el resto de scripts de la página. -->
     <script src="datos_cuenta.js"></script>
     <script src="tema.js"></script>
+    <!-- Contrato de precios (pricing/2): mark-up vs margen sobre venta. -->
+    <script src="precios.js"></script>
     <script src="cloud-access.js"></script>
     <script src="sincronizacion.js"></script>
     <!-- Guardián de almacenamiento local: medición, cuota, respaldo y restauración -->
@@ -1666,7 +1668,7 @@ body.dark-mode .dropdown-divider {
                             <th data-sort-by="name">Producto</th>
                             <th data-sort-by="stock">Stock</th>
                             <th data-sort-by="cost">Precio Costo</th>
-                            <th data-sort-by="margin">Margen</th>
+                            <th data-sort-by="margin">Mark-up</th>
                             <th data-sort-by="price">Precio Venta</th>
                             <th data-sort-by="brand">Marca</th>
                             <th data-sort-by="category">Categoría</th>
@@ -1811,7 +1813,7 @@ body.dark-mode .dropdown-divider {
                         <div class="form-group">
                             <div class="margin-profit-toggle">
                                 <label>
-                                    <input type="radio" name="profitType" value="margin" id="radioMargin" checked onchange="toggleProfitInput(); calculatePrice()"> Margen de Ganancia (%)
+                                    <input type="radio" name="profitType" value="margin" id="radioMargin" checked onchange="toggleProfitInput(); calculatePrice()"> Mark-up sobre costo (%)
                                 </label>
                                 <label>
                                     <input type="radio" name="profitType" value="profit" id="radioProfit" onchange="toggleProfitInput(); calculatePrice()"> Ganancia por Unidad ($)
@@ -1836,6 +1838,10 @@ body.dark-mode .dropdown-divider {
                             <label class="form-label" for="productPrice">Precio de Venta ($)</label>
                             <input type="text" class="form-input calculated-field" id="productPrice" readonly title="Precio final de venta al público.">
                         </div>
+                        <!-- El usuario escribe un porcentaje sobre el COSTO. Aquí se le
+                             enseña su equivalente sobre la VENTA, sin tocar el precio:
+                             "Mark-up 35 % → margen sobre venta 25,93 %". -->
+                        <div id="productMarginEquivalent" style="margin-top: .25rem; font-size: .8rem; color: #64748b; line-height: 1.4;"></div>
                     </div>
                 </form>
             </div>
@@ -1946,7 +1952,7 @@ body.dark-mode .dropdown-divider {
                             <option value="">Seleccionar acción</option>
                             <option value="adjustCostPercentage">Ajustar Precio de Costo (%)</option>
                             <option value="adjustCostFixed">Ajustar Precio de Costo (Fijo)</option>
-                            <option value="adjustMargin">Ajustar Margen de Ganancia (%)</option>
+                            <option value="adjustMargin">Ajustar Mark-up sobre costo (%)</option>
                             <option value="adjustProfitFixed">Ajustar Ganancia por Unidad (Fijo)</option>
                             <option value="changeCategory">Cambiar Categoría</option>
                             <option value="deleteSelected">Eliminar Seleccionados</option>
@@ -2179,6 +2185,17 @@ body.dark-mode .dropdown-divider {
     <script>
         // Global variables
         let products = [];
+        /* `pricing/2` vive en un NODO HERMANO (`pricingByProduct`), no dentro del
+           producto: el catálogo se sube con `.set()` del nodo entero y un equipo
+           con la versión anterior borraría cualquier campo nuevo que metiéramos
+           dentro. Aquí solo se guarda la copia leída para poder interpretar la
+           base de cada producto (mark-up, margen, ganancia fija o legacy). */
+        let pricingOverlay = {};
+        /* ¿Se llegó a LEER el nodo hermano? Sin esta bandera, una subida hecha
+           antes de la primera lectura (por ejemplo al reconectar) reescribiría el
+           nodo desde cero y degradaría a mark-up una base ya declarada. Mejor no
+           escribir que escribir a ciegas. */
+        let pricingOverlayCargado = false;
         let editingProductId = null;
         let deletingProductId = null;
         let adjustingStockProductId = null;
@@ -2380,6 +2397,20 @@ body.dark-mode .dropdown-divider {
             return true;
         }
 
+        /* Contrato de precios (pricing/2) en el nodo HERMANO `pricingByProduct`.
+           NO va dentro del producto: `firebaseSaveProducts` hace `.set()` del nodo
+           completo, así que un equipo con la versión anterior borraría el campo.
+           Se indexa por id (clave de RTDB válida: sin punto, #, $, [ ] ni /). */
+        async function firebaseSavePricing(mapa) {
+            if (!mapa || typeof mapa !== 'object') return false;
+            if (!await checkCloudAccess()) return false;
+            const email = getCurrentUserEmail();
+            if (!email) return false;                    // sin sesión no hay nodo al que escribir
+            const db = await initFirebase();
+            await db.ref(precios.rutaPricing(sanitizeEmailForDb(email))).set(mapa);
+            return true;
+        }
+
         async function firebaseLoadAll() {
             if (!await checkCloudAccess()) return null;
             const db = await initFirebase();
@@ -2418,6 +2449,12 @@ body.dark-mode .dropdown-divider {
                 const data = await firebaseLoadAll();
                 if (!data) return false;
                 let changed = false;
+                /* Base declarada de cada producto (pricing/2). Si el nodo no existe
+                   todavía, se deja vacío: cada producto se interpreta como mark-up
+                   (que es lo que fue siempre) y nunca como margen. El nodo entero
+                   se acaba de leer, así que lo que falte es porque no existe. */
+                pricingOverlayCargado = true;
+                if (data.pricingByProduct) pricingOverlay = data.pricingByProduct;
                 if (data.productos) {
                     products = mergeInventoryWithLocal(data.productos);
                     localStorage.setItem('ciervo_inventory', JSON.stringify(products));
@@ -2470,6 +2507,13 @@ body.dark-mode .dropdown-divider {
                     renderProducts();
                     updateDashboard();
                 });
+
+                // Base de precio por producto (nodo hermano). Solo se guarda en
+                // memoria para interpretar cada producto; no toca el catálogo.
+                db.ref(basePath + '/pricingByProduct').on('value', snap => {
+                    pricingOverlay = snap.val() || {};
+                    pricingOverlayCargado = true;
+                });
             });
             });
         }
@@ -2480,6 +2524,17 @@ body.dark-mode .dropdown-divider {
                 // Fase A (C1): la marca se limpia solo con confirmación del servidor.
                 const subidaProductos = await firebaseSaveProducts(products);
                 const subidaCategorias = await firebaseSaveCategories(categories);
+                /* pricing/2 va a un nodo HERMANO. Es best-effort a propósito: si
+                   esta escritura falla (permisos, cuota, red), el catálogo ya se
+                   subió y la página no puede quedarse en "pendiente" por un dato
+                   que se puede volver a derivar desde costo y precio. */
+                try {
+                    if (typeof precios !== 'undefined' && precios && pricingOverlayCargado) {
+                        // Se pasa el overlay LEÍDO para no degradar a mark-up una
+                        // base ya declarada (margen, precio manual) al reescribir.
+                        await firebaseSavePricing(precios.mapaPricing(products, { overlay: pricingOverlay }));
+                    }
+                } catch (e) { /* opcional: el catálogo ya se subió */ }
                 if (subidaProductos || subidaCategorias) {
                     _pendingChanges = false;
                     limpiarPendienteSync('inventario');
@@ -3010,7 +3065,12 @@ function handleStockKeydown(event) {
             return products;
         }
 
-        // Margen de un producto SIEMPRE como número finito.
+        // Porcentaje de un producto SIEMPRE como número finito.
+        //
+        // OJO CON EL NOMBRE: esto es MARK-UP SOBRE EL COSTO (ganancia ÷ costo),
+        // no margen sobre la venta. La función y el campo `margin` se llaman así
+        // por historia; la interfaz ya dice "Mark-up" y el margen de verdad se
+        // calcula aparte con `precios` (margen = ganancia ÷ precio).
         //
         // POR QUÉ EXISTE ESTA FUNCIÓN (fallo real medido en navegador):
         //   El guardián anterior era `product.margin !== null ? product.margin : (cálculo)`.
@@ -3047,6 +3107,29 @@ function handleStockKeydown(event) {
         function margenDeclarado(product) {
             const p = product || {};
             return Number.isFinite(Number(p.margin));
+        }
+
+        /* Bloque `pricing/2` del producto: base declarada (nodo hermano), precio,
+           ganancia y margen sobre venta. Es lo que se exporta y lo que se enseña
+           en el informe, para que un "35" nunca viaje sin decir qué significa. */
+        function pricingDe(product) {
+            if (typeof precios === 'undefined' || !precios) return null;
+            try {
+                return precios.derivar(product || {}, precios.overlayDe(pricingOverlay, product || {}));
+            } catch (e) {
+                return null;
+            }
+        }
+
+        /* Etiqueta legible de la base, para el Excel y el PDF. */
+        function baseLegible(product) {
+            const pr = pricingDe(product);
+            const base = pr ? pr.target.basis : 'legacy';
+            if (base === 'markup') return 'Mark-up sobre costo';
+            if (base === 'margin') return 'Margen sobre venta';
+            if (base === 'profit') return 'Ganancia fija';
+            if (base === 'manual') return 'Precio manual';
+            return 'Sin base (revisar)';
         }
 
         /* Enlace profundo: ?id=<id> (el producto), ?q=<texto> y ?categoria=<categoría>.
@@ -3466,7 +3549,7 @@ function handleStockKeydown(event) {
                     bulkEditValueInput.setAttribute('required', 'true');
                     bulkEditValueInput.type = 'number';
                     bulkEditValueInput.step = '0.01';
-                    bulkEditValueHint.textContent = 'Establecer el nuevo margen de ganancia (%). Ej: 30.';
+                    bulkEditValueHint.textContent = 'Establecer el nuevo mark-up sobre el costo (%). Ej: 30.';
                     break;
                 case 'adjustProfitFixed':
                     valueGroup.style.display = 'flex';
@@ -3941,10 +4024,24 @@ function handleStockKeydown(event) {
                     marginInput.classList.add('invalid');
                     productPriceOutput.value = '';
                     productCalculatedProfitOutput.value = '';
+                    actualizarMargenEquivalente(0, 0, null);
                     return;
                 }
-                // Calculate price before IVA
-                price = cost * (1 + margin / 100);
+                // Mark-up sobre el costo: el MISMO número de siempre (precio =
+                // costo × (1 + m/100)), ahora con su nombre correcto y con el
+                // margen sobre venta a la vista. No se reinterpreta nada.
+                const motor = (typeof precios !== 'undefined' && precios) ? precios : null;
+                price = motor
+                    ? motor.precioDesde({ basis: 'markup', cost: cost, percent: margin })
+                    : cost * (1 + margin / 100);
+                if (price === null) {
+                    // -100 % o menos: el precio sería cero y el margen no existe.
+                    marginInput.classList.add('invalid');
+                    productPriceOutput.value = '';
+                    productCalculatedProfitOutput.value = '';
+                    actualizarMargenEquivalente(0, 0, null);
+                    return;
+                }
                 profit = price - cost;
                 // price = isIvaExempt ? priceBeforeIva : priceBeforeIva * (1 + IVA_RATE); // Removed IVA calculation
             } else {
@@ -3953,6 +4050,7 @@ function handleStockKeydown(event) {
                     profitInputDirect.classList.add('invalid');
                     productPriceOutput.value = '';
                     productCalculatedProfitOutput.value = '';
+                    actualizarMargenEquivalente(0, 0, null);
                     return;
                 }
                 profit = directProfit;
@@ -3963,6 +4061,31 @@ function handleStockKeydown(event) {
             
             productPriceOutput.value = price.toFixed(2);
             productCalculatedProfitOutput.value = profit.toFixed(2);
+            actualizarMargenEquivalente(cost, price, radioMargin.checked ? parseNumber(marginInput.value) : null);
+        }
+
+        /* Muestra, sin cambiar el precio, cuánto de lo que se cobra es ganancia.
+           El campo de arriba es un porcentaje sobre el COSTO (mark-up); la
+           lectura natural del dueño ("quiero que el 35 % de lo que cobro sea
+           ganancia") es el MARGEN SOBRE VENTA, que es otro número. */
+        function actualizarMargenEquivalente(cost, price, markupPct) {
+            const salida = document.getElementById('productMarginEquivalent');
+            if (!salida) return;
+            const costo = Number(cost);
+            const precio = Number(price);
+            if (!isFinite(precio) || precio <= 0 || !isFinite(costo)) {
+                salida.textContent = '';
+                return;
+            }
+            const fmt = function (v) { return v.toFixed(2).replace('.', ','); };
+            const margen = (precio - costo) / precio * 100;
+            let texto;
+            if (markupPct !== null && isFinite(markupPct)) {
+                texto = 'Mark-up ' + fmt(markupPct) + ' % sobre el costo';
+            } else {
+                texto = 'Ganancia fija';
+            }
+            salida.textContent = texto + ' → margen sobre venta ' + fmt(margen) + ' %';
         }
 
         function saveProduct(event) {
@@ -4062,8 +4185,8 @@ function handleStockKeydown(event) {
                 document.getElementById('productCost').classList.add('invalid');
                 return;
             }
-            if (radioMargin.checked && (isNaN(margin) || margin < -100)) {
-                showNotification('El margen de ganancia no es válido.', 'error');
+            if (radioMargin.checked && (isNaN(margin) || margin <= -100)) {
+                showNotification('El mark-up sobre el costo no es válido.', 'error');
                 document.getElementById('productMargin').classList.add('invalid');
                 return;
             }
@@ -4074,7 +4197,7 @@ function handleStockKeydown(event) {
             }
 
             if (productData.profit <= 0) {
-                const confirmLoss = confirm('El margen/ganancia configurado resultará en una pérdida o ganancia cero. ¿Deseas continuar?');
+                const confirmLoss = confirm('El mark-up/ganancia configurado resultará en una pérdida o ganancia cero. ¿Deseas continuar?');
                 if (!confirmLoss) {
                     return;
                 }
@@ -4224,7 +4347,16 @@ function handleStockKeydown(event) {
             y += 6;
             doc.text(`Precio de Venta: $${(product.isBulk ? product.pricePerUnit : product.price).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 14, y);
             y += 6;
-            doc.text(`Margen de Ganancia: ${margenDeclarado(product) ? margenNumerico(product).toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + '%' : 'N/A'}`, 14, y);
+            // "Mark-up sobre costo" y, debajo, el margen que de verdad queda sobre
+            // la venta: son dos números distintos y el informe no debe confundirlos.
+            doc.text(`Mark-up sobre costo: ${margenDeclarado(product) ? margenNumerico(product).toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + '%' : 'N/A'}`, 14, y);
+            y += 6;
+            const costoPdf = product.isBulk ? product.costPerUnit : product.cost;
+            const precioPdf = product.isBulk ? product.pricePerUnit : product.price;
+            const margenVentaPdf = (Number(precioPdf) > 0)
+                ? ((Number(precioPdf) - Number(costoPdf)) / Number(precioPdf) * 100)
+                : null;
+            doc.text(`Margen sobre venta: ${margenVentaPdf === null || !isFinite(margenVentaPdf) ? 'N/A' : margenVentaPdf.toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + '%'}`, 14, y);
             y += 6;
             doc.text(`Ganancia por Unidad: $${(product.isBulk ? product.profitPerUnit : product.profit).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 14, y);
             y += 6;
@@ -4620,7 +4752,17 @@ function handleStockKeydown(event) {
         'Es a Granel': p.isBulk ? 'Sí' : 'No',
         'Exento de IVA (E)': p.isIvaExempt ? 'Sí' : 'No',
         'Precio Costo': p.isBulk ? p.costPerUnit : p.cost,
-        'Margen (%)': margenDeclarado(p) ? margenNumerico(p) : 'N/A',
+        'Base': baseLegible(p),
+        // La columna se llamaba "Margen (%)" y en realidad era mark-up sobre el
+        // costo. Ahora va con su nombre y con el margen sobre venta al lado, que
+        // es el número que sirve para reportes y punto de equilibrio.
+        'Mark-up (%)': margenDeclarado(p) ? margenNumerico(p) : 'N/A',
+        'Margen s/ venta (%)': (function () {
+            const precio = p.isBulk ? p.pricePerUnit : p.price;
+            const costo = p.isBulk ? p.costPerUnit : p.cost;
+            if (!(Number(precio) > 0)) return 'N/A';
+            return ((Number(precio) - Number(costo)) / Number(precio)) * 100;
+        })(),
         'Precio Venta': p.isBulk ? p.pricePerUnit : p.price,
         'Ganancia por Venta': p.isBulk ? p.profitPerUnit : p.profit
     }));
@@ -4776,6 +4918,17 @@ function handleFileImport(event) {
                         throw new Error(`El producto "${row['Nombre']}" tiene datos inválidos.`);
                     }
 
+                    /* El porcentaje del Excel es MARK-UP sobre el costo. Se acepta la
+                       columna nueva ("Mark-up (%)") y la vieja ("Margen (%)"), que se
+                       llamaba así por error: los archivos exportados antes siguen
+                       importándose igual. El precio NO se recalcula: manda el Excel. */
+                    const celdaMarkUp = (row['Mark-up (%)'] !== undefined && row['Mark-up (%)'] !== '')
+                        ? row['Mark-up (%)']
+                        : row['Margen (%)'];
+                    const markUp = (celdaMarkUp === undefined || celdaMarkUp === null || celdaMarkUp === 'N/A' || celdaMarkUp === '')
+                        ? null
+                        : parseNumber(celdaMarkUp);
+
                     const newProduct = {
                         id: currentId++,
                         name: row['Nombre'],
@@ -4793,7 +4946,7 @@ function handleFileImport(event) {
                         pricePerUnit: isBulk ? price : null,
                         profit: parseNumber(row['Ganancia por Venta']),
                         profitPerUnit: isBulk ? parseNumber(row['Ganancia por Venta']) : null,
-                        margin: row['Margen (%)'] === 'N/A' ? null : parseNumber(row['Margen (%)']),
+                        margin: markUp,
                         isIvaExempt: row['Exento de IVA (E)'] === 'Sí',
                         stockHistory: [{
                             date: new Date().toISOString().split('T')[0],

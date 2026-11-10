@@ -9,6 +9,8 @@
          localStorage. Va primero, antes que el resto de scripts de la página. -->
     <script src="datos_cuenta.js"></script>
     <script src="tema.js"></script>
+    <!-- Contrato de precios y márgenes (pricing/2, sales/2). -->
+    <script src="precios.js"></script>
     <script src="cloud-access.js"></script>
     <script src="sincronizacion.js"></script>
     <!-- Guardián de "una cuenta por equipo": los datos locales no se comparten entre cuentas -->
@@ -2248,19 +2250,29 @@ function applyFilters() {
     let totalUsdSales = 0;
     let totalVesProfit = 0;
     let totalUsdProfit = 0;
+    /* Para el margen oficial: solo ventas en calidad `final`, ponderadas por
+       ingreso neto. Las `estimated` se cuentan aparte y NO entran (acuerdo §4.4). */
+    let ingresoNetoFinalUsd = 0;
+    let gananciaFinalUsd = 0;
+    let ventasEstimadas = 0;
     const productSales = {};
 
     ventasContablesFiltradas.forEach(sale => {
         const correctTotals = recalculateTotalFromItems(sale);
         const exchangeRate = sale.exchangeRate;
 
-        // Calcula la ganancia total de la venta en USD
-        let saleProfitInUSD = 0;
-        sale.items.forEach(item => {
-            const unitPriceUSD = (item.currency === 'USD') ? item.unitPrice : (item.unitPrice / exchangeRate);
-            const unitCostUSD = item.product.isBulk ? (item.product.costPerUnit || 0) : (item.product.cost || 0);
-            saleProfitInUSD += (unitPriceUSD - unitCostUSD) * item.quantity;
-        });
+        /* Ganancia sobre el INGRESO NETO (descuento de línea, IVA fuera), no
+           sobre el precio de lista. Si la venta es vieja, se reconstruye con su
+           propio snapshot; nunca con el inventario de hoy. */
+        const realizado = calcularRealizadoVenta(sale);
+        const saleProfitInUSD = realizado.profitUsd === null ? 0 : realizado.profitUsd;
+
+        if (realizado.quality !== 'final') {
+            ventasEstimadas++;
+        } else if (realizado.profitUsd !== null && realizado.netUsd > 0) {
+            ingresoNetoFinalUsd += realizado.netUsd;
+            gananciaFinalUsd += realizado.profitUsd;
+        }
 
         // Asigna la venta y la ganancia al bote correcto.
         if (sale.paymentMethod === 'combined' && sale.combinedPayment) {
@@ -2289,6 +2301,14 @@ function applyFilters() {
 
     const filteredTransactions = ventasContablesFiltradas.length;
     const topProduct = Object.entries(productSales).sort((a, b) => b[1] - a[1])[0];
+
+    /* Margen sobre VENTA, ponderado por ingreso neto: Σ ganancia ÷ Σ ingreso.
+       Promediar los márgenes de los productos sería el error clásico: un producto
+       del 80 % que vende dos unidades pesaría lo mismo que uno del 5 % que vende
+       dos mil. Solo entran ventas `final` (acuerdo §4.4). */
+    const margenOficial = ingresoNetoFinalUsd > 0
+        ? (gananciaFinalUsd / ingresoNetoFinalUsd) * 100
+        : null;
 
     // 4. Construye el array de tarjetas con la nueva estructura clara.
     const metrics = [
@@ -2319,6 +2339,15 @@ function applyFilters() {
             subtitle: 'Ganancia de ventas en Dólares',
             icon: '💍',
             color: 'linear-gradient(135deg, #2563eb, #1d4ed8)'
+        },
+        {
+            title: 'Margen realizado',
+            value: margenOficial === null ? 'N/A' : `${margenOficial.toFixed(2).replace('.', ',')} %`,
+            subtitle: ventasEstimadas > 0
+                ? `Ganancia ÷ ingreso neto · ${ventasEstimadas} venta(s) excluida(s) por calidad estimada`
+                : 'Ganancia ÷ ingreso neto (sin IVA, después del descuento)',
+            icon: '📈',
+            color: 'linear-gradient(135deg, #0ea5e9, #0284c7)'
         },
         {
             title: 'Transacciones del Filtro',
@@ -2512,6 +2541,15 @@ function applyFilters() {
 
     const customerSales = customer ? allSales.filter(s => s.customer && s.customer.document === customer.document) : [];
 
+    /* Detalle por línea con el MISMO criterio que las tarjetas: ganancia sobre
+       el ingreso neto (descontado) y exención del snapshot. Antes esta tabla
+       mostraba la ganancia sobre el precio de lista y consultaba el inventario
+       de hoy, así que el detalle contradecía al resumen. */
+    let lineasRealizadas = null;
+    if (typeof precios !== 'undefined' && precios && typeof precios.realizadoDeVenta === 'function') {
+        try { lineasRealizadas = precios.realizadoDeVenta(sale).lines; } catch (e) { lineasRealizadas = null; }
+    }
+
     return `
         <div class="details-grid">
             <div class="customer-details">
@@ -2575,7 +2613,7 @@ function applyFilters() {
         <table class="products-table">
             <thead><tr><th>Producto</th><th>Cantidad</th><th class="amount-header">Precio Unitario</th><th class="amount-header">Costo Unitario</th><th class="amount-header">Subtotal</th><th class="amount-header">Ganancia</th></tr></thead>
             <tbody>
-                ${sale.items.map(item => {
+                ${sale.items.map((item, idx) => {
                     let unitPriceUSD, unitPriceVES, unitCostUSD, unitCostVES, subtotalUSD, subtotalVES, profitUSD, profitVES;
                     if (item.currency === 'USD') { 
                         unitPriceUSD = item.unitPrice; 
@@ -2591,11 +2629,18 @@ function applyFilters() {
                     unitCostVES = unitCostUSD * exchangeRate;
                     subtotalUSD = unitPriceUSD * item.quantity;
                     subtotalVES = unitPriceVES * item.quantity;
-                    profitUSD = (unitPriceUSD - unitCostUSD) * item.quantity;
-                    profitVES = (unitPriceVES - unitCostVES) * item.quantity;
+
+                    const lineaRealizada = (lineasRealizadas && lineasRealizadas[idx]) || null;
+                    if (lineaRealizada && lineaRealizada.profit !== null) {
+                        // `profit` viene en la moneda de la venta.
+                        profitUSD = (sale.currency === 'VES') ? lineaRealizada.profit / exchangeRate : lineaRealizada.profit;
+                        profitVES = (sale.currency === 'VES') ? lineaRealizada.profit : lineaRealizada.profit * exchangeRate;
+                    } else {
+                        profitUSD = (unitPriceUSD - unitCostUSD) * item.quantity;
+                        profitVES = (unitPriceVES - unitCostVES) * item.quantity;
+                    }
                     
-                    const currentProduct = mainInventory.find(p => p.id === item.product.id);
-                    const isExempt = currentProduct ? currentProduct.isIvaExempt : false;
+                    const isExempt = item.product.isIvaExempt === true;
 
                     return `
                         <tr>
@@ -2767,15 +2812,24 @@ function applyFilters() {
 
     // 1. Recalcula los totales de las tarjetas del dashboard
     let totalVesSales = 0, totalUsdSales = 0, totalVesProfit = 0, totalUsdProfit = 0;
+    /* Mismo criterio que la pantalla: ganancia sobre ingreso neto, no sobre el
+       precio de lista. Si el PDF usara otro número, el papel contradiría a la
+       pantalla con el mismo filtro. */
+    let ingresoNetoFinalPdf = 0, gananciaFinalPdf = 0, ventasEstimadasPdf = 0;
     const productSales = {};
     ventasContablesFiltradas.forEach(sale => {
         const correctTotals = recalculateTotalFromItems(sale);
         const exchangeRate = sale.exchangeRate;
-        let saleProfitInUSD = 0;
+        const realizado = calcularRealizadoVenta(sale);
+        const saleProfitInUSD = realizado.profitUsd === null ? 0 : realizado.profitUsd;
+
+        if (realizado.quality !== 'final') ventasEstimadasPdf++;
+        else if (realizado.profitUsd !== null && realizado.netUsd > 0) {
+            ingresoNetoFinalPdf += realizado.netUsd;
+            gananciaFinalPdf += realizado.profitUsd;
+        }
+
         sale.items.forEach(item => {
-            const unitPriceUSD = (item.currency === 'USD') ? item.unitPrice : (item.unitPrice / exchangeRate);
-            const unitCostUSD = item.product.isBulk ? (item.product.costPerUnit || 0) : (item.product.cost || 0);
-            saleProfitInUSD += (unitPriceUSD - unitCostUSD) * item.quantity;
             const productName = item.product.name;
             productSales[productName] = (productSales[productName] || 0) + item.quantity;
         });
@@ -2812,6 +2866,13 @@ function applyFilters() {
     doc.text(`Ganancias Totales en VES: Bs. ${formatCurrency(totalVesProfit)}`, margin, y);
     doc.text(`Ganancias Totales en USD: $ ${formatCurrency(totalUsdProfit, 'USD')}`, doc.internal.pageSize.width / 2, y);
     y += 6;
+    const margenPdf = ingresoNetoFinalPdf > 0 ? (gananciaFinalPdf / ingresoNetoFinalPdf) * 100 : null;
+    doc.text(`Margen realizado (ganancia / ingreso neto): ${margenPdf === null ? 'N/A' : margenPdf.toFixed(2).replace('.', ',') + ' %'}`, margin, y);
+    y += 6;
+    if (ventasEstimadasPdf > 0) {
+        doc.text(`${ventasEstimadasPdf} venta(s) excluida(s) del margen por calidad estimada.`, margin, y);
+        y += 6;
+    }
     doc.text(`Total Transacciones: ${filteredTransactions}`, margin, y);
     const topProductName = topProduct ? `${topProduct[0]} (${topProduct[1]} unid.)` : 'N/A';
     doc.text(`Producto Más Vendido: ${topProductName}`, doc.internal.pageSize.width / 2, y);
@@ -2950,31 +3011,35 @@ function recalculateTotalFromItems(sale) {
         return { subtotal: 0, discount: 0, iva: 0, total: 0 };
     }
 
+    const rate = Number(sale.exchangeRate) || 0;
+    const moneda = sale.currency || 'USD';
+
     const correctSubtotal = sale.items.reduce((acc, item) => acc + (item.subtotal || 0), 0);
-    const discountAmount = sale.totals.discount || 0; // El descuento guardado por el POS es correcto.
+    /* OJO CON LA MONEDA: `sale.totals` se guarda en USD (calculateSaleTotals),
+       pero las líneas se guardan en la moneda de la venta. Antes se restaba un
+       descuento en USD a un subtotal en Bs.: en una venta en bolívares con
+       descuento, el total quedaba inflado por la tasa. */
+    const descuentoGuardado = Number(sale.totals && sale.totals.discount) || 0;
+    const discountAmount = (moneda === 'VES' && rate > 0) ? descuentoGuardado * rate : descuentoGuardado;
 
     let ivaAmount = 0;
     // Solo se calcula el IVA si la venta completa fue marcada con el interruptor de IVA.
     if (sale.ivaApplied === true) {
-        // Se calcula la base imponible: la suma de los subtotales de los productos que NO son exentos.
+        /* La exención sale del SNAPSHOT de la venta (item.product), no del
+           inventario actual: marcar o desmarcar "exento" hoy no puede cambiar el
+           IVA de una venta de ayer. */
         const taxableBase = sale.items.reduce((sum, item) => {
-            // Se busca el producto en el inventario actual para saber su estado.
-            const currentProduct = mainInventory.find(p => p.id === item.product.id);
-            const isExempt = currentProduct ? currentProduct.isIvaExempt : false;
-            
-            if (!isExempt) {
-                return sum + item.subtotal;
-            }
-            return sum;
+            const producto = item.product || {};
+            const isExempt = producto.isIvaExempt === true;
+            return isExempt ? sum : sum + (item.subtotal || 0);
         }, 0);
 
-        // Se aplica la proporción del descuento solo a la parte que paga impuestos.
+        const tasa = isFinite(Number(sale.taxRate)) ? Number(sale.taxRate) : 0.16;
         const discountRatio = correctSubtotal > 0 ? (discountAmount / correctSubtotal) : 0;
         const taxableBaseAfterDiscount = taxableBase * (1 - discountRatio);
-        
-        // El IVA se calcula solo sobre esa base imponible ya descontada.
+
         if (taxableBaseAfterDiscount > 0) {
-            ivaAmount = taxableBaseAfterDiscount * 0.16;
+            ivaAmount = taxableBaseAfterDiscount * tasa;
         }
     }
 
@@ -2986,6 +3051,43 @@ function recalculateTotalFromItems(sale) {
         iva: ivaAmount, 
         total: correctTotal 
     };
+}
+
+/**
+ * Margen realizado de una venta, en USD, para los reportes.
+ *
+ * Usa el módulo `precios` (sales/2): ingreso neto = bruto − descuento de línea,
+ * con el IVA fuera del ingreso. Si el módulo no está cargado, cae al cálculo
+ * antiguo (precio de lista) y lo declara `estimated`, para que nunca se presente
+ * como si fuera el margen real.
+ */
+function calcularRealizadoVenta(sale) {
+    const rate = Number(sale && sale.exchangeRate) || 0;
+    const moneda = (sale && sale.currency) || 'USD';
+    const aUsd = (v) => (moneda === 'VES' && rate > 0) ? v / rate : v;
+
+    if (typeof precios !== 'undefined' && precios && typeof precios.realizadoDeVenta === 'function') {
+        try {
+            const r = precios.realizadoDeVenta(sale);
+            return {
+                profitUsd: r.profit === null ? null : aUsd(r.profit),
+                netUsd: r.netRevenue === null ? null : aUsd(r.netRevenue),
+                quality: r.quality,
+                estimadas: r.estimatedLines,
+                motivo: (r.reasons || []).join(',')
+            };
+        } catch (e) { /* cae al respaldo de abajo */ }
+    }
+
+    let profit = 0;
+    let net = 0;
+    ((sale && sale.items) || []).forEach(item => {
+        const unitPriceUsd = (item.currency === 'VES' && rate > 0) ? (item.unitPrice / rate) : item.unitPrice;
+        const unitCostUsd = item.product.isBulk ? (item.product.costPerUnit || 0) : (item.product.cost || 0);
+        profit += (unitPriceUsd - unitCostUsd) * item.quantity;
+        net += unitPriceUsd * item.quantity;
+    });
+    return { profitUsd: profit, netUsd: net, quality: 'estimated', estimadas: ((sale && sale.items) || []).length, motivo: 'sin_modulo_precios' };
 }
 
         function showToast(message, type = 'info') {

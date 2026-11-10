@@ -8,6 +8,8 @@
          localStorage. Va primero, antes que el resto de scripts de la página. -->
     <script src="datos_cuenta.js"></script>
     <script src="tema.js"></script>
+    <!-- Contrato de precios (pricing/2): mark-up vs margen sobre venta. -->
+    <script src="precios.js"></script>
     <!-- Guardián de almacenamiento local: medición, cuota, respaldo y restauración -->
     <script src="almacenamiento.js"></script>
     <script>
@@ -1097,7 +1099,7 @@
                                     <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/>
                                     <path d="M21 21v-5h-5"/>
                                 </svg>
-                                Margen de Ganancia (%)
+                                Mark-up sobre costo (%)
                             </label>
                             <input type="number" id="profitMargin" class="form-input" value="50" step="5" min="0" max="200">
                         </div>
@@ -1215,9 +1217,13 @@
                             <div class="result-subvalue" id="total-cost-usd">0,00 $</div>
                         </div>
                         <div class="result-item">
-                            <div class="result-label">Margen Real</div>
+                            <!-- El porcentaje que se escribe es un MARK-UP sobre el
+                                 costo. El número que de verdad queda sobre la venta
+                                 es otro: aquí se enseña el realizado, calculado
+                                 sobre el precio sugerido (ya redondeado). -->
+                            <div class="result-label">Margen sobre venta</div>
                             <div class="result-value" id="real-margin">0%</div>
-                            <div class="result-subvalue">Sobre costo total</div>
+                            <div class="result-subvalue" id="real-margin-note">Realizado sobre el precio sugerido</div>
                         </div>
                     </div>
                     
@@ -1266,7 +1272,7 @@
                             <th>Producto</th>
                             <th>Costo Total (BS/$)</th>
                             <th>Precio Sugerido (BS)</th>
-                            <th>Margen (%)</th>
+                            <th>Mark-up (%)</th>
                             <th>Fecha</th>
                         </tr>
                     </thead>
@@ -1662,7 +1668,15 @@
             // --- FIN DE LA LÓGICA CORREGIDA ---
 
             // El resto del cálculo utiliza la base 'totalCostInBs' que ahora es correcta
-            const suggestedPriceInBs = totalCostInBs * (1 + profitMargin / 100);
+            const sugerido = (typeof precios !== 'undefined' && precios)
+                ? precios.precioDesde({ basis: 'markup', cost: totalCostInBs, percent: profitMargin })
+                : totalCostInBs * (1 + profitMargin / 100);
+            if (sugerido === null) {
+                profitMarginInput.style.borderColor = '#ef4444';
+                document.getElementById('resultsContainer').style.display = 'none';
+                return;
+            }
+            const suggestedPriceInBs = sugerido;
             const profitPerUnitInBs = suggestedPriceInBs - totalCostInBs;
             
             const displayRateValue = isAdvancedMode ? 
@@ -1690,7 +1704,14 @@
             document.getElementById('total-cost-bs').textContent = `${formatCurrency(totalCost)} BS`;
             document.getElementById('total-cost-usd').textContent = `≈ ${formatCurrency(totalCost / displayRate)} $`;
             
-            document.getElementById('real-margin').textContent = `${margin}%`;
+            // Margen REALIZADO: se calcula sobre el precio sugerido (el que se
+            // cobraría), no sobre el costo. Con 50 % de mark-up son 33,33 %, no 50 %.
+            const margenReal = suggestedPrice > 0 ? ((suggestedPrice - totalCost) / suggestedPrice) * 100 : 0;
+            document.getElementById('real-margin').textContent = `${margenReal.toFixed(2).replace('.', ',')}%`;
+            const notaMargen = document.getElementById('real-margin-note');
+            if (notaMargen) {
+                notaMargen.textContent = `Mark-up ${String(margin).replace('.', ',')}% sobre el costo · realizado sobre el precio sugerido`;
+            }
         }
 
         // Calcular proyecciones basadas en brecha cambiaria
@@ -1728,12 +1749,16 @@
             calculatePrice();
 
             const suggestedPriceEl = document.getElementById('suggested-price');
-            const realMarginEl = document.getElementById('real-margin');
             const totalCostBsEl = document.getElementById('total-cost-bs');
 
             const suggestedPriceRaw = parseFloat(suggestedPriceEl.textContent.replace(/[^\d,.-]/g, '').replace(/\./g, '').replace(',', '.')) || 0;
             const totalCostBsRaw = parseFloat(totalCostBsEl.textContent.replace(/[^\d,.-]/g, '').replace(/\./g, '').replace(',', '.')) || 0;
-            const marginRaw = parseFloat(realMarginEl.textContent) || 0;
+            /* Se guarda el MARK-UP que escribió el usuario, que es lo que la
+               columna "Mark-up (%)" del historial muestra. Antes se guardaba el
+               texto de la tarjeta de margen, que ahora muestra otro número
+               (el margen sobre venta): leerlo aquí envenenaría el historial. */
+            const campoMarkUp = document.getElementById('profitMargin');
+            const marginRaw = campoMarkUp ? (parseFloat(campoMarkUp.value) || 0) : 0;
 
             const calculation = {
                 id: Date.now(),

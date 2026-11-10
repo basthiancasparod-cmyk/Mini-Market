@@ -228,6 +228,7 @@ check('se pudieron extraer las funciones reales de cuentas.html',
 
 const FUNCIONES_RESUMEN = [
     'esConsumoInternoVenta', 'esVentaPorCobrar', 'recalculateTotalFromItems',
+    'calcularRealizadoVenta',
     'formatCurrency', 'applyFilters', 'calculateSalesByDay', 'calculatePaymentMethods',
     'getPaymentMethodName'
 ];
@@ -1756,6 +1757,10 @@ function crearResumen(fuente) {
     ctx.globalThis = ctx;
     ctx.window.lectorVentas = null;
     vm.createContext(ctx);
+    /* El resumen usa el módulo de precios (margen sobre ingreso neto). Se carga
+       el archivo REAL: sin él, `calcularRealizadoVenta` caería al cálculo antiguo
+       y la prueba dejaría de ejercitar el camino que corre en producción. */
+    vm.runInContext(fs.readFileSync(path.join(RAIZ, 'precios.js'), 'utf8'), ctx, { filename: 'precios.js' });
     vm.runInContext(fuente, ctx, { filename: 'mini_market_pos_resumen.html (funciones reales)' });
     return {
         ctx: ctx,

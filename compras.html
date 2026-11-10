@@ -9,6 +9,8 @@
          localStorage. Va primero, antes que el resto de scripts de la página. -->
     <script src="datos_cuenta.js"></script>
     <script src="tema.js"></script>
+    <!-- Contrato de precios (pricing/2): mark-up vs margen sobre venta. -->
+    <script src="precios.js"></script>
     <script src="cloud-access.js"></script>
     <script src="sincronizacion.js"></script>
     <!-- Guardián de almacenamiento local: medición, cuota, respaldo y restauración -->
@@ -1905,7 +1907,7 @@
                         </div>
                         <div class="form-group">
                             <div class="margin-profit-toggle">
-                                <label><input type="radio" name="profitType" value="margin" id="radioMargin" checked onchange="toggleProfitInput()"> Margen (%)</label>
+                                <label><input type="radio" name="profitType" value="margin" id="radioMargin" checked onchange="toggleProfitInput()"> Mark-up sobre costo (%)</label>
                                 <label><input type="radio" name="profitType" value="profit" id="radioProfit" onchange="toggleProfitInput()"> Ganancia ($)</label>
                             </div>
                             <input type="number" step="0.01" class="form-input" id="productMargin" min="-100" max="1000" value="30" oninput="calculatePrice()">
@@ -2914,7 +2916,11 @@
             const product = currentProductData || currentSelectedProduct;
             let salePrice;
             if (product?.margin !== null && product?.margin !== undefined) {
-                salePrice = cost * (1 + product.margin / 100);
+                // El campo `margin` es mark-up sobre el costo, no margen sobre venta.
+                salePrice = (typeof precios !== 'undefined' && precios)
+                    ? precios.precioDesde({ basis: 'markup', cost: cost, percent: product.margin })
+                    : cost * (1 + product.margin / 100);
+                if (salePrice === null) salePrice = 0;
             } else if (product?.profit) {
                 salePrice = cost + product.profit;
             } else {
@@ -3288,7 +3294,11 @@
             if (document.getElementById('radioMargin').checked) {
                 const margin = parseNumber(document.getElementById('productMargin').value);
                 if (isNaN(margin)) { priceOut.value = ''; profitOut.value = ''; return; }
-                price = cost * (1 + margin / 100);
+                // Mark-up sobre el costo (el número de siempre, con su nombre).
+                price = (typeof precios !== 'undefined' && precios)
+                    ? precios.precioDesde({ basis: 'markup', cost: cost, percent: margin })
+                    : cost * (1 + margin / 100);
+                if (price === null) { priceOut.value = ''; profitOut.value = ''; return; }
             } else {
                 const directProfit = parseNumber(document.getElementById('productProfitInput').value);
                  if (isNaN(directProfit) || directProfit < 0) { priceOut.value = ''; profitOut.value = ''; return; }

@@ -328,6 +328,9 @@ const PAGINAS = [
                 'costAmount': { value: '10' },
                 'suggested-price': { textContent: '100,00' },
                 'real-margin': { textContent: '50' },
+                /* saveCalculation guarda el MARK-UP del formulario (la columna
+                   "Mark-up (%)" del historial), no el margen de la tarjeta. */
+                'profitMargin': { value: '50' },
                 'total-cost-bs': { textContent: '10,00' },
                 'productCategory': { value: 'General' }
             }),

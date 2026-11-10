@@ -12,6 +12,9 @@
          queda transparente (comportamiento idéntico al de hoy). -->
     <script src="datos_cuenta.js"></script>
     <script src="tema.js"></script>
+    <!-- Contrato de precios y márgenes (pricing/2, sales/2): reparte el descuento
+         por línea y deja en cada una el ingreso neto y el margen realizado. -->
+    <script src="precios.js"></script>
     <script src="cloud-access.js"></script>
     <script src="sincronizacion.js"></script>
     <!-- Guardián de almacenamiento local: medición, cuota, respaldo y restauración -->
@@ -1989,6 +1992,10 @@
         let scannerActive = false;
         let currentDiscount = 0;
         let applyIVA = true; // Variable para controlar si se aplica el IVA
+        /* Alícuota en un solo sitio. Antes estaba escrita a mano como 0.16 en
+           cuatro cálculos; si cambia, las ventas viejas siguen cuadrando por el
+           `taxRate` que quedó guardado en cada una. */
+        const IVA_RATE = 0.16;
         let saleId = peekSaleId();
         let inventoryProducts = []; // Loaded from localStorage + Firebase
         let confirmCallback = null;
@@ -3536,7 +3543,7 @@ function filterAndDisplayProducts(searchTerm = '') {
             // 3. Calculamos el IVA SOLO sobre la base de los productos que lo aplican
             let iva = 0;
             if (applyIVA) {
-                iva = afterDiscountIvaApplicable * 0.16;
+                iva = afterDiscountIvaApplicable * IVA_RATE;
             }
 
             // 4. Calculamos el total final
@@ -4499,7 +4506,7 @@ function filterAndDisplayProducts(searchTerm = '') {
 
             let iva = 0;
             if (applyIVA) {
-                iva = afterDiscountIvaApplicable * 0.16;
+                iva = afterDiscountIvaApplicable * IVA_RATE;
             }
 
             const total = subtotal - discountAmount + iva;
@@ -4609,7 +4616,7 @@ function filterAndDisplayProducts(searchTerm = '') {
 
             let iva = 0;
             if (applyIVA) {
-                iva = afterDiscountIvaApplicable * 0.16;
+                iva = afterDiscountIvaApplicable * IVA_RATE;
             }
             const total = subtotal - discountAmount + iva;
 
@@ -4766,37 +4773,84 @@ function filterAndDisplayProducts(searchTerm = '') {
                     finalPaymentDetails = {}; 
                 }
                 
+                /* --- Líneas de venta con el contrato `sales/2` (F4) ------------
+                   El descuento global se reparte por línea con la misma
+                   proporción que ya se usaba para el IVA, y cada línea guarda su
+                   ingreso NETO (sin IVA), su impuesto, su costo en la moneda de
+                   la venta y su margen realizado. Antes se guardaba el precio de
+                   lista y el reporte calculaba la utilidad sobre él: toda venta
+                   con descuento quedaba con más ganancia de la real.
+                   `totals` sigue guardándose en USD como siempre; las líneas van
+                   en la moneda de la venta, y el descuento se convierte antes de
+                   repartirlo. */
+                const totalesVenta = calculateSaleTotals();
+                const factorMoneda = (currentCurrency === 'VES' && exchangeRate > 0) ? exchangeRate : 1;
+                const lineasBase = cart.map(item => {
+                    const basePrice = item.product.isBulk ? item.product.pricePerUnit : item.product.price;
+                    const unitPrice = (currentCurrency === 'VES') ? (basePrice * exchangeRate) : basePrice;
+                    return { item: item, unitPrice: unitPrice, subtotal: unitPrice * item.quantity };
+                });
+                const usaMotorPrecios = (typeof precios !== 'undefined' && precios);
+                const descuentosPorLinea = usaMotorPrecios
+                    ? precios.repartirDescuento(lineasBase.map(l => l.subtotal), totalesVenta.discount * factorMoneda)
+                    : lineasBase.map(() => 0);
+                const itemsVenta = lineasBase.map((l, idx) => {
+                    const item = l.item;
+                    const base = {
+                        product: item.product,
+                        quantity: item.quantity,
+                        unit: item.unit,
+                        unitPrice: l.unitPrice,
+                        subtotal: l.subtotal,
+                        currency: currentCurrency
+                    };
+                    if (!usaMotorPrecios) return base;
+                    /* Sin costo NO se pone 0: un costo 0 daría un margen del
+                       100 % que no existe. Se guarda `null`, y la línea queda
+                       `estimated` (el acuerdo pide marcar, no inventar). */
+                    const costoCrudo = item.product.isBulk
+                        ? (item.product.costPerUnit !== null && item.product.costPerUnit !== undefined ? item.product.costPerUnit : item.product.cost)
+                        : (item.product.cost !== null && item.product.cost !== undefined ? item.product.cost : item.product.costPerUnit);
+                    const costoUnitarioUsd = (costoCrudo === null || costoCrudo === undefined || costoCrudo === '')
+                        ? null
+                        : Number(costoCrudo);
+                    return Object.assign(base, precios.lineaDeVenta({
+                        saleId: reservedSaleId,
+                        lineId: reservedSaleId + '-' + (idx + 1),
+                        productId: item.product.id,
+                        externalId: precios.externalIdDe(item.product),
+                        quantity: item.quantity,
+                        grossRevenue: l.subtotal,
+                        discount: descuentosPorLinea[idx],
+                        taxRate: applyIVA ? IVA_RATE : 0,
+                        exempt: item.product.isIvaExempt === true,
+                        cost: costoUnitarioUsd === null ? null : costoUnitarioUsd * factorMoneda,
+                        currency: currentCurrency,
+                        exchangeRate: exchangeRate
+                    }));
+                });
+
                 const saleData = {
                     id: reservedSaleId,
-                    items: cart.map(item => {
-                        // Determine the correct price per unit based on product type
-                        const basePrice = item.product.isBulk ? item.product.pricePerUnit : item.product.price;
-                        
-                        // Calculate the unit price and subtotal in the sale's current currency
-                        const unitPrice = (currentCurrency === 'VES') ? 
-                                          (basePrice * exchangeRate) : 
-                                          basePrice;
-                        const subtotal = unitPrice * item.quantity;
-
-                        return {
-                            product: item.product,
-                            quantity: item.quantity,
-                            unit: item.unit, // Store the unit (e.g., 'kg' or 'unidades')
-                            unitPrice: unitPrice,
-                            subtotal: subtotal,
-                            currency: currentCurrency // Store the currency of this item's price
-                        };
-                    }),
+                    items: itemsVenta,
                     paymentMethod: selectedPaymentMethod,
                     paymentDetails: finalPaymentDetails, // Store the specific payment details
                     combinedPayment: combinedPaymentData, // Store combined payment data if applicable
                     currency: currentCurrency, // Main currency of the sale
-                    totals: calculateSaleTotals(),
+                    totals: totalesVenta,
                     timestamp: new Date().toISOString(),
                     customer: customerData,
                     exchangeRate: exchangeRate,
                     rateSource: rateMode === 'auto' ? rateSource : 'manual', // Referencia usada (euro => la tasa está en Bs/€)
-                    ivaApplied: applyIVA // Store whether IVA was applied for this sale
+                    ivaApplied: applyIVA, // Store whether IVA was applied for this sale
+                    /* F4: trazabilidad de la venta. `totals` sigue en USD (así se
+                       imprimía y se conciliaba); las LÍNEAS van en `currency`.
+                       `taxRate` y `discountPercent` permiten reconstruir el
+                       margen realizado sin adivinar la alícuota ni el descuento. */
+                    salesSchema: 2,
+                    pricingVersion: 2,
+                    taxRate: applyIVA ? IVA_RATE : 0,
+                    discountPercent: currentDiscount
                 };
 
                 // A) Constancia auditable: esta venta se hizo por debajo del stock disponible.
@@ -4946,7 +5000,7 @@ function filterAndDisplayProducts(searchTerm = '') {
 
             let iva = 0;
             if (applyIVA) {
-                iva = afterDiscountIvaApplicable * 0.16;
+                iva = afterDiscountIvaApplicable * IVA_RATE;
             }
 
             const total = subtotal - discountAmount + iva;
